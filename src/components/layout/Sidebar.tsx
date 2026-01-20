@@ -5,7 +5,6 @@ import {
   ClipboardList,
   FileCheck,
   BarChart3,
-  MessageSquareMore,
   FileText,
   TrendingUp,
   Building2,
@@ -14,15 +13,18 @@ import {
   ChevronRight,
   LogOut,
   User,
+  CalendarDays,
+  Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Plano de Implementação", href: "/plano", icon: ClipboardList },
+  { name: "Meses (M1–M12)", href: "/meses", icon: CalendarDays },
+  { name: "Fatores de Sucesso", href: "/fatores", icon: Target },
   { name: "Atividades e Evidências", href: "/atividades", icon: FileCheck },
   { name: "Indicadores", href: "/indicadores", icon: BarChart3 },
-  { name: "Pesquisas", href: "/pesquisas", icon: MessageSquareMore },
   { name: "Relatórios", href: "/relatorios", icon: FileText },
   { name: "Maturidade", href: "/maturidade", icon: TrendingUp },
   { name: "Empresas", href: "/empresas", icon: Building2 },
