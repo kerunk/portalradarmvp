@@ -7,10 +7,11 @@ import Dashboard from "./pages/Dashboard";
 import ImplementationPlan from "./pages/ImplementationPlan";
 import Activities from "./pages/Activities";
 import Indicators from "./pages/Indicators";
-import Surveys from "./pages/Surveys";
 import Reports from "./pages/Reports";
 import Maturity from "./pages/Maturity";
 import Companies from "./pages/Companies";
+import Months from "./pages/Months";
+import SuccessFactors from "./pages/SuccessFactors";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,9 +25,10 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/plano" element={<ImplementationPlan />} />
+          <Route path="/meses" element={<Months />} />
+          <Route path="/fatores" element={<SuccessFactors />} />
           <Route path="/atividades" element={<Activities />} />
           <Route path="/indicadores" element={<Indicators />} />
-          <Route path="/pesquisas" element={<Surveys />} />
           <Route path="/relatorios" element={<Reports />} />
           <Route path="/maturidade" element={<Maturity />} />
           <Route path="/empresas" element={<Companies />} />
