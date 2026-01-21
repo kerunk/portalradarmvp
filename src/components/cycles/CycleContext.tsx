@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, Clock, Target } from "lucide-react";
+import { Users, Clock, Info } from "lucide-react";
 
 interface CycleContextProps {
   cycleId: string;
@@ -18,9 +18,15 @@ const phaseColors = {
 };
 
 const phaseLabels = {
-  M: "Mindset",
-  V: "Valores",
-  P: "Práticas",
+  M: "Monitorar",
+  V: "Validar",
+  P: "Perpetuar",
+};
+
+const phaseDescriptions = {
+  M: "Fase de consciência e diagnóstico",
+  V: "Fase de comprovação e reforço",
+  P: "Fase de sustentabilidade e autonomia",
 };
 
 export function CycleContext({
@@ -33,6 +39,7 @@ export function CycleContext({
 }: CycleContextProps) {
   return (
     <Card className="p-6 bg-gradient-to-br from-card to-secondary/20 border-2">
+      {/* Header with phase and cycle ID */}
       <div className="flex items-start justify-between mb-4">
         <div>
           <div className="flex items-center gap-3 mb-2">
@@ -46,23 +53,39 @@ export function CycleContext({
               {cycleId}
             </span>
           </div>
-          <h2 className="text-xl font-display font-bold text-foreground">
+          <h2 className="text-xl font-display font-bold text-foreground mb-1">
             {name}
           </h2>
+          <p className="text-sm text-muted-foreground flex items-center gap-1">
+            <Info size={14} />
+            {phaseDescriptions[phase]}
+          </p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-full">
-          <Clock size={16} />
-          <span>{estimatedDuration}</span>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-full">
+            <Clock size={16} />
+            <span>{estimatedDuration}</span>
+          </div>
+          <span className="text-xs text-muted-foreground italic">
+            Ciclo metodológico, não mês cronológico
+          </span>
         </div>
       </div>
 
-      <p className="text-muted-foreground mb-4 leading-relaxed">
-        {description}
-      </p>
+      {/* Context description */}
+      <div className="bg-secondary/30 rounded-lg p-4 mb-4">
+        <h4 className="text-sm font-semibold text-foreground mb-2 uppercase tracking-wide">
+          Contexto do Ciclo
+        </h4>
+        <p className="text-muted-foreground leading-relaxed text-sm">
+          {description}
+        </p>
+      </div>
 
+      {/* Impacted groups */}
       <div className="flex items-center gap-2">
         <Users size={16} className="text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">Impacta:</span>
+        <span className="text-sm text-muted-foreground">Público impactado:</span>
         <div className="flex flex-wrap gap-2">
           {impactedGroups.map((group) => (
             <Badge key={group} variant="secondary" className="text-xs">
