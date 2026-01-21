@@ -44,12 +44,16 @@ export interface TurmaState {
 
 export interface RecordState {
   id: string;
-  action: string;
-  cycle: string;
-  status: "planned" | "in_progress" | "completed";
-  observations: string;
-  externalRef: string;
-  responsible: string;
+  companyId: string;
+  date: string;
+  cycleId: string | null;
+  type: "meeting" | "decision" | "observation" | "risk" | "communication";
+  status: "open" | "in_progress" | "closed";
+  title: string;
+  description: string;
+  owner: string;
+  tags: string[];
+  createdAt: string;
   updatedAt: string;
 }
 
@@ -267,8 +271,46 @@ export function addRecord(record: RecordState): void {
 
 export function updateRecord(recordId: string, updates: Partial<RecordState>): void {
   const records = getRecords();
-  const updated = records.map(r => r.id === recordId ? { ...r, ...updates } : r);
+  const updated = records.map(r => r.id === recordId ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r);
   setRecords(updated);
+}
+
+export function deleteRecord(recordId: string): void {
+  const records = getRecords();
+  setRecords(records.filter(r => r.id !== recordId));
+}
+
+// Get all actions from all cycles (for indicators)
+export function getAllCycleActions(): Array<{
+  cycleId: string;
+  factorId: string;
+  action: CycleFactorAction;
+  isDelayed: boolean;
+}> {
+  const state = getState();
+  const actions: Array<{
+    cycleId: string;
+    factorId: string;
+    action: CycleFactorAction;
+    isDelayed: boolean;
+  }> = [];
+  
+  Object.entries(state.cycles).forEach(([cycleId, cycleState]) => {
+    cycleState.factors.forEach(factor => {
+      factor.actions.forEach(action => {
+        if (action.enabled) {
+          actions.push({
+            cycleId,
+            factorId: factor.id,
+            action,
+            isDelayed: isActionDelayed(action.dueDate, action.status),
+          });
+        }
+      });
+    });
+  });
+  
+  return actions;
 }
 
 // Plan Actions helpers
