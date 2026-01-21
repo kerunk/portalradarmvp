@@ -1,12 +1,16 @@
 // MVP Portal Storage Layer
 // Unified localStorage persistence with versioning
+// Prepared for future API migration
 
 import { CYCLE_IDS, type CycleId } from './constants';
 
 const STORAGE_KEY = 'mvp_portal_data';
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3; // Upgraded for governance features
 
-// Types for stored data
+// ============================================================
+// TYPES - Core Data Structures
+// ============================================================
+
 export interface CycleFactorAction {
   id: string;
   enabled: boolean;
@@ -15,7 +19,9 @@ export interface CycleFactorAction {
   dueDate: string | null;
   status: "pending" | "in_progress" | "completed" | "delayed";
   observation: string;
-  sourceDecisionId?: string; // Link to decision that created this action
+  sourceDecisionId?: string; // Bidirectional link to decision that created this action
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CycleFactorState {
@@ -26,8 +32,11 @@ export interface CycleFactorState {
 export interface CycleState {
   factors: CycleFactorState[];
   closureStatus: "not_started" | "in_progress" | "ready_to_close" | "closed";
-  closedAt?: string;
-  closureNotes?: string;
+  startDate?: string;        // When cycle was started
+  plannedEndDate?: string;   // Expected completion date
+  closedAt?: string;         // When cycle was formally closed
+  closureNotes?: string;     // Notes from closure
+  lockedForEditing?: boolean; // Prevents changes after closure
 }
 
 export interface TurmaParticipant {
@@ -55,7 +64,7 @@ export interface RecordState {
   date: string;
   cycleId: string | null;
   factorId?: string; // Link to success factor
-  type: "meeting" | "decision" | "observation" | "risk" | "communication";
+  type: "meeting" | "decision" | "observation" | "risk" | "communication" | "validation";
   status: "open" | "in_progress" | "closed";
   title: string;
   description: string;

@@ -12,21 +12,31 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle2, AlertTriangle, FileDown, Lock } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { 
+  CheckCircle2, 
+  AlertTriangle, 
+  FileDown, 
+  Lock,
+  Calendar,
+  Users,
+  FileText,
+  ArrowRight
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NEXT_CYCLE, type CycleId } from "@/lib/constants";
+import { 
+  avaliarEncerramentoDeCiclo, 
+  encerrarCiclo,
+  type CycleEvaluationResult 
+} from "@/lib/governance";
 
 interface CycleClosureDialogProps {
   isOpen: boolean;
   onClose: () => void;
   cycleId: string;
   cycleTitle: string;
-  completionPercent: number;
-  completedTurmas: number;
-  totalTurmas: number;
-  delayedActions: number;
-  canClose: boolean;
-  onConfirmClose: (notes: string) => void;
+  onCycleClosed: () => void;
   onExportPDF: () => void;
 }
 
@@ -35,38 +45,60 @@ export function CycleClosureDialog({
   onClose,
   cycleId,
   cycleTitle,
-  completionPercent,
-  completedTurmas,
-  totalTurmas,
-  delayedActions,
-  canClose,
-  onConfirmClose,
+  onCycleClosed,
   onExportPDF,
 }: CycleClosureDialogProps) {
   const [notes, setNotes] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Evaluate cycle using governance layer
+  const evaluation: CycleEvaluationResult = avaliarEncerramentoDeCiclo(cycleId);
   const nextCycle = NEXT_CYCLE[cycleId as CycleId];
 
   const handleConfirm = () => {
     setIsConfirming(true);
-    onConfirmClose(notes);
-    setTimeout(() => {
+    setError(null);
+    
+    const result = encerrarCiclo(cycleId, notes);
+    
+    if (result.success) {
+      setTimeout(() => {
+        setIsConfirming(false);
+        onCycleClosed();
+        onClose();
+      }, 500);
+    } else {
+      setError(result.error || 'Erro ao encerrar ciclo');
       setIsConfirming(false);
-      onClose();
-    }, 500);
+    }
   };
 
   const criteriaItems = [
     {
-      label: "Ações concluídas (mín. 80%)",
-      value: completionPercent,
-      met: completionPercent >= 80,
+      label: "Ações concluídas",
+      current: evaluation.criteria.actionCompletionPercent,
+      required: evaluation.criteria.minActionCompletionRequired,
+      unit: "%",
+      met: evaluation.criteria.actionCompletionPercent >= evaluation.criteria.minActionCompletionRequired,
+      icon: CheckCircle2,
     },
     {
-      label: "Turmas concluídas (mín. 1)",
-      value: completedTurmas,
-      met: completedTurmas >= 1,
+      label: "Turmas concluídas",
+      current: evaluation.criteria.completedTurmas,
+      required: evaluation.criteria.minTurmasRequired,
+      unit: "",
+      met: evaluation.criteria.completedTurmas >= evaluation.criteria.minTurmasRequired,
+      icon: Users,
+    },
+    {
+      label: "Decisão/validação registrada",
+      current: evaluation.criteria.hasDecisionOrValidation ? "Sim" : "Não",
+      required: "Recomendado",
+      unit: "",
+      met: evaluation.criteria.hasDecisionOrValidation,
+      icon: FileText,
+      isWarning: !evaluation.criteria.hasDecisionOrValidation,
     },
   ];
 
@@ -86,44 +118,77 @@ export function CycleClosureDialog({
         <div className="space-y-4">
           {/* Criteria Check */}
           <div className="space-y-3">
-            <h4 className="text-sm font-medium">Critérios de Encerramento</h4>
+            <h4 className="text-sm font-medium flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Critérios de Encerramento
+            </h4>
             
             {criteriaItems.map((item, i) => (
               <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30">
                 <div className="flex items-center gap-2">
                   {item.met ? (
                     <CheckCircle2 className="h-4 w-4 text-success" />
-                  ) : (
+                  ) : item.isWarning ? (
                     <AlertTriangle className="h-4 w-4 text-warning" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
                   )}
                   <span className="text-sm">{item.label}</span>
                 </div>
-                <Badge className={cn(
-                  item.met ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
-                )}>
-                  {typeof item.value === 'number' && item.label.includes('%') 
-                    ? `${item.value}%` 
-                    : item.value}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge className={cn(
+                    item.met 
+                      ? "bg-success/10 text-success" 
+                      : item.isWarning 
+                        ? "bg-warning/10 text-warning"
+                        : "bg-destructive/10 text-destructive"
+                  )}>
+                    {item.current}{item.unit}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    / {item.required}{item.unit}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
+
+          <Separator />
 
           {/* Progress Summary */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Progresso geral</span>
-              <span className="font-semibold">{completionPercent}%</span>
+              <span className="font-semibold">{evaluation.criteria.actionCompletionPercent}%</span>
             </div>
-            <Progress value={completionPercent} className="h-2" />
+            <Progress value={evaluation.criteria.actionCompletionPercent} className="h-2" />
           </div>
 
-          {/* Delayed actions warning */}
-          {delayedActions > 0 && (
+          {/* Warnings */}
+          {evaluation.warnings.length > 0 && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <ul className="text-sm space-y-1">
+                  {evaluation.warnings.map((warning, i) => (
+                    <li key={i}>• {warning}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Blockers */}
+          {evaluation.blockers.length > 0 && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                Existem {delayedActions} ação(ões) atrasada(s). Elas serão marcadas como não concluídas.
+                <p className="font-medium mb-1">Critérios não atingidos:</p>
+                <ul className="text-sm space-y-1">
+                  {evaluation.blockers.map((blocker, i) => (
+                    <li key={i}>• {blocker}</li>
+                  ))}
+                </ul>
               </AlertDescription>
             </Alert>
           )}
@@ -136,26 +201,27 @@ export function CycleClosureDialog({
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Registre observações sobre o ciclo, lições aprendidas, pontos de atenção para o próximo ciclo..."
+              placeholder="Registre lições aprendidas, pontos de atenção para o próximo ciclo, decisões tomadas..."
               rows={4}
             />
           </div>
 
           {/* Next cycle info */}
-          {nextCycle && (
+          {nextCycle && evaluation.canClose && (
             <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
-              <p className="text-sm text-primary">
-                <strong>Próximo:</strong> Ao encerrar, o ciclo <strong>{nextCycle}</strong> será liberado para execução.
-              </p>
+              <div className="flex items-center gap-2 text-sm text-primary">
+                <ArrowRight className="h-4 w-4" />
+                <span>
+                  Ao encerrar, o ciclo <strong>{nextCycle}</strong> será liberado para execução.
+                </span>
+              </div>
             </div>
           )}
 
-          {!canClose && (
-            <Alert>
+          {error && (
+            <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                Os critérios mínimos ainda não foram atingidos. Complete mais ações ou turmas antes de encerrar.
-              </AlertDescription>
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
         </div>
@@ -170,10 +236,10 @@ export function CycleClosureDialog({
           </Button>
           <Button 
             onClick={handleConfirm} 
-            disabled={!canClose || isConfirming}
+            disabled={!evaluation.canClose || isConfirming}
             className="gap-2"
           >
-            <CheckCircle2 className="h-4 w-4" />
+            <Lock className="h-4 w-4" />
             {isConfirming ? "Encerrando..." : "Confirmar Encerramento"}
           </Button>
         </DialogFooter>

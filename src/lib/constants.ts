@@ -42,6 +42,7 @@ export const RECORD_TYPES = {
   observation: { label: "Observação", color: "bg-amber-500/10 text-amber-600", icon: "FileText" },
   risk: { label: "Risco", color: "bg-destructive/10 text-destructive", icon: "AlertTriangle" },
   communication: { label: "Comunicação", color: "bg-emerald-500/10 text-emerald-600", icon: "Megaphone" },
+  validation: { label: "Validação", color: "bg-success/10 text-success", icon: "CheckCircle2" },
 } as const;
 export type RecordType = keyof typeof RECORD_TYPES;
 

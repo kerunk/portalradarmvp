@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
@@ -28,8 +28,13 @@ import {
   ResponsiveContainer,
   Tooltip,
   Legend,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
 } from "recharts";
-import { format, differenceInDays, addDays } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Eye,
@@ -39,12 +44,23 @@ import {
   CheckCircle2,
   Target,
   User,
-  ArrowRight,
+  Lock,
+  Unlock,
+  TrendingUp,
+  FileText,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getAllCycleActions, getState } from "@/lib/storage";
+import { 
+  obterIndicadoresGlobais, 
+  obterIndicadoresTodosCiclos,
+  obterIndicadoresPorCiclo,
+  type GlobalIndicators,
+  type CycleIndicators,
+} from "@/lib/governance";
+import { getAllCycleActions, recalculateActionStatuses } from "@/lib/storage";
 import { mvpCycles } from "@/data/mvpCycles";
-import { CYCLE_IDS, ACTION_STATUS, PHASE_COLORS } from "@/lib/constants";
+import { CYCLE_IDS, PHASE_COLORS } from "@/lib/constants";
 
 interface ActionData {
   cycleId: string;
@@ -65,9 +81,16 @@ export default function Indicators() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [deadlineFilter, setDeadlineFilter] = useState("all");
 
-  const { allActions, cycleStats, responsibleStats, chartData } = useMemo(() => {
+  // Recalculate on mount
+  useEffect(() => {
+    recalculateActionStatuses();
+  }, []);
+
+  // Get real indicators from governance layer
+  const { globalIndicators, cycleIndicators, allActions, responsibleStats, chartData } = useMemo(() => {
+    const global = obterIndicadoresGlobais();
+    const cycles = obterIndicadoresTodosCiclos();
     const actions = getAllCycleActions();
-    const state = getState();
     
     // Build action data with details
     const allActions: ActionData[] = actions.map(a => {
@@ -88,34 +111,14 @@ export default function Indicators() {
       };
     });
 
-    // Cycle stats
-    const cycleStats = CYCLE_IDS.map(cycleId => {
-      const cycleActions = allActions.filter(a => a.cycleId === cycleId);
-      const total = cycleActions.length;
-      const completed = cycleActions.filter(a => a.status === "completed").length;
-      const delayed = cycleActions.filter(a => a.isDelayed).length;
-      const nextDeadline = cycleActions
-        .filter(a => a.dueDate && a.status !== "completed")
-        .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())[0];
-
-      return {
-        cycleId,
-        phase: cycleId.charAt(0) as "M" | "V" | "P",
-        total,
-        completed,
-        delayed,
-        percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
-        nextDeadline: nextDeadline?.dueDate || null,
-      };
-    });
-
     // Responsible stats
-    const responsibleMap = new Map<string, { total: number; delayed: number }>();
+    const responsibleMap = new Map<string, { total: number; delayed: number; completed: number }>();
     allActions.forEach(a => {
-      const current = responsibleMap.get(a.responsible) || { total: 0, delayed: 0 };
+      const current = responsibleMap.get(a.responsible) || { total: 0, delayed: 0, completed: 0 };
       responsibleMap.set(a.responsible, {
         total: current.total + 1,
         delayed: current.delayed + (a.isDelayed ? 1 : 0),
+        completed: current.completed + (a.status === 'completed' ? 1 : 0),
       });
     });
     const responsibleStats = Array.from(responsibleMap.entries())
@@ -123,20 +126,14 @@ export default function Indicators() {
       .sort((a, b) => b.total - a.total);
 
     // Chart data
-    const statusCounts = {
-      completed: allActions.filter(a => a.status === "completed").length,
-      in_progress: allActions.filter(a => a.status === "in_progress").length,
-      delayed: allActions.filter(a => a.isDelayed).length,
-      pending: allActions.filter(a => a.status === "pending" && !a.isDelayed).length,
-    };
     const chartData = [
-      { name: "Concluídas", value: statusCounts.completed, color: "hsl(158, 64%, 40%)" },
-      { name: "Em andamento", value: statusCounts.in_progress, color: "hsl(192, 70%, 35%)" },
-      { name: "Atrasadas", value: statusCounts.delayed, color: "hsl(0, 72%, 51%)" },
-      { name: "Pendentes", value: statusCounts.pending, color: "hsl(38, 92%, 50%)" },
+      { name: "Concluídas", value: global.completedActions, color: "hsl(158, 64%, 40%)" },
+      { name: "Em andamento", value: global.inProgressActions, color: "hsl(192, 70%, 35%)" },
+      { name: "Atrasadas", value: global.delayedActions, color: "hsl(0, 72%, 51%)" },
+      { name: "Pendentes", value: global.pendingActions, color: "hsl(38, 92%, 50%)" },
     ].filter(d => d.value > 0);
 
-    return { allActions, cycleStats, responsibleStats, chartData };
+    return { globalIndicators: global, cycleIndicators: cycles, allActions, responsibleStats, chartData };
   }, []);
 
   const filteredByDeadline = useMemo(() => {
@@ -165,15 +162,17 @@ export default function Indicators() {
     });
   }, [allActions, deadlineFilter]);
 
-  const totalActions = allActions.length;
-  const completedActions = allActions.filter(a => a.status === "completed").length;
-  const delayedActions = allActions.filter(a => a.isDelayed).length;
-  const inProgressActions = allActions.filter(a => a.status === "in_progress").length;
+  // Cycle progress chart data
+  const cycleProgressData = cycleIndicators.map(c => ({
+    name: c.cycleId,
+    completed: c.completionPercent,
+    turmas: c.turmasCompleted,
+  }));
 
   return (
     <AppLayout
       title="Indicadores"
-      subtitle="Acompanhe as métricas do programa baseadas em dados reais dos ciclos"
+      subtitle="Métricas consolidadas do programa baseadas em dados reais de governança"
     >
       <div className="space-y-6 animate-fade-in">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -187,62 +186,59 @@ export default function Indicators() {
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card 
-                className="p-5 cursor-pointer hover:border-primary/50 transition-colors"
-                onClick={() => navigate("/ciclos")}
-              >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <Card className="p-5 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/ciclos")}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Total de Ações</p>
-                    <p className="text-3xl font-bold text-foreground">{totalActions}</p>
+                    <p className="text-3xl font-bold text-foreground">{globalIndicators.totalActions}</p>
                     <p className="text-xs text-muted-foreground mt-1">Ações ativas nos ciclos</p>
                   </div>
                   <Target className="h-8 w-8 text-primary opacity-50" />
                 </div>
               </Card>
 
-              <Card 
-                className="p-5 cursor-pointer hover:border-success/50 transition-colors"
-                onClick={() => navigate("/registros")}
-              >
+              <Card className="p-5 cursor-pointer hover:border-success/50 transition-colors" onClick={() => navigate("/registros")}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Concluídas</p>
-                    <p className="text-3xl font-bold text-success">{completedActions}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {totalActions > 0 ? Math.round((completedActions / totalActions) * 100) : 0}% do total
-                    </p>
+                    <p className="text-3xl font-bold text-success">{globalIndicators.completedActions}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{globalIndicators.overallCompletionPercent}% do total</p>
                   </div>
                   <CheckCircle2 className="h-8 w-8 text-success opacity-50" />
                 </div>
               </Card>
 
-              <Card 
-                className="p-5 cursor-pointer hover:border-warning/50 transition-colors"
-                onClick={() => setActiveTab("cycles")}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Em Andamento</p>
-                    <p className="text-3xl font-bold text-warning">{inProgressActions}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Ações em execução</p>
-                  </div>
-                  <Clock className="h-8 w-8 text-warning opacity-50" />
-                </div>
-              </Card>
-
-              <Card 
-                className="p-5 cursor-pointer hover:border-destructive/50 transition-colors"
-                onClick={() => { setActiveTab("deadlines"); setDeadlineFilter("overdue"); }}
-              >
+              <Card className="p-5 cursor-pointer hover:border-destructive/50 transition-colors" onClick={() => { setActiveTab("deadlines"); setDeadlineFilter("overdue"); }}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Atrasadas</p>
-                    <p className="text-3xl font-bold text-destructive">{delayedActions}</p>
+                    <p className="text-3xl font-bold text-destructive">{globalIndicators.delayedActions}</p>
                     <p className="text-xs text-muted-foreground mt-1">Requerem atenção</p>
                   </div>
                   <AlertTriangle className="h-8 w-8 text-destructive opacity-50" />
+                </div>
+              </Card>
+
+              <Card className="p-5 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/turmas")}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Turmas</p>
+                    <p className="text-3xl font-bold text-primary">{globalIndicators.completedTurmas}/{globalIndicators.totalTurmas}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{globalIndicators.totalParticipants} participantes</p>
+                  </div>
+                  <Users className="h-8 w-8 text-primary opacity-50" />
+                </div>
+              </Card>
+
+              <Card className="p-5 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/registros?type=decision")}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Decisão→Ação</p>
+                    <p className="text-3xl font-bold text-foreground">{globalIndicators.decisionConversionRate}%</p>
+                    <p className="text-xs text-muted-foreground mt-1">{globalIndicators.decisionsWithActions} decisões convertidas</p>
+                  </div>
+                  <TrendingUp className="h-8 w-8 text-primary opacity-50" />
                 </div>
               </Card>
             </div>
@@ -276,12 +272,7 @@ export default function Indicators() {
                             borderRadius: "8px",
                           }}
                         />
-                        <Legend
-                          verticalAlign="middle"
-                          align="right"
-                          layout="vertical"
-                          iconType="circle"
-                        />
+                        <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" />
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
@@ -292,34 +283,58 @@ export default function Indicators() {
                 </div>
               </Card>
 
-              {/* Progress by Phase */}
+              {/* Progress by Cycle */}
               <Card className="p-6">
-                <h3 className="font-semibold text-foreground mb-4">Progresso por Fase</h3>
-                <div className="space-y-4">
-                  {["M", "V", "P"].map(phase => {
-                    const phaseCycles = cycleStats.filter(c => c.phase === phase);
-                    const total = phaseCycles.reduce((sum, c) => sum + c.total, 0);
-                    const completed = phaseCycles.reduce((sum, c) => sum + c.completed, 0);
-                    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-                    
-                    return (
-                      <div key={phase} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Badge className={PHASE_COLORS[phase as keyof typeof PHASE_COLORS].badge}>
-                              {PHASE_COLORS[phase as keyof typeof PHASE_COLORS].name}
-                            </Badge>
-                            <span className="text-sm text-muted-foreground">
-                              {completed}/{total} ações
-                            </span>
-                          </div>
-                          <span className="text-sm font-semibold">{percentage}%</span>
-                        </div>
-                        <Progress value={percentage} className="h-2" />
-                      </div>
-                    );
-                  })}
+                <h3 className="font-semibold text-foreground mb-4">Progresso por Ciclo</h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={cycleProgressData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                        }}
+                      />
+                      <Bar dataKey="completed" name="% Concluído" fill="hsl(158, 64%, 40%)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
+              </Card>
+            </div>
+
+            {/* Key Metrics Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <Lock className="h-5 w-5 text-primary" />
+                  <h4 className="font-medium">Ciclos Encerrados</h4>
+                </div>
+                <p className="text-3xl font-bold">{globalIndicators.closedCycles}/{globalIndicators.totalCycles}</p>
+                <Progress value={(globalIndicators.closedCycles / globalIndicators.totalCycles) * 100} className="mt-3 h-2" />
+              </Card>
+
+              <Card className="p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <Clock className="h-5 w-5 text-warning" />
+                  <h4 className="font-medium">Tempo Médio por Ciclo</h4>
+                </div>
+                <p className="text-3xl font-bold">
+                  {globalIndicators.averageCycleDurationDays || '—'} 
+                  <span className="text-lg font-normal text-muted-foreground"> dias</span>
+                </p>
+              </Card>
+
+              <Card className="p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <h4 className="font-medium">Backlog de Ações</h4>
+                </div>
+                <p className="text-3xl font-bold">{globalIndicators.actionBacklog}</p>
+                <p className="text-sm text-muted-foreground mt-1">ações pendentes ou em andamento</p>
               </Card>
             </div>
           </TabsContent>
@@ -333,42 +348,58 @@ export default function Indicators() {
                   <TableRow>
                     <TableHead>Ciclo</TableHead>
                     <TableHead>Fase</TableHead>
-                    <TableHead className="text-center">Total</TableHead>
-                    <TableHead className="text-center">Concluídas</TableHead>
-                    <TableHead className="text-center">Atrasadas</TableHead>
-                    <TableHead className="text-center">%</TableHead>
-                    <TableHead>Próximo Prazo</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-center">Ações</TableHead>
+                    <TableHead className="text-center">Turmas</TableHead>
+                    <TableHead className="text-center">Progresso</TableHead>
+                    <TableHead className="text-center">Dias</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {cycleStats.map(stat => (
-                    <TableRow key={stat.cycleId}>
-                      <TableCell className="font-medium">{stat.cycleId}</TableCell>
-                      <TableCell>
-                        <Badge className={PHASE_COLORS[stat.phase].badge}>
-                          {PHASE_COLORS[stat.phase].name}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">{stat.total}</TableCell>
-                      <TableCell className="text-center text-success">{stat.completed}</TableCell>
-                      <TableCell className="text-center text-destructive">
-                        {stat.delayed > 0 ? stat.delayed : "-"}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <Progress value={stat.percentage} className="w-16 h-2" />
-                          <span className="text-xs">{stat.percentage}%</span>
+                  {cycleIndicators.map(stat => (
+                    <TableRow key={stat.cycleId} className={stat.isLocked ? "opacity-60" : ""}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {stat.isLocked && <Lock size={14} className="text-muted-foreground" />}
+                          {stat.cycleId}
                         </div>
                       </TableCell>
                       <TableCell>
-                        {stat.nextDeadline ? (
-                          <span className="text-sm text-muted-foreground">
-                            {format(new Date(stat.nextDeadline), "dd/MM/yyyy", { locale: ptBR })}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">-</span>
+                        <Badge className={PHASE_COLORS[stat.phaseName.charAt(0) as 'M' | 'V' | 'P']?.badge || ''}>
+                          {stat.phaseName}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={cn(
+                          stat.status === 'closed' && "bg-success/10 text-success",
+                          stat.status === 'ready_to_close' && "bg-primary/10 text-primary",
+                          stat.status === 'in_progress' && "bg-warning/10 text-warning",
+                          stat.status === 'pending' && "bg-muted text-muted-foreground",
+                        )}>
+                          {stat.status === 'closed' ? 'Encerrado' : 
+                           stat.status === 'ready_to_close' ? 'Pronto' : 
+                           stat.status === 'in_progress' ? 'Em andamento' : 'Pendente'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-success">{stat.completedActions}</span>
+                        <span className="text-muted-foreground">/{stat.totalActions}</span>
+                        {stat.delayedActions > 0 && (
+                          <Badge variant="destructive" className="ml-2 text-xs">{stat.delayedActions} atrasadas</Badge>
                         )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {stat.turmasCompleted}/{stat.turmasTotal}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <Progress value={stat.completionPercent} className="w-16 h-2" />
+                          <span className="text-xs">{stat.completionPercent}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center text-muted-foreground">
+                        {stat.daysActive || '—'}
                       </TableCell>
                       <TableCell>
                         <Button
@@ -396,9 +427,10 @@ export default function Indicators() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Responsável</TableHead>
-                      <TableHead className="text-center">Total Atribuídas</TableHead>
+                      <TableHead className="text-center">Total</TableHead>
+                      <TableHead className="text-center">Concluídas</TableHead>
                       <TableHead className="text-center">Atrasadas</TableHead>
-                      <TableHead></TableHead>
+                      <TableHead className="text-center">Taxa</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -413,29 +445,31 @@ export default function Indicators() {
                           </div>
                         </TableCell>
                         <TableCell className="text-center">{stat.total}</TableCell>
+                        <TableCell className="text-center text-success">{stat.completed}</TableCell>
                         <TableCell className="text-center">
                           {stat.delayed > 0 ? (
                             <Badge variant="destructive">{stat.delayed}</Badge>
                           ) : (
-                            <span className="text-muted-foreground">-</span>
+                            <span className="text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => { setActiveTab("deadlines"); }}
-                          >
-                            <ArrowRight size={16} />
-                          </Button>
+                        <TableCell className="text-center">
+                          <Badge className={cn(
+                            (stat.completed / stat.total) >= 0.8 && "bg-success/10 text-success",
+                            (stat.completed / stat.total) >= 0.5 && (stat.completed / stat.total) < 0.8 && "bg-warning/10 text-warning",
+                            (stat.completed / stat.total) < 0.5 && "bg-destructive/10 text-destructive",
+                          )}>
+                            {Math.round((stat.completed / stat.total) * 100)}%
+                          </Badge>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Nenhum responsável atribuído ainda
+                <div className="text-center py-12 text-muted-foreground">
+                  <User size={48} className="mx-auto mb-3 opacity-30" />
+                  <p>Nenhum responsável atribuído</p>
                 </div>
               )}
             </Card>
@@ -447,66 +481,81 @@ export default function Indicators() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-foreground">Ações por Prazo</h3>
                 <Select value={deadlineFilter} onValueChange={setDeadlineFilter}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Filtrar por prazo" />
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Filtrar" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas</SelectItem>
                     <SelectItem value="overdue">Vencidas</SelectItem>
-                    <SelectItem value="7days">Próximos 7 dias</SelectItem>
-                    <SelectItem value="30days">Próximos 30 dias</SelectItem>
+                    <SelectItem value="7days">Próx. 7 dias</SelectItem>
+                    <SelectItem value="30days">Próx. 30 dias</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              
+
               {filteredByDeadline.length > 0 ? (
-                <div className="space-y-3">
-                  {filteredByDeadline
-                    .sort((a, b) => {
-                      if (!a.dueDate) return 1;
-                      if (!b.dueDate) return -1;
-                      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-                    })
-                    .map(action => (
-                      <div
-                        key={`${action.cycleId}-${action.actionId}`}
-                        className={cn(
-                          "p-4 rounded-lg border cursor-pointer hover:bg-secondary/30 transition-colors",
-                          action.isDelayed && "border-destructive/50 bg-destructive/5"
-                        )}
-                        onClick={() => navigate(`/ciclos?cycle=${action.cycleId}`)}
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge variant="outline">{action.cycleId}</Badge>
-                              <span className="font-medium">{action.title}</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {action.factorName} • {action.responsible}
-                            </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ação</TableHead>
+                      <TableHead>Ciclo</TableHead>
+                      <TableHead>Responsável</TableHead>
+                      <TableHead>Prazo</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredByDeadline.map(action => (
+                      <TableRow key={`${action.cycleId}-${action.actionId}`}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{action.title}</p>
+                            <p className="text-xs text-muted-foreground">{action.factorName}</p>
                           </div>
-                          <div className="text-right">
-                            {action.dueDate && (
-                              <div className={cn(
-                                "flex items-center gap-1 text-sm",
-                                action.isDelayed ? "text-destructive font-medium" : "text-muted-foreground"
-                              )}>
-                                <Calendar size={14} />
-                                {format(new Date(action.dueDate), "dd/MM/yyyy", { locale: ptBR })}
-                              </div>
-                            )}
-                            <Badge className={ACTION_STATUS[action.status as keyof typeof ACTION_STATUS]?.color || ""}>
-                              {ACTION_STATUS[action.status as keyof typeof ACTION_STATUS]?.label || action.status}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{action.cycleId}</Badge>
+                        </TableCell>
+                        <TableCell>{action.responsible}</TableCell>
+                        <TableCell>
+                          {action.dueDate ? (
+                            <span className={cn(action.isDelayed && "text-destructive font-medium")}>
+                              {format(new Date(action.dueDate), "dd/MM/yyyy", { locale: ptBR })}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={cn(
+                            action.status === 'completed' && "bg-success/10 text-success",
+                            action.status === 'delayed' && "bg-destructive/10 text-destructive",
+                            action.status === 'in_progress' && "bg-warning/10 text-warning",
+                            action.status === 'pending' && "bg-muted text-muted-foreground",
+                          )}>
+                            {action.status === 'completed' ? 'Concluída' :
+                             action.status === 'delayed' ? 'Atrasada' :
+                             action.status === 'in_progress' ? 'Em andamento' : 'Pendente'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/ciclos?cycle=${action.cycleId}`)}
+                          >
+                            <Eye size={14} />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                </div>
+                  </TableBody>
+                </Table>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Nenhuma ação encontrada com o filtro selecionado
+                <div className="text-center py-12 text-muted-foreground">
+                  <Calendar size={48} className="mx-auto mb-3 opacity-30" />
+                  <p>Nenhuma ação encontrada com este filtro</p>
                 </div>
               )}
             </Card>
