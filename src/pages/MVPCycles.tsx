@@ -1,10 +1,18 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { CycleIdentity } from "@/components/cycles/CycleIdentity";
 import { CycleIntroduction } from "@/components/cycles/CycleIntroduction";
 import { CycleExpectations } from "@/components/cycles/CycleExpectations";
 import { CycleTurmas, type Turma } from "@/components/cycles/CycleTurmas";
+import { CycleClosureDialog } from "@/components/cycles/CycleClosureDialog";
+import { CycleStatusBadge } from "@/components/cycles/CycleStatusBadge";
+import { BestPracticesShelf } from "@/components/cycles/BestPracticesShelf";
+import { PendingDecisions } from "@/components/cycles/PendingDecisions";
+import { 
+  CreateActionFromTemplateDialog,
+  type NewActionData,
+} from "@/components/cycles/CreateActionFromTemplateDialog";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -14,6 +22,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
 import {
   Collapsible,
   CollapsibleContent,
@@ -37,12 +46,21 @@ import {
   getTurmas,
   setTurmas,
   isActionDelayed,
+  addRecord,
+  updateRecord,
   type CycleState,
   type CycleFactorState,
   type CycleFactorAction,
   type TurmaState,
+  type RecordState,
 } from "@/lib/storage";
-import { generateCycleSummaryPDF } from "@/lib/pdfGenerator";
+import { 
+  obterGovernancaDeCiclo, 
+  avaliarEncerramentoDeCiclo,
+  criarAcoesDeDecisao,
+  type CycleGovernance,
+} from "@/lib/governance";
+import { generateCycleSummaryPDF, generateCycleClosurePDF } from "@/lib/pdfGenerator";
 import { cn } from "@/lib/utils";
 import {
   Info,
@@ -58,6 +76,8 @@ import {
   CalendarIcon,
   User,
   FileDown,
+  Lock,
+  LockOpen,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
@@ -109,18 +129,24 @@ function initializeCycleState(cycle: MVPCycle): CycleState {
       })),
     })),
     closureStatus: "not_started",
+    startDate: new Date().toISOString(),
   };
 }
 
 export default function MVPCycles() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
+  
   const [selectedCycleId, setSelectedCycleId] = useState(() => {
     return searchParams.get("cycle") || "M1";
   });
   const [cycleStates, setCycleStates] = useState<Record<string, CycleState>>({});
   const [turmas, setTurmasState] = useState<TurmaState[]>([]);
   const [openFactors, setOpenFactors] = useState<string[]>([]);
+  const [isClosureDialogOpen, setIsClosureDialogOpen] = useState(false);
+  const [cycleGovernance, setCycleGovernance] = useState<CycleGovernance | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Load state from localStorage
   useEffect(() => {
@@ -138,7 +164,13 @@ export default function MVPCycles() {
     
     setCycleStates(loadedCycleStates);
     setTurmasState(state.turmas);
-  }, []);
+  }, [refreshKey]);
+
+  // Update governance when cycle changes
+  useEffect(() => {
+    const governance = obterGovernancaDeCiclo(selectedCycleId);
+    setCycleGovernance(governance);
+  }, [selectedCycleId, cycleStates, refreshKey]);
 
   // Save cycle state with debounce
   const saveCycleState = useCallback((cycleId: string, cycleState: CycleState) => {
@@ -147,6 +179,7 @@ export default function MVPCycles() {
 
   const currentCycle = mvpCycles.find(c => c.id === selectedCycleId)!;
   const currentCycleState = cycleStates[selectedCycleId];
+  const isCycleLocked = cycleGovernance?.status === 'closed' || cycleGovernance?.isLocked;
 
   // Get active actions (enabled ones)
   const activeActions = useMemo(() => {
@@ -200,6 +233,15 @@ export default function MVPCycles() {
   }, [activeActions]);
 
   const handleToggleAction = (factorId: string, actionId: string, enabled: boolean) => {
+    if (isCycleLocked) {
+      toast({ 
+        title: "Ciclo bloqueado", 
+        description: "Este ciclo está encerrado ou bloqueado para edição.",
+        variant: "destructive" 
+      });
+      return;
+    }
+
     setCycleStates(prev => {
       const updated = {
         ...prev,
@@ -218,11 +260,53 @@ export default function MVPCycles() {
         },
       };
       saveCycleState(selectedCycleId, updated[selectedCycleId]);
+
+      // If disabling action with reason, create a decision record
+      if (!enabled) {
+        const actionState = prev[selectedCycleId].factors
+          .find(f => f.id === factorId)?.actions
+          .find(a => a.id === actionId);
+        
+        if (actionState?.disabledReason) {
+          const factorDef = currentCycle.successFactors.find(f => f.id === factorId);
+          const actionDef = factorDef?.actions.find(a => a.id === actionId);
+          
+          if (actionDef) {
+            const now = new Date().toISOString();
+            const newRecord: RecordState = {
+              id: `rec-decision-${Date.now()}`,
+              companyId: "company-1",
+              date: now.split("T")[0],
+              cycleId: selectedCycleId,
+              factorId: factorId,
+              type: "decision",
+              status: "open",
+              title: `Ação desativada: ${actionDef.title}`,
+              description: `Motivo: ${actionState.disabledReason}`,
+              owner: "",
+              tags: ["ação-desativada"],
+              createdAt: now,
+              updatedAt: now,
+            };
+            addRecord(newRecord);
+          }
+        }
+      }
+
       return updated;
     });
   };
 
   const handleUpdateAction = (factorId: string, actionId: string, updates: Partial<CycleFactorAction>) => {
+    if (isCycleLocked && !updates.observation) {
+      toast({ 
+        title: "Ciclo bloqueado", 
+        description: "Este ciclo está encerrado ou bloqueado para edição.",
+        variant: "destructive" 
+      });
+      return;
+    }
+
     setCycleStates(prev => {
       const updated = {
         ...prev,
@@ -243,6 +327,112 @@ export default function MVPCycles() {
       saveCycleState(selectedCycleId, updated[selectedCycleId]);
       return updated;
     });
+  };
+
+  // Create action from best practice or decision
+  const handleCreateActionFromTemplate = (actionData: NewActionData) => {
+    if (isCycleLocked) {
+      toast({ 
+        title: "Ciclo bloqueado", 
+        description: "Este ciclo está encerrado. Não é possível criar novas ações.",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    const cycleId = actionData.cycleId;
+    const factorId = actionData.factorId;
+    
+    // Create new action in the cycle state
+    const newActionId = `custom-action-${Date.now()}`;
+    const newAction: CycleFactorAction = {
+      id: newActionId,
+      enabled: true,
+      disabledReason: "",
+      responsible: actionData.responsible,
+      dueDate: actionData.dueDate,
+      status: "pending",
+      observation: actionData.description || "",
+      sourceDecisionId: actionData.sourceDecisionId,
+      createdAt: new Date().toISOString(),
+    };
+
+    setCycleStates(prev => {
+      const cycleState = prev[cycleId];
+      if (!cycleState) return prev;
+
+      const factorIndex = cycleState.factors.findIndex(f => f.id === factorId);
+      if (factorIndex === -1) {
+        // Factor doesn't exist, create it
+        const updated = {
+          ...prev,
+          [cycleId]: {
+            ...cycleState,
+            factors: [
+              ...cycleState.factors,
+              {
+                id: factorId,
+                actions: [newAction],
+              },
+            ],
+          },
+        };
+        saveCycleState(cycleId, updated[cycleId]);
+        return updated;
+      }
+
+      const updated = {
+        ...prev,
+        [cycleId]: {
+          ...cycleState,
+          factors: cycleState.factors.map((f, i) =>
+            i === factorIndex
+              ? { ...f, actions: [...f.actions, newAction] }
+              : f
+          ),
+        },
+      };
+      saveCycleState(cycleId, updated[cycleId]);
+      return updated;
+    });
+
+    // If from best practice, create observation record
+    if (actionData.sourceBestPracticeId) {
+      const now = new Date().toISOString();
+      const newRecord: RecordState = {
+        id: `rec-practice-${Date.now()}`,
+        companyId: "company-1",
+        date: now.split("T")[0],
+        cycleId: cycleId,
+        type: "observation",
+        status: "closed",
+        title: `Prática aplicada: ${actionData.title}`,
+        description: `Ação criada a partir da melhor prática ID: ${actionData.sourceBestPracticeId}`,
+        owner: actionData.responsible,
+        tags: ["melhor-prática"],
+        createdAt: now,
+        updatedAt: now,
+      };
+      addRecord(newRecord);
+    }
+
+    toast({ title: "Ação criada!", description: actionData.title });
+    setRefreshKey(k => k + 1);
+  };
+
+  // Create action from decision and link
+  const handleCreateActionFromDecision = (actionData: NewActionData, decisionId: string) => {
+    handleCreateActionFromTemplate({ ...actionData, sourceDecisionId: decisionId });
+    
+    // Update decision record with linked action
+    const state = getState();
+    const decision = state.records.find(r => r.id === decisionId);
+    if (decision) {
+      updateRecord(decisionId, {
+        createsActions: true,
+        linkedActionIds: [...(decision.linkedActionIds || []), `custom-action-${Date.now()}`],
+      });
+    }
   };
 
   // Turma handlers
@@ -289,6 +479,41 @@ export default function MVPCycles() {
     toast({ title: "PDF gerado!", description: "O resumo do ciclo foi baixado." });
   };
 
+  const handleCloseCycle = () => {
+    setRefreshKey(k => k + 1);
+    setIsClosureDialogOpen(false);
+    toast({ 
+      title: "Ciclo encerrado!", 
+      description: `${selectedCycleId} foi encerrado com sucesso.` 
+    });
+  };
+
+  const handleExportClosurePDF = () => {
+    const evaluation = avaliarEncerramentoDeCiclo(selectedCycleId);
+    const cycleTurmas = turmas.filter(t => t.cycleId === selectedCycleId);
+    
+    generateCycleClosurePDF(
+      selectedCycleId,
+      currentCycle.title,
+      currentCycle.phaseName,
+      {
+        totalActions: activeActions.length,
+        completedActions: activeActions.filter(a => a.action.status === 'completed').length,
+        completionPercent: cycleProgress.percentage,
+        turmasCompleted: cycleTurmas.filter(t => t.status === 'completed').length,
+        turmasTotal: cycleTurmas.length,
+      },
+      activeActions.map(a => ({
+        title: a.title,
+        status: a.isDelayed ? 'delayed' : a.action.status,
+        responsible: a.action.responsible,
+      })),
+      evaluation.warnings,
+      cycleGovernance?.closureNotes || ""
+    );
+    toast({ title: "PDF de encerramento gerado!" });
+  };
+
   if (!currentCycleState) {
     return <AppLayout title="Ciclos MVP" subtitle="Carregando..."><div /></AppLayout>;
   }
@@ -310,51 +535,132 @@ export default function MVPCycles() {
           
           <div className="flex items-center gap-1 overflow-x-auto pb-2">
             <span className="text-xs font-semibold text-blue-600 bg-blue-500/10 px-2 py-1 rounded mr-1">Monitorar</span>
-            {cycleIds.slice(0, 3).map(id => (
-              <button
-                key={id}
-                onClick={() => setSelectedCycleId(id)}
-                className={cn(
-                  "px-4 py-2 rounded-lg font-semibold text-sm border-2 transition-all",
-                  selectedCycleId === id ? phaseColors.M.active : phaseColors.M.inactive
-                )}
-              >
-                {id}
-              </button>
-            ))}
+            {cycleIds.slice(0, 3).map(id => {
+              const gov = obterGovernancaDeCiclo(id);
+              return (
+                <button
+                  key={id}
+                  onClick={() => setSelectedCycleId(id)}
+                  className={cn(
+                    "px-4 py-2 rounded-lg font-semibold text-sm border-2 transition-all relative",
+                    selectedCycleId === id ? phaseColors.M.active : phaseColors.M.inactive,
+                    gov.isLocked && "opacity-50"
+                  )}
+                >
+                  {gov.status === 'closed' && (
+                    <Lock size={10} className="absolute -top-1 -right-1 text-success" />
+                  )}
+                  {id}
+                </button>
+              );
+            })}
             <div className="w-px h-8 bg-border mx-2" />
             <span className="text-xs font-semibold text-amber-600 bg-amber-500/10 px-2 py-1 rounded mr-1">Validar</span>
-            {cycleIds.slice(3, 6).map(id => (
-              <button
-                key={id}
-                onClick={() => setSelectedCycleId(id)}
-                className={cn(
-                  "px-4 py-2 rounded-lg font-semibold text-sm border-2 transition-all",
-                  selectedCycleId === id ? phaseColors.V.active : phaseColors.V.inactive
-                )}
-              >
-                {id}
-              </button>
-            ))}
+            {cycleIds.slice(3, 6).map(id => {
+              const gov = obterGovernancaDeCiclo(id);
+              return (
+                <button
+                  key={id}
+                  onClick={() => setSelectedCycleId(id)}
+                  className={cn(
+                    "px-4 py-2 rounded-lg font-semibold text-sm border-2 transition-all relative",
+                    selectedCycleId === id ? phaseColors.V.active : phaseColors.V.inactive,
+                    gov.isLocked && "opacity-50"
+                  )}
+                >
+                  {gov.status === 'closed' && (
+                    <Lock size={10} className="absolute -top-1 -right-1 text-success" />
+                  )}
+                  {id}
+                </button>
+              );
+            })}
             <div className="w-px h-8 bg-border mx-2" />
             <span className="text-xs font-semibold text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded mr-1">Perpetuar</span>
-            {cycleIds.slice(6, 9).map(id => (
-              <button
-                key={id}
-                onClick={() => setSelectedCycleId(id)}
-                className={cn(
-                  "px-4 py-2 rounded-lg font-semibold text-sm border-2 transition-all",
-                  selectedCycleId === id ? phaseColors.P.active : phaseColors.P.inactive
-                )}
-              >
-                {id}
-              </button>
-            ))}
+            {cycleIds.slice(6, 9).map(id => {
+              const gov = obterGovernancaDeCiclo(id);
+              return (
+                <button
+                  key={id}
+                  onClick={() => setSelectedCycleId(id)}
+                  className={cn(
+                    "px-4 py-2 rounded-lg font-semibold text-sm border-2 transition-all relative",
+                    selectedCycleId === id ? phaseColors.P.active : phaseColors.P.inactive,
+                    gov.isLocked && "opacity-50"
+                  )}
+                >
+                  {gov.status === 'closed' && (
+                    <Lock size={10} className="absolute -top-1 -right-1 text-success" />
+                  )}
+                  {id}
+                </button>
+              );
+            })}
           </div>
         </div>
 
+        {/* Cycle Header with Status and Actions */}
+        <div className="bg-card rounded-lg p-4 border">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <div>
+                <h2 className="text-xl font-display font-bold text-foreground">
+                  Ciclo {selectedCycleId}: {currentCycle.title}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Fase {currentCycle.phaseName} • {currentCycle.estimatedDuration}
+                </p>
+              </div>
+              {cycleGovernance && (
+                <CycleStatusBadge 
+                  status={cycleGovernance.status} 
+                  isLocked={cycleGovernance.isLocked}
+                />
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={handleExportPDF} className="gap-2">
+                <FileDown size={16} />
+                Exportar PDF
+              </Button>
+              
+              {cycleGovernance?.status !== 'closed' && !cycleGovernance?.isLocked && (
+                <Button 
+                  onClick={() => setIsClosureDialogOpen(true)}
+                  className="gap-2"
+                  variant={cycleGovernance?.status === 'ready_to_close' ? 'default' : 'outline'}
+                >
+                  <Lock size={16} />
+                  Encerrar Ciclo
+                </Button>
+              )}
+
+              {cycleGovernance?.status === 'closed' && (
+                <Button variant="outline" onClick={handleExportClosurePDF} className="gap-2">
+                  <FileDown size={16} />
+                  PDF de Encerramento
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Locked cycle warning */}
+        {isCycleLocked && (
+          <Alert className={cycleGovernance?.status === 'closed' ? "border-success/50 bg-success/5" : ""}>
+            <Lock className="h-4 w-4" />
+            <AlertDescription>
+              {cycleGovernance?.status === 'closed' 
+                ? `Este ciclo foi encerrado formalmente${cycleGovernance?.closedAt ? ` em ${format(new Date(cycleGovernance.closedAt), "dd/MM/yyyy", { locale: ptBR })}` : ""}. Apenas observações podem ser editadas.`
+                : "Este ciclo está bloqueado. Encerre o ciclo anterior para liberar a edição."
+              }
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Delayed alert */}
-        {cycleProgress.delayed > 0 && (
+        {cycleProgress.delayed > 0 && !isCycleLocked && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
@@ -383,6 +689,18 @@ export default function MVPCycles() {
           successCriteria={currentCycle.expectations.successCriteria}
         />
 
+        {/* Best Practices Shelf */}
+        <BestPracticesShelf 
+          cycleId={selectedCycleId}
+          onCreateAction={handleCreateActionFromTemplate}
+        />
+
+        {/* Pending Decisions */}
+        <PendingDecisions
+          cycleId={selectedCycleId}
+          onCreateAction={handleCreateActionFromDecision}
+        />
+
         {/* Block 4: Success Factors */}
         <Card className="p-6">
           <h3 className="text-lg font-display font-semibold text-foreground mb-2">
@@ -390,6 +708,7 @@ export default function MVPCycles() {
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
             Configure as ações que serão executadas. Ações ON exigem prazo e responsável.
+            {isCycleLocked && " (Somente leitura)"}
           </p>
 
           <div className="space-y-3">
@@ -445,6 +764,7 @@ export default function MVPCycles() {
                               <Switch
                                 checked={actionState.enabled}
                                 onCheckedChange={(checked) => handleToggleAction(factor.id, actionDef.id, checked)}
+                                disabled={isCycleLocked}
                               />
                               <span className={cn("font-medium", actionState.enabled ? "text-foreground" : "text-muted-foreground")}>
                                 {actionDef.title}
@@ -467,6 +787,7 @@ export default function MVPCycles() {
                                       value={actionState.responsible}
                                       onChange={e => handleUpdateAction(factor.id, actionDef.id, { responsible: e.target.value })}
                                       className="pl-8 h-9"
+                                      disabled={isCycleLocked}
                                     />
                                   </div>
                                 </div>
@@ -474,7 +795,11 @@ export default function MVPCycles() {
                                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Data Prevista</label>
                                   <Popover>
                                     <PopoverTrigger asChild>
-                                      <Button variant="outline" className={cn("w-full justify-start text-left h-9", !actionState.dueDate && "text-muted-foreground")}>
+                                      <Button 
+                                        variant="outline" 
+                                        className={cn("w-full justify-start text-left h-9", !actionState.dueDate && "text-muted-foreground")}
+                                        disabled={isCycleLocked}
+                                      >
                                         <CalendarIcon className="mr-2 h-4 w-4" />
                                         {actionState.dueDate ? format(new Date(actionState.dueDate), "dd/MM/yyyy", { locale: ptBR }) : "Selecionar"}
                                       </Button>
@@ -510,6 +835,7 @@ export default function MVPCycles() {
                                   value={actionState.disabledReason}
                                   onChange={e => handleUpdateAction(factor.id, actionDef.id, { disabledReason: e.target.value })}
                                   className="min-h-[60px] text-sm"
+                                  disabled={isCycleLocked}
                                 />
                               </div>
                             )}
@@ -566,6 +892,7 @@ export default function MVPCycles() {
                       <Select
                         value={action.status}
                         onValueChange={(value) => handleUpdateAction(factorId, id, { status: value as any })}
+                        disabled={isCycleLocked}
                       >
                         <SelectTrigger className={cn("w-[150px] h-9", config.color)}>
                           <div className="flex items-center gap-2">
@@ -601,15 +928,8 @@ export default function MVPCycles() {
           onAddTurma={handleAddTurma as any}
           onUpdateTurma={handleUpdateTurma as any}
           onDeleteTurma={handleDeleteTurma}
+          isLocked={isCycleLocked}
         />
-
-        {/* Export PDF */}
-        <div className="flex justify-center">
-          <Button variant="outline" onClick={handleExportPDF} className="gap-2">
-            <FileDown size={16} />
-            Exportar PDF do Ciclo
-          </Button>
-        </div>
 
         {/* Progress Summary */}
         <div className="bg-card rounded-lg p-4 border">
@@ -628,6 +948,16 @@ export default function MVPCycles() {
           </div>
         </div>
       </div>
+
+      {/* Cycle Closure Dialog */}
+      <CycleClosureDialog
+        isOpen={isClosureDialogOpen}
+        onClose={() => setIsClosureDialogOpen(false)}
+        cycleId={selectedCycleId}
+        cycleTitle={currentCycle.title}
+        onCycleClosed={handleCloseCycle}
+        onExportPDF={handleExportClosurePDF}
+      />
     </AppLayout>
   );
 }

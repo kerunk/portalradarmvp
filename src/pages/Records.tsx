@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,9 @@ import {
   AlertTriangle,
   Megaphone,
   CheckCircle2,
+  Zap,
+  ArrowRight,
+  Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -46,13 +50,19 @@ import {
 } from "@/lib/storage";
 import { RECORD_TYPES, RECORD_STATUS, CYCLE_IDS } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
+import {
+  CreateActionFromTemplateDialog,
+  type NewActionData,
+} from "@/components/cycles/CreateActionFromTemplateDialog";
+import { criarAcoesDeDecisao } from "@/lib/governance";
 
-const typeIcons = {
+const typeIcons: Record<string, any> = {
   meeting: MessageSquare,
   decision: CheckCircle2,
   observation: FileText,
   risk: AlertTriangle,
   communication: Megaphone,
+  validation: CheckCircle2,
 };
 
 const emptyRecord: Partial<RecordState> = {
@@ -67,20 +77,33 @@ const emptyRecord: Partial<RecordState> = {
 
 export default function Records() {
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const [records, setRecords] = useState<RecordState[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState(() => searchParams.get("type") || "all");
   const [cycleFilter, setCycleFilter] = useState("all");
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<Partial<RecordState>>(emptyRecord);
   const [isEditing, setIsEditing] = useState(false);
 
+  // Action creation dialog
+  const [isActionDialogOpen, setIsActionDialogOpen] = useState(false);
+  const [selectedDecisionForAction, setSelectedDecisionForAction] = useState<RecordState | null>(null);
+
   // Load records from storage
   useEffect(() => {
     setRecords(getRecords());
   }, []);
+
+  // Apply URL filter on mount
+  useEffect(() => {
+    const typeFromUrl = searchParams.get("type");
+    if (typeFromUrl && RECORD_TYPES[typeFromUrl as keyof typeof RECORD_TYPES]) {
+      setTypeFilter(typeFromUrl);
+    }
+  }, [searchParams]);
 
   // Filtered records
   const filteredRecords = useMemo(() => {
@@ -158,6 +181,36 @@ export default function Records() {
       setRecords(getRecords());
       toast({ title: "Registro excluído!" });
     }
+  };
+
+  // Handle creating action from decision
+  const handleOpenActionDialog = (decision: RecordState) => {
+    setSelectedDecisionForAction(decision);
+    setIsActionDialogOpen(true);
+  };
+
+  const handleCreateActionFromDecision = (actionData: NewActionData) => {
+    if (!selectedDecisionForAction) return;
+
+    // Create action using governance layer
+    const result = criarAcoesDeDecisao(selectedDecisionForAction.id, [{
+      cycleId: actionData.cycleId,
+      factorId: actionData.factorId,
+      title: actionData.title,
+      responsible: actionData.responsible,
+      dueDate: actionData.dueDate,
+    }]);
+
+    if (result.success) {
+      toast({ 
+        title: "Ação criada!", 
+        description: `Ação vinculada à decisão "${selectedDecisionForAction.title}"` 
+      });
+      setRecords(getRecords());
+    }
+
+    setSelectedDecisionForAction(null);
+    setIsActionDialogOpen(false);
   };
 
   return (
