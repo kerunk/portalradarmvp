@@ -5,6 +5,7 @@ export interface MVPCycle {
   id: string;
   phase: "M" | "V" | "P";
   phaseName: "Monitorar" | "Validar" | "Perpetuar";
+  moduleNumber?: number; // 1-9 for display (optional for backwards compat)
   title: string;
   context: string;
   impactedGroups: string[];
@@ -98,6 +99,7 @@ export const mvpCycles: MVPCycle[] = [
     id: "M1",
     phase: "M",
     phaseName: "Monitorar",
+    moduleNumber: 1,
     title: "Conceito MVP e Radar Pessoal",
     context: "O colaborador inicia sua jornada de consciência aplicando o Radar Pessoal. Este instrumento revela como os fatores humanos (atenção, fadiga, estresse, pressa, complacência) influenciam seu desempenho individual. A linha de base comportamental é estabelecida, conectando percepção pessoal com segurança operacional e produtividade.",
     impactedGroups: ["Todos os colaboradores", "Liderança direta", "Núcleo de sustentação"],
@@ -144,6 +146,7 @@ export const mvpCycles: MVPCycle[] = [
     id: "M2",
     phase: "M",
     phaseName: "Monitorar",
+    moduleNumber: 2,
     title: "Radar Social: Percepção que Salva",
     context: "A consciência individual expande para o coletivo. O Radar Social revela como os fatores humanos se manifestam nas relações de trabalho e na dinâmica das equipes. Padrões coletivos de comportamento são identificados, fortalecendo a capacidade da equipe de observar e intervir em vulnerabilidades operacionais.",
     impactedGroups: ["Equipes de trabalho", "Gestores diretos", "Núcleo de sustentação"],
@@ -190,6 +193,7 @@ export const mvpCycles: MVPCycle[] = [
     id: "M3",
     phase: "M",
     phaseName: "Monitorar",
+    moduleNumber: 3,
     title: "Liderança em Movimento: Ativando o Radar em Todos",
     context: "O ciclo de Monitorar se consolida com foco na preparação da liderança. Gestores aprendem a exercer influência positiva sobre fatores humanos, transformando diagnósticos em ações práticas de reforço comportamental. A organização se prepara para a transição estruturada à fase Validar.",
     impactedGroups: ["Liderança formal e informal", "Núcleo de sustentação", "Alta direção"],
@@ -240,6 +244,7 @@ export const mvpCycles: MVPCycle[] = [
     id: "V1",
     phase: "V",
     phaseName: "Validar",
+    moduleNumber: 4,
     title: "Da Atenção à Validação: Transformando a Consciência em Consistência",
     context: "Inicia a fase de comprovação. Colaboradores e líderes aplicam os conceitos MVP em situações reais de trabalho, identificando e intervindo em fatores humanos críticos. As primeiras evidências concretas de mudança comportamental são documentadas, transformando a consciência adquirida em consistência prática.",
     impactedGroups: ["Todos os colaboradores", "Gestores de campo", "Núcleo de sustentação"],
@@ -286,6 +291,7 @@ export const mvpCycles: MVPCycle[] = [
     id: "V2",
     phase: "V",
     phaseName: "Validar",
+    moduleNumber: 5,
     title: "Validação Coletiva: O Poder de Reforçar o Certo",
     context: "Intensifica as práticas de reforço positivo para consolidar comportamentos desejados. Através de reconhecimento, feedback estruturado e diálogos contínuos, a cultura de fatores humanos se estabelece. O foco é transformar ações pontuais em hábitos organizacionais, fortalecendo o poder coletivo de reforçar o certo.",
     impactedGroups: ["Todos os colaboradores", "Liderança em todos os níveis"],
@@ -332,6 +338,7 @@ export const mvpCycles: MVPCycle[] = [
     id: "V3",
     phase: "V",
     phaseName: "Validar",
+    moduleNumber: 6,
     title: "Liderança em Ação: Validar para Perpetuar",
     context: "Fechamento da fase Validar com mensuração rigorosa de resultados. Indicadores objetivos comprovam a efetividade das mudanças comportamentais. O ROI comportamental é documentado, e a liderança demonstra domínio prático que será essencial para perpetuar a cultura MVP.",
     impactedGroups: ["Toda a organização", "Núcleo de sustentação", "Alta direção"],
@@ -382,6 +389,7 @@ export const mvpCycles: MVPCycle[] = [
     id: "P1",
     phase: "P",
     phaseName: "Perpetuar",
+    moduleNumber: 7,
     title: "Do Hábito à Identidade: Quando o Radar se Torna Parte de Quem Somos",
     context: "Inicia a fase de perpetuação, onde comportamentos aprendidos se transformam em hábitos arraigados. O Radar deixa de ser uma ferramenta externa e passa a ser uma extensão natural da forma de trabalhar. A mudança comportamental se enraíza na identidade organizacional.",
     impactedGroups: ["Toda a organização", "Novos colaboradores", "Liderança"],
@@ -428,6 +436,7 @@ export const mvpCycles: MVPCycle[] = [
     id: "P2",
     phase: "P",
     phaseName: "Perpetuar",
+    moduleNumber: 8,
     title: "O Legado MVP: Sustentando o Futuro",
     context: "Consolida os mecanismos de sustentação de longo prazo. A organização desenvolve capacidade interna de renovar e adaptar o programa. O legado MVP se materializa em estruturas, processos e pessoas capazes de manter a cultura viva independentemente de mudanças organizacionais.",
     impactedGroups: ["Liderança sênior", "RH e Desenvolvimento", "Núcleo de sustentação"],
@@ -474,6 +483,7 @@ export const mvpCycles: MVPCycle[] = [
     id: "P3",
     phase: "P",
     phaseName: "Perpetuar",
+    moduleNumber: 9,
     title: "Cultura Viva: Integrando o MVP à Gestão e à Organização",
     context: "O ciclo final do programa. O MVP deixa de ser um 'programa' e se torna parte inseparável da identidade organizacional. A cultura de fatores humanos está plenamente integrada à gestão, aos processos e às pessoas. A organização demonstra capacidade autônoma de sustentar e evoluir sua cultura comportamental.",
     impactedGroups: ["Toda a organização", "Alta direção", "Núcleo de sustentação"],
@@ -524,4 +534,10 @@ export function getCycleById(id: string): MVPCycle | undefined {
 
 export function getCyclesByPhase(phase: "M" | "V" | "P"): MVPCycle[] {
   return mvpCycles.filter(c => c.phase === phase);
+}
+
+// Helper to get module number from cycle ID (M1=1, M2=2, ..., P3=9)
+export function getModuleNumber(cycleId: string): number {
+  const index = ["M1", "M2", "M3", "V1", "V2", "V3", "P1", "P2", "P3"].indexOf(cycleId);
+  return index >= 0 ? index + 1 : 1;
 }
