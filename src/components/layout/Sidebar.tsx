@@ -13,7 +13,7 @@ import {
   ChevronRight,
   LogOut,
   User,
-  CalendarDays,
+  Rocket,
   Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Plano de Implementação", href: "/plano", icon: ClipboardList },
-  { name: "Meses (M1–M12)", href: "/meses", icon: CalendarDays },
+  { name: "Ciclos MVP", href: "/ciclos", icon: Rocket },
   { name: "Fatores de Sucesso", href: "/fatores", icon: Target },
   { name: "Registros", href: "/registros", icon: FileCheck },
   { name: "Indicadores", href: "/indicadores", icon: BarChart3 },
