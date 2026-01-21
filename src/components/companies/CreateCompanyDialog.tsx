@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/select";
 import { Building2, User, Mail, Lock, FileDown, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { addCompany, type CompanyState } from "@/lib/storage";
+import { generateAccessPDF } from "@/lib/pdfGenerator";
 
 interface CreateCompanyDialogProps {
   open: boolean;
@@ -34,19 +36,10 @@ interface CreatedCompanyData {
 }
 
 const sectors = [
-  "Indústria",
-  "Tecnologia",
-  "Varejo",
-  "Construção",
-  "Serviços",
-  "Saúde",
-  "Educação",
-  "Agronegócio",
-  "Logística",
-  "Outro",
+  "Indústria", "Tecnologia", "Varejo", "Construção", "Serviços",
+  "Saúde", "Educação", "Agronegócio", "Logística", "Outro",
 ];
 
-// Generate a simple temporary password
 function generateTempPassword(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
   let password = "";
@@ -61,15 +54,14 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
   const [step, setStep] = useState<"form" | "confirmation">("form");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Form state
   const [companyName, setCompanyName] = useState("");
   const [sector, setSector] = useState("");
   const [employees, setEmployees] = useState("");
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   
-  // Created company data for confirmation
   const [createdData, setCreatedData] = useState<CreatedCompanyData | null>(null);
+  const [savedCompany, setSavedCompany] = useState<CompanyState | null>(null);
 
   const resetForm = () => {
     setStep("form");
@@ -79,6 +71,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
     setAdminName("");
     setAdminEmail("");
     setCreatedData(null);
+    setSavedCompany(null);
   };
 
   const handleClose = () => {
@@ -99,18 +92,29 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
     }
 
     setIsSubmitting(true);
-    
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 500));
     
     const tempPassword = generateTempPassword();
-    
-    setCreatedData({
-      companyName: companyName.trim(),
+    const company: CompanyState = {
+      id: `company-${Date.now()}`,
+      name: companyName.trim(),
       sector: sector || "Não informado",
-      employees: employees || "Não informado",
+      employees: parseInt(employees) || 0,
       adminName: adminName.trim(),
       adminEmail: adminEmail.trim().toLowerCase(),
+      tempPassword,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    
+    addCompany(company);
+    setSavedCompany(company);
+    
+    setCreatedData({
+      companyName: company.name,
+      sector: company.sector,
+      employees: employees || "Não informado",
+      adminName: company.adminName,
+      adminEmail: company.adminEmail,
       tempPassword,
     });
     
@@ -124,10 +128,10 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
   };
 
   const handleGeneratePDF = () => {
-    toast({
-      title: "PDF de Acesso",
-      description: "Funcionalidade de geração de PDF será implementada em breve.",
-    });
+    if (savedCompany) {
+      generateAccessPDF(savedCompany);
+      toast({ title: "PDF gerado!", description: "O arquivo foi baixado." });
+    }
   };
 
   const handleCreateAnother = () => {
