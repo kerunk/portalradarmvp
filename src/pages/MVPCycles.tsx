@@ -13,6 +13,7 @@ import {
 } from "@/components/cycles/ActiveActions";
 import { cyclesData } from "@/data/cyclesData";
 import { cn } from "@/lib/utils";
+import { Info } from "lucide-react";
 
 const cycleIds = ["M1", "M2", "M3", "V1", "V2", "V3", "P1", "P2", "P3"];
 
@@ -123,81 +124,92 @@ export default function MVPCycles() {
   return (
     <AppLayout
       title="Ciclos MVP"
-      subtitle="Área central de execução da metodologia. Cada ciclo representa uma etapa completa do programa."
+      subtitle="Área central de execução da metodologia. Cada ciclo representa uma etapa completa do programa (~30 dias)."
     >
       <div className="space-y-6 animate-fade-in">
         {/* Cycle Navigation */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-2 scrollbar-hide">
-          {/* Phase Labels */}
-          <div className="flex items-center gap-1 mr-2">
-            <span className="text-xs font-semibold text-blue-600 bg-blue-500/10 px-2 py-1 rounded">
-              Mindset
+        <div className="bg-card rounded-lg p-4 border">
+          <div className="flex items-center gap-2 mb-3">
+            <Info size={16} className="text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              Navegue entre os ciclos metodológicos MVP: <strong>M</strong>onitorar → <strong>V</strong>alidar → <strong>P</strong>erpetuar
             </span>
           </div>
-          {cycleIds.slice(0, 3).map((id) => {
-            const isSelected = selectedCycleId === id;
-            return (
-              <button
-                key={id}
-                onClick={() => setSelectedCycleId(id)}
-                className={cn(
-                  "flex-shrink-0 px-4 py-2 rounded-lg font-semibold transition-all text-sm border-2",
-                  isSelected ? phaseColors.M.active : phaseColors.M.inactive
-                )}
-              >
-                {id}
-              </button>
-            );
-          })}
+          
+          <div className="flex items-center gap-1 overflow-x-auto pb-2 scrollbar-hide">
+            {/* Phase: Monitorar */}
+            <div className="flex items-center gap-1 mr-2">
+              <span className="text-xs font-semibold text-blue-600 bg-blue-500/10 px-2 py-1 rounded whitespace-nowrap">
+                Monitorar
+              </span>
+            </div>
+            {cycleIds.slice(0, 3).map((id) => {
+              const isSelected = selectedCycleId === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setSelectedCycleId(id)}
+                  className={cn(
+                    "flex-shrink-0 px-4 py-2 rounded-lg font-semibold transition-all text-sm border-2",
+                    isSelected ? phaseColors.M.active : phaseColors.M.inactive
+                  )}
+                >
+                  {id}
+                </button>
+              );
+            })}
 
-          <div className="w-px h-8 bg-border mx-2" />
+            <div className="w-px h-8 bg-border mx-2" />
 
-          <div className="flex items-center gap-1 mr-2">
-            <span className="text-xs font-semibold text-amber-600 bg-amber-500/10 px-2 py-1 rounded">
-              Valores
-            </span>
+            {/* Phase: Validar */}
+            <div className="flex items-center gap-1 mr-2">
+              <span className="text-xs font-semibold text-amber-600 bg-amber-500/10 px-2 py-1 rounded whitespace-nowrap">
+                Validar
+              </span>
+            </div>
+            {cycleIds.slice(3, 6).map((id) => {
+              const isSelected = selectedCycleId === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setSelectedCycleId(id)}
+                  className={cn(
+                    "flex-shrink-0 px-4 py-2 rounded-lg font-semibold transition-all text-sm border-2",
+                    isSelected ? phaseColors.V.active : phaseColors.V.inactive
+                  )}
+                >
+                  {id}
+                </button>
+              );
+            })}
+
+            <div className="w-px h-8 bg-border mx-2" />
+
+            {/* Phase: Perpetuar */}
+            <div className="flex items-center gap-1 mr-2">
+              <span className="text-xs font-semibold text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded whitespace-nowrap">
+                Perpetuar
+              </span>
+            </div>
+            {cycleIds.slice(6, 9).map((id) => {
+              const isSelected = selectedCycleId === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setSelectedCycleId(id)}
+                  className={cn(
+                    "flex-shrink-0 px-4 py-2 rounded-lg font-semibold transition-all text-sm border-2",
+                    isSelected ? phaseColors.P.active : phaseColors.P.inactive
+                  )}
+                >
+                  {id}
+                </button>
+              );
+            })}
           </div>
-          {cycleIds.slice(3, 6).map((id) => {
-            const isSelected = selectedCycleId === id;
-            return (
-              <button
-                key={id}
-                onClick={() => setSelectedCycleId(id)}
-                className={cn(
-                  "flex-shrink-0 px-4 py-2 rounded-lg font-semibold transition-all text-sm border-2",
-                  isSelected ? phaseColors.V.active : phaseColors.V.inactive
-                )}
-              >
-                {id}
-              </button>
-            );
-          })}
-
-          <div className="w-px h-8 bg-border mx-2" />
-
-          <div className="flex items-center gap-1 mr-2">
-            <span className="text-xs font-semibold text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded">
-              Práticas
-            </span>
-          </div>
-          {cycleIds.slice(6, 9).map((id) => {
-            const isSelected = selectedCycleId === id;
-            return (
-              <button
-                key={id}
-                onClick={() => setSelectedCycleId(id)}
-                className={cn(
-                  "flex-shrink-0 px-4 py-2 rounded-lg font-semibold transition-all text-sm border-2",
-                  isSelected ? phaseColors.P.active : phaseColors.P.inactive
-                )}
-              >
-                {id}
-              </button>
-            );
-          })}
         </div>
 
-        {/* BLOCK 1: Cycle Context */}
+        {/* BLOCK 1: Cycle Identity & Context */}
         <CycleContext
           cycleId={currentCycle.id}
           name={currentCycle.name}
@@ -230,7 +242,7 @@ export default function MVPCycles() {
 
         {/* Footer Note */}
         <p className="text-xs text-muted-foreground text-center py-4">
-          As alterações são salvas automaticamente. Navegue livremente entre os ciclos.
+          As alterações são salvas automaticamente. Navegue livremente entre os ciclos metodológicos.
         </p>
       </div>
     </AppLayout>
