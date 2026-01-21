@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { CycleContext } from "@/components/cycles/CycleContext";
+import { CycleIdentity } from "@/components/cycles/CycleIdentity";
+import { CycleIntroduction } from "@/components/cycles/CycleIntroduction";
 import { CycleExpectations } from "@/components/cycles/CycleExpectations";
 import {
   SuccessFactorActions,
@@ -11,9 +12,11 @@ import {
   type ActiveAction,
   type ActionStatus,
 } from "@/components/cycles/ActiveActions";
+import { CycleTurmas, type Turma } from "@/components/cycles/CycleTurmas";
 import { cyclesData } from "@/data/cyclesData";
 import { cn } from "@/lib/utils";
-import { Info } from "lucide-react";
+import { Info, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const cycleIds = ["M1", "M2", "M3", "V1", "V2", "V3", "P1", "P2", "P3"];
 
@@ -49,6 +52,9 @@ export default function MVPCycles() {
     Record<string, { status: ActionStatus; observation: string }>
   >({});
 
+  // State for turmas
+  const [turmas, setTurmas] = useState<Turma[]>([]);
+
   const currentCycle = cyclesData.find((c) => c.id === selectedCycleId)!;
   const currentFactors = cycleFactors[selectedCycleId] || [];
 
@@ -72,6 +78,22 @@ export default function MVPCycles() {
     });
     return actions;
   }, [currentFactors, selectedCycleId, actionStatuses]);
+
+  // Calculate progress for dashboard integration
+  const cycleProgress = useMemo(() => {
+    const totalActions = activeActions.length;
+    const completedActions = activeActions.filter(a => a.status === "completed").length;
+    const inProgressActions = activeActions.filter(a => a.status === "in_progress").length;
+    const delayedTurmas = turmas.filter(t => t.cycleId === selectedCycleId && t.status === "delayed").length;
+    
+    return {
+      total: totalActions,
+      completed: completedActions,
+      inProgress: inProgressActions,
+      percentage: totalActions > 0 ? Math.round((completedActions / totalActions) * 100) : 0,
+      hasDelayedTurmas: delayedTurmas > 0,
+    };
+  }, [activeActions, turmas, selectedCycleId]);
 
   const handleToggleAction = (factorId: string, actionId: string, enabled: boolean) => {
     setCycleFactors((prev) => ({
@@ -121,10 +143,29 @@ export default function MVPCycles() {
     }));
   };
 
+  // Turma handlers
+  const handleAddTurma = (turma: Omit<Turma, "id">) => {
+    const newTurma: Turma = {
+      ...turma,
+      id: `turma-${Date.now()}`,
+    };
+    setTurmas((prev) => [...prev, newTurma]);
+  };
+
+  const handleUpdateTurma = (turmaId: string, updates: Partial<Turma>) => {
+    setTurmas((prev) =>
+      prev.map((t) => (t.id === turmaId ? { ...t, ...updates } : t))
+    );
+  };
+
+  const handleDeleteTurma = (turmaId: string) => {
+    setTurmas((prev) => prev.filter((t) => t.id !== turmaId));
+  };
+
   return (
     <AppLayout
       title="Ciclos MVP"
-      subtitle="Área central de execução da metodologia. Cada ciclo representa uma etapa completa do programa (~30 dias)."
+      subtitle="Centro de execução da metodologia. Cada ciclo representa uma etapa completa do programa (~30 dias)."
     >
       <div className="space-y-6 animate-fade-in">
         {/* Cycle Navigation */}
@@ -209,40 +250,80 @@ export default function MVPCycles() {
           </div>
         </div>
 
-        {/* BLOCK 1: Cycle Identity & Context */}
-        <CycleContext
+        {/* Alert for delayed turmas */}
+        {cycleProgress.hasDelayedTurmas && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Existem turmas atrasadas neste ciclo. Verifique a seção de Turmas abaixo.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* BLOCK 1: Cycle Identity */}
+        <CycleIdentity
           cycleId={currentCycle.id}
-          name={currentCycle.name}
-          description={currentCycle.description}
-          impactedGroups={currentCycle.impactedGroups}
-          estimatedDuration={currentCycle.estimatedDuration}
+          moduleTitle={currentCycle.moduleTitle}
+          phaseName={currentCycle.phaseName}
           phase={currentCycle.phase}
+          estimatedDuration={currentCycle.estimatedDuration}
+          impactedGroups={currentCycle.impactedGroups}
         />
 
-        {/* BLOCK 2: Expectations */}
+        {/* BLOCK 2: Context Introduction */}
+        <CycleIntroduction description={currentCycle.shortDescription} />
+
+        {/* BLOCK 3: Expectations */}
         <CycleExpectations
           whatHappens={currentCycle.expectations.whatHappens}
           expectedResults={currentCycle.expectations.expectedResults}
           successCriteria={currentCycle.expectations.successCriteria}
         />
 
-        {/* BLOCK 3: Success Factors (Interactive) */}
+        {/* BLOCK 4: Success Factors (Interactive) */}
         <SuccessFactorActions
           factors={currentFactors}
           onToggleAction={handleToggleAction}
           onUpdateReason={handleUpdateReason}
         />
 
-        {/* BLOCK 4: Active Actions Status */}
+        {/* BLOCK 5: Active Actions Status */}
         <ActiveActions
           actions={activeActions}
           onStatusChange={handleStatusChange}
           onObservationChange={handleObservationChange}
         />
 
+        {/* BLOCK 6: Turmas (Mobile Classes) */}
+        <CycleTurmas
+          cycleId={selectedCycleId}
+          cycleName={currentCycle.moduleTitle}
+          turmas={turmas}
+          onAddTurma={handleAddTurma}
+          onUpdateTurma={handleUpdateTurma}
+          onDeleteTurma={handleDeleteTurma}
+        />
+
+        {/* Progress Summary for Dashboard Integration */}
+        <div className="bg-card rounded-lg p-4 border">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">Progresso do Ciclo {selectedCycleId}</p>
+              <p className="text-xs text-muted-foreground">
+                {cycleProgress.completed}/{cycleProgress.total} ações concluídas • {cycleProgress.inProgress} em andamento
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-primary">{cycleProgress.percentage}%</p>
+              <p className="text-xs text-muted-foreground">Conclusão</p>
+            </div>
+          </div>
+        </div>
+
         {/* Footer Note */}
         <p className="text-xs text-muted-foreground text-center py-4">
-          As alterações são salvas automaticamente. Navegue livremente entre os ciclos metodológicos.
+          Os dados deste ciclo alimentam automaticamente o Dashboard, Indicadores e Relatórios. 
+          Navegue livremente entre os ciclos metodológicos.
         </p>
       </div>
     </AppLayout>
