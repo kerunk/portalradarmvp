@@ -10,7 +10,7 @@ import Indicators from "./pages/Indicators";
 import Reports from "./pages/Reports";
 import Maturity from "./pages/Maturity";
 import Companies from "./pages/Companies";
-import Months from "./pages/Months";
+import MVPCycles from "./pages/MVPCycles";
 import SuccessFactors from "./pages/SuccessFactors";
 import NotFound from "./pages/NotFound";
 
@@ -25,7 +25,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/plano" element={<ImplementationPlan />} />
-          <Route path="/meses" element={<Months />} />
+          <Route path="/ciclos" element={<MVPCycles />} />
           <Route path="/fatores" element={<SuccessFactors />} />
           <Route path="/registros" element={<Records />} />
           <Route path="/indicadores" element={<Indicators />} />
