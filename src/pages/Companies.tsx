@@ -20,8 +20,10 @@ import {
   AlertTriangle,
   ChevronRight,
   Users,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CreateCompanyDialog } from "@/components/companies/CreateCompanyDialog";
 
 interface Company {
   id: string;
@@ -106,6 +108,7 @@ const mockCompanies: Company[] = [
 export default function Companies() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const filteredCompanies = mockCompanies.filter((company) => {
     const matchesSearch = company.name
@@ -184,32 +187,39 @@ export default function Companies() {
           </Card>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search
-              size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              type="search"
-              placeholder="Buscar empresas..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
+        {/* Filters and Actions */}
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div className="flex flex-col sm:flex-row gap-4 flex-1">
+            <div className="relative flex-1 max-w-md">
+              <Search
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                type="search"
+                placeholder="Buscar empresas..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-40">
+                <Filter size={16} className="mr-2" />
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="risk">Em risco</SelectItem>
+                <SelectItem value="on-track">No prazo</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-40">
-              <Filter size={16} className="mr-2" />
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="risk">Em risco</SelectItem>
-              <SelectItem value="on-track">No prazo</SelectItem>
-            </SelectContent>
-          </Select>
+          
+          <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
+            <Plus size={16} />
+            Criar Nova Empresa
+          </Button>
         </div>
 
         {/* Companies Grid */}
@@ -307,6 +317,12 @@ export default function Companies() {
             </Card>
           ))}
         </div>
+
+        {/* Create Company Dialog */}
+        <CreateCompanyDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+        />
       </div>
     </AppLayout>
   );
