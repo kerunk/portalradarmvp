@@ -1,5 +1,5 @@
-import { useNavigate } from "react-router-dom";
 import { useMemo, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { ProgressCard } from "@/components/dashboard/ProgressCard";
@@ -10,89 +10,142 @@ import { MaturityGauge } from "@/components/dashboard/MaturityGauge";
 import { SmartAlerts } from "@/components/dashboard/SmartAlerts";
 import { Target, Users, TrendingUp, CheckCircle } from "lucide-react";
 import { 
-  getState, 
-  generateSmartAlerts, 
-  recalculateActionStatuses,
-  type SmartAlert 
-} from "@/lib/storage";
-
-const mockPhases = [
-  { id: "1", name: "Fase 1: Diagnóstico", status: "completed" as const },
-  { id: "2", name: "Fase 2: Sensibilização", status: "completed" as const },
-  { id: "3", name: "Fase 3: Implementação", status: "in-progress" as const, progress: 65 },
-  { id: "4", name: "Fase 4: Consolidação", status: "pending" as const },
-  { id: "5", name: "Fase 5: Sustentação", status: "pending" as const },
-];
-
-const mockLeaders = [
-  { id: "1", name: "Carlos Silva", role: "Diretor de Operações", participation: 92 },
-  { id: "2", name: "Ana Martins", role: "Gerente de RH", participation: 88 },
-  { id: "3", name: "Pedro Costa", role: "Coordenador de Produção", participation: 75 },
-  { id: "4", name: "Juliana Alves", role: "Supervisora Comercial", participation: 68 },
-];
-
-const mockActivities = [
-  { id: "1", type: "document" as const, title: "Relatório mensal enviado", description: "Relatório de progresso de Janeiro", user: "Ana Martins", time: "Há 2 horas" },
-  { id: "2", type: "task" as const, title: "Ação concluída", description: "Treinamento de integração finalizado", user: "Pedro Costa", time: "Ontem" },
-  { id: "3", type: "survey" as const, title: "Pesquisa respondida", description: "Check-in semanal da liderança", user: "Juliana Alves", time: "Ontem" },
-];
+  obterIndicadoresGlobais,
+  obterIndicadoresTodosCiclos,
+} from "@/lib/governance";
+import { recalculateActionStatuses } from "@/lib/storage";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [alerts, setAlerts] = useState<SmartAlert[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Recalculate statuses on mount
   useEffect(() => {
     recalculateActionStatuses();
-    setAlerts(generateSmartAlerts());
-  }, [refreshKey]);
+  }, []);
 
-  const progressData = useMemo(() => {
-    const state = getState();
+  // Get real indicators from governance layer
+  const { globalIndicators, phaseProgress } = useMemo(() => {
+    const global = obterIndicadoresGlobais();
+    const cycleIndicators = obterIndicadoresTodosCiclos();
     
-    let totalActions = 0;
-    let completedActions = 0;
-    let inProgressActions = 0;
-    let delayedCount = 0;
+    // Build phase progress data
+    const phases = [
+      {
+        id: "M",
+        name: "Fase Monitorar (M1-M3)",
+        status: (() => {
+          const mCycles = cycleIndicators.filter(c => c.cycleId.startsWith('M'));
+          const allClosed = mCycles.every(c => c.status === 'closed');
+          const anyInProgress = mCycles.some(c => c.status === 'in_progress' || c.status === 'ready_to_close');
+          if (allClosed) return 'completed' as const;
+          if (anyInProgress) return 'in-progress' as const;
+          return 'pending' as const;
+        })(),
+        progress: (() => {
+          const mCycles = cycleIndicators.filter(c => c.cycleId.startsWith('M'));
+          const avgCompletion = mCycles.reduce((sum, c) => sum + c.completionPercent, 0) / (mCycles.length || 1);
+          return Math.round(avgCompletion);
+        })(),
+      },
+      {
+        id: "V",
+        name: "Fase Validar (V1-V3)",
+        status: (() => {
+          const vCycles = cycleIndicators.filter(c => c.cycleId.startsWith('V'));
+          const allClosed = vCycles.every(c => c.status === 'closed');
+          const anyInProgress = vCycles.some(c => c.status === 'in_progress' || c.status === 'ready_to_close');
+          if (allClosed) return 'completed' as const;
+          if (anyInProgress) return 'in-progress' as const;
+          return 'pending' as const;
+        })(),
+        progress: (() => {
+          const vCycles = cycleIndicators.filter(c => c.cycleId.startsWith('V'));
+          const avgCompletion = vCycles.reduce((sum, c) => sum + c.completionPercent, 0) / (vCycles.length || 1);
+          return Math.round(avgCompletion);
+        })(),
+      },
+      {
+        id: "P",
+        name: "Fase Perpetuar (P1-P3)",
+        status: (() => {
+          const pCycles = cycleIndicators.filter(c => c.cycleId.startsWith('P'));
+          const allClosed = pCycles.every(c => c.status === 'closed');
+          const anyInProgress = pCycles.some(c => c.status === 'in_progress' || c.status === 'ready_to_close');
+          if (allClosed) return 'completed' as const;
+          if (anyInProgress) return 'in-progress' as const;
+          return 'pending' as const;
+        })(),
+        progress: (() => {
+          const pCycles = cycleIndicators.filter(c => c.cycleId.startsWith('P'));
+          const avgCompletion = pCycles.reduce((sum, c) => sum + c.completionPercent, 0) / (pCycles.length || 1);
+          return Math.round(avgCompletion);
+        })(),
+      },
+    ];
 
-    Object.values(state.cycles).forEach(cycleState => {
-      cycleState.factors.forEach(factor => {
-        factor.actions.forEach(action => {
-          if (action.enabled) {
-            totalActions++;
-            if (action.status === "completed") completedActions++;
-            else if (action.status === "in_progress") inProgressActions++;
-            else if (action.status === "delayed") delayedCount++;
-          }
-        });
-      });
-    });
-
-    const pendingActions = totalActions - completedActions - inProgressActions - delayedCount;
-
-    return {
-      total: totalActions || 32,
-      completed: completedActions || 24,
-      inProgress: inProgressActions || 5,
-      delayed: delayedCount || 2,
-      pending: Math.max(0, pendingActions) || 1,
-    };
+    return { globalIndicators: global, phaseProgress: phases };
   }, [refreshKey]);
+
+  // Mock data for components that still need it
+  const mockLeaders = [
+    { id: "1", name: "Carlos Silva", role: "Diretor de Operações", participation: 92 },
+    { id: "2", name: "Ana Martins", role: "Gerente de RH", participation: 88 },
+    { id: "3", name: "Pedro Costa", role: "Coordenador de Produção", participation: 75 },
+    { id: "4", name: "Juliana Alves", role: "Supervisora Comercial", participation: 68 },
+  ];
+
+  const mockActivities = [
+    { id: "1", type: "document" as const, title: "Relatório mensal enviado", description: "Relatório de progresso de Janeiro", user: "Ana Martins", time: "Há 2 horas" },
+    { id: "2", type: "task" as const, title: "Ação concluída", description: "Treinamento de integração finalizado", user: "Pedro Costa", time: "Ontem" },
+    { id: "3", type: "survey" as const, title: "Pesquisa respondida", description: "Check-in semanal da liderança", user: "Juliana Alves", time: "Ontem" },
+  ];
 
   const handleAlertDismissed = () => {
     setRefreshKey(k => k + 1);
   };
 
+  const progressData = {
+    total: globalIndicators.totalActions || 1,
+    completed: globalIndicators.completedActions,
+    inProgress: globalIndicators.inProgressActions,
+    delayed: globalIndicators.delayedActions,
+    pending: globalIndicators.pendingActions,
+  };
+
   return (
     <AppLayout title="Dashboard" subtitle="Visão geral do programa MVP - Empresa Alpha">
       <div className="space-y-6 animate-fade-in">
-        {/* Metrics Row */}
+        {/* Metrics Row - Using real indicators */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <MetricCard title="Adesão ao Programa" value="78%" icon={Target} trend={{ value: 5, label: "vs. mês anterior" }} variant="success" />
-          <MetricCard title="Participação Liderança" value="82%" icon={Users} trend={{ value: 8, label: "vs. mês anterior" }} variant="default" />
-          <MetricCard title="Ações Concluídas" value={`${progressData.completed}/${progressData.total}`} subtitle={`${Math.round((progressData.completed / progressData.total) * 100)}% do plano`} icon={CheckCircle} variant="success" />
-          <MetricCard title="Índice de Percepção" value="7.2" subtitle="de 10 pontos" icon={TrendingUp} trend={{ value: -2, label: "vs. mês anterior" }} variant="warning" />
+          <MetricCard 
+            title="Ciclos Encerrados" 
+            value={`${globalIndicators.closedCycles}/${globalIndicators.totalCycles}`} 
+            icon={Target} 
+            subtitle={`${globalIndicators.cyclesReadyToClose} prontos para encerrar`}
+            variant={globalIndicators.closedCycles > 0 ? "success" : "default"} 
+          />
+          <MetricCard 
+            title="Turmas Concluídas" 
+            value={`${globalIndicators.completedTurmas}/${globalIndicators.totalTurmas}`} 
+            icon={Users} 
+            subtitle={`${globalIndicators.totalParticipants} participantes`}
+            variant="default" 
+          />
+          <MetricCard 
+            title="Ações Concluídas" 
+            value={`${globalIndicators.completedActions}/${globalIndicators.totalActions}`} 
+            subtitle={`${globalIndicators.overallCompletionPercent}% do plano`} 
+            icon={CheckCircle} 
+            variant="success" 
+          />
+          <MetricCard 
+            title="Taxa Decisão→Ação" 
+            value={`${globalIndicators.decisionConversionRate}%`} 
+            subtitle={`${globalIndicators.decisionsWithActions} decisões com ações`}
+            icon={TrendingUp} 
+            variant={globalIndicators.decisionConversionRate >= 50 ? "success" : "warning"} 
+          />
         </div>
 
         {/* Main Grid */}
@@ -113,16 +166,16 @@ export default function Dashboard() {
               
               {/* Smart Alerts Component */}
               <SmartAlerts 
-                alerts={alerts} 
                 onAlertDismissed={handleAlertDismissed}
                 maxAlerts={4}
+                refreshTrigger={refreshKey}
               />
             </div>
-            <PhaseProgress phases={mockPhases} />
+            <PhaseProgress phases={phaseProgress} />
           </div>
 
           <div className="space-y-6">
-            <MaturityGauge currentLevel={2} score={58} />
+            <MaturityGauge currentLevel={2} score={globalIndicators.overallCompletionPercent} />
             <LeadershipParticipation leaders={mockLeaders} overallParticipation={82} />
           </div>
         </div>

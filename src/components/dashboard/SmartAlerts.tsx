@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,23 +10,29 @@ import {
   CheckCircle2, 
   Users, 
   FileText,
+  Lock,
   X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { type SmartAlert, dismissAlert } from "@/lib/storage";
+import { 
+  gerarAlertasInteligentes, 
+  type EnhancedSmartAlert 
+} from "@/lib/governance";
+import { dismissAlert, getState } from "@/lib/storage";
 
 interface SmartAlertsProps {
-  alerts: SmartAlert[];
   onAlertDismissed?: () => void;
   maxAlerts?: number;
+  refreshTrigger?: number;
 }
 
 const alertIcons = {
   delayed_action: AlertTriangle,
-  low_participation: Users,
   cycle_ready: CheckCircle2,
-  decision_pending: FileText,
+  cycle_blocked: Lock,
   turma_delayed: Clock,
+  record_without_action: FileText,
+  low_participation: Users,
 };
 
 const severityStyles = {
@@ -34,18 +41,29 @@ const severityStyles = {
   info: "bg-primary/10 border-primary/20 text-primary",
 };
 
-export function SmartAlerts({ alerts, onAlertDismissed, maxAlerts = 5 }: SmartAlertsProps) {
+export function SmartAlerts({ onAlertDismissed, maxAlerts = 5, refreshTrigger = 0 }: SmartAlertsProps) {
   const navigate = useNavigate();
+  const [alerts, setAlerts] = useState<EnhancedSmartAlert[]>([]);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
-  const displayedAlerts = alerts.slice(0, maxAlerts);
+  useEffect(() => {
+    const state = getState();
+    const generatedAlerts = gerarAlertasInteligentes();
+    // Filter out dismissed alerts
+    const activeAlerts = generatedAlerts.filter(a => !state.dismissedAlerts.includes(a.id));
+    setAlerts(activeAlerts);
+  }, [refreshTrigger]);
 
-  const handleNavigate = (alert: SmartAlert) => {
+  const displayedAlerts = alerts.filter(a => !dismissedIds.has(a.id)).slice(0, maxAlerts);
+
+  const handleNavigate = (alert: EnhancedSmartAlert) => {
     navigate(alert.navigateTo);
   };
 
   const handleDismiss = (e: React.MouseEvent, alertId: string) => {
     e.stopPropagation();
     dismissAlert(alertId);
+    setDismissedIds(prev => new Set([...prev, alertId]));
     onAlertDismissed?.();
   };
 
@@ -73,7 +91,7 @@ export function SmartAlerts({ alerts, onAlertDismissed, maxAlerts = 5 }: SmartAl
 
       <div className="space-y-3">
         {displayedAlerts.map((alert) => {
-          const Icon = alertIcons[alert.type];
+          const Icon = alertIcons[alert.type] || AlertTriangle;
           
           return (
             <button
@@ -90,14 +108,16 @@ export function SmartAlerts({ alerts, onAlertDismissed, maxAlerts = 5 }: SmartAl
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-medium text-foreground">{alert.title}</p>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity -mt-0.5 -mr-1"
-                      onClick={(e) => handleDismiss(e, alert.id)}
-                    >
-                      <X size={12} />
-                    </Button>
+                    {alert.autoResolves && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity -mt-0.5 -mr-1"
+                        onClick={(e) => handleDismiss(e, alert.id)}
+                      >
+                        <X size={12} />
+                      </Button>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">{alert.description}</p>
                   {alert.cycleId && (
