@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useMemo, useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { ProgressCard } from "@/components/dashboard/ProgressCard";
@@ -6,11 +7,14 @@ import { PhaseProgress } from "@/components/dashboard/PhaseProgress";
 import { LeadershipParticipation } from "@/components/dashboard/LeadershipParticipation";
 import { RecentActivities } from "@/components/dashboard/RecentActivities";
 import { MaturityGauge } from "@/components/dashboard/MaturityGauge";
-import { Card } from "@/components/ui/card";
-import { AlertTriangle, ArrowRight, Target, Users, TrendingUp, CheckCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { getState, getDelayedActions } from "@/lib/storage";
-import { useMemo } from "react";
+import { SmartAlerts } from "@/components/dashboard/SmartAlerts";
+import { Target, Users, TrendingUp, CheckCircle } from "lucide-react";
+import { 
+  getState, 
+  generateSmartAlerts, 
+  recalculateActionStatuses,
+  type SmartAlert 
+} from "@/lib/storage";
 
 const mockPhases = [
   { id: "1", name: "Fase 1: Diagnóstico", status: "completed" as const },
@@ -35,16 +39,22 @@ const mockActivities = [
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [alerts, setAlerts] = useState<SmartAlert[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const { alerts, progressData } = useMemo(() => {
-    const delayedActions = getDelayedActions();
+  // Recalculate statuses on mount
+  useEffect(() => {
+    recalculateActionStatuses();
+    setAlerts(generateSmartAlerts());
+  }, [refreshKey]);
+
+  const progressData = useMemo(() => {
     const state = getState();
     
-    // Calculate progress from all cycles
     let totalActions = 0;
     let completedActions = 0;
     let inProgressActions = 0;
-    let delayedCount = delayedActions.length;
+    let delayedCount = 0;
 
     Object.values(state.cycles).forEach(cycleState => {
       cycleState.factors.forEach(factor => {
@@ -53,6 +63,7 @@ export default function Dashboard() {
             totalActions++;
             if (action.status === "completed") completedActions++;
             else if (action.status === "in_progress") inProgressActions++;
+            else if (action.status === "delayed") delayedCount++;
           }
         });
       });
@@ -60,51 +71,17 @@ export default function Dashboard() {
 
     const pendingActions = totalActions - completedActions - inProgressActions - delayedCount;
 
-    const alerts = [];
-    
-    alerts.push({
-      id: "1",
-      type: "warning" as const,
-      title: "Baixa participação em pesquisa",
-      description: "Apenas 45% dos colaboradores responderam a pesquisa de percepção",
-      action: () => navigate("/indicadores?tab=participacao"),
-    });
-
-    if (delayedCount > 0) {
-      const firstDelayed = delayedActions[0];
-      alerts.push({
-        id: "2",
-        type: "danger" as const,
-        title: `${delayedCount} ação(ões) atrasada(s)`,
-        description: `${firstDelayed.action.id} no ciclo ${firstDelayed.cycleId}`,
-        action: () => navigate(`/ciclos?cycle=${firstDelayed.cycleId}`),
-      });
-    }
-
-    alerts.push({
-      id: "3",
-      type: "info" as const,
-      title: "Nova fase disponível",
-      description: "A Fase 3 pode ser iniciada após aprovação",
-      action: () => navigate("/ciclos"),
-    });
-
     return {
-      alerts,
-      progressData: {
-        total: totalActions || 32,
-        completed: completedActions || 24,
-        inProgress: inProgressActions || 5,
-        delayed: delayedCount || 2,
-        pending: pendingActions || 1,
-      },
+      total: totalActions || 32,
+      completed: completedActions || 24,
+      inProgress: inProgressActions || 5,
+      delayed: delayedCount || 2,
+      pending: Math.max(0, pendingActions) || 1,
     };
-  }, [navigate]);
+  }, [refreshKey]);
 
-  const typeStyles = {
-    warning: "bg-warning/10 border-warning/20 text-warning",
-    danger: "bg-destructive/10 border-destructive/20 text-destructive",
-    info: "bg-primary/10 border-primary/20 text-primary",
+  const handleAlertDismissed = () => {
+    setRefreshKey(k => k + 1);
   };
 
   return (
@@ -134,36 +111,12 @@ export default function Dashboard() {
                 ]}
               />
               
-              {/* Clickable Alerts */}
-              <Card className="p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-medium text-foreground">Alertas</h3>
-                  <span className="text-xs px-2 py-1 bg-destructive/10 text-destructive rounded-full font-medium">
-                    {alerts.length} pendentes
-                  </span>
-                </div>
-                <div className="space-y-3">
-                  {alerts.map((alert) => (
-                    <button
-                      key={alert.id}
-                      onClick={alert.action}
-                      className={cn(
-                        "w-full p-3 rounded-lg border cursor-pointer hover:opacity-80 transition-opacity text-left",
-                        typeStyles[alert.type]
-                      )}
-                    >
-                      <div className="flex items-start gap-3">
-                        <AlertTriangle size={16} className="mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground">{alert.title}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{alert.description}</p>
-                        </div>
-                        <ArrowRight size={14} className="text-muted-foreground" />
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </Card>
+              {/* Smart Alerts Component */}
+              <SmartAlerts 
+                alerts={alerts} 
+                onAlertDismissed={handleAlertDismissed}
+                maxAlerts={4}
+              />
             </div>
             <PhaseProgress phases={mockPhases} />
           </div>

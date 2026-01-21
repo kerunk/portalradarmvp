@@ -108,6 +108,7 @@ function initializeCycleState(cycle: MVPCycle): CycleState {
         observation: "",
       })),
     })),
+    closureStatus: "not_started",
   };
 }
 

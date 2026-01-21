@@ -1,8 +1,10 @@
 // MVP Portal Storage Layer
 // Unified localStorage persistence with versioning
 
+import { CYCLE_IDS, type CycleId } from './constants';
+
 const STORAGE_KEY = 'mvp_portal_data';
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 // Types for stored data
 export interface CycleFactorAction {
@@ -13,6 +15,7 @@ export interface CycleFactorAction {
   dueDate: string | null;
   status: "pending" | "in_progress" | "completed" | "delayed";
   observation: string;
+  sourceDecisionId?: string; // Link to decision that created this action
 }
 
 export interface CycleFactorState {
@@ -22,6 +25,9 @@ export interface CycleFactorState {
 
 export interface CycleState {
   factors: CycleFactorState[];
+  closureStatus: "not_started" | "in_progress" | "ready_to_close" | "closed";
+  closedAt?: string;
+  closureNotes?: string;
 }
 
 export interface TurmaParticipant {
@@ -40,6 +46,7 @@ export interface TurmaState {
   startDate: string | null;
   endDate: string | null;
   status: "planned" | "in_progress" | "completed" | "delayed";
+  notes?: string;
 }
 
 export interface RecordState {
@@ -47,6 +54,7 @@ export interface RecordState {
   companyId: string;
   date: string;
   cycleId: string | null;
+  factorId?: string; // Link to success factor
   type: "meeting" | "decision" | "observation" | "risk" | "communication";
   status: "open" | "in_progress" | "closed";
   title: string;
@@ -55,6 +63,9 @@ export interface RecordState {
   tags: string[];
   createdAt: string;
   updatedAt: string;
+  // For decisions that create actions
+  createsActions?: boolean;
+  linkedActionIds?: string[];
 }
 
 export interface PlanActionState {
@@ -94,6 +105,22 @@ export interface CompanyState {
   createdAt: string;
 }
 
+// Smart Alert Interface
+export interface SmartAlert {
+  id: string;
+  type: "delayed_action" | "low_participation" | "cycle_ready" | "decision_pending" | "turma_delayed";
+  title: string;
+  description: string;
+  severity: "info" | "warning" | "danger";
+  cycleId?: string;
+  actionId?: string;
+  turmaId?: string;
+  recordId?: string;
+  createdAt: string;
+  dismissed: boolean;
+  navigateTo: string;
+}
+
 export interface PortalState {
   schemaVersion: number;
   cycles: Record<string, CycleState>;
@@ -103,6 +130,7 @@ export interface PortalState {
   employees: EmployeeState[];
   facilitators: FacilitatorState[];
   companies: CompanyState[];
+  dismissedAlerts: string[];
 }
 
 // Default initial state
@@ -115,6 +143,7 @@ const getDefaultState = (): PortalState => ({
   employees: getDefaultEmployees(),
   facilitators: getDefaultFacilitators(),
   companies: getDefaultCompanies(),
+  dismissedAlerts: [],
 });
 
 // Default employees
@@ -210,9 +239,23 @@ export function setState(partialUpdate: Partial<PortalState>): void {
 // Migrate state from older versions
 function migrateState(oldState: Partial<PortalState>): PortalState {
   const defaultState = getDefaultState();
+  
+  // Migrate cycles to include closureStatus
+  const migratedCycles: Record<string, CycleState> = {};
+  if (oldState.cycles) {
+    Object.entries(oldState.cycles).forEach(([cycleId, cycleState]) => {
+      migratedCycles[cycleId] = {
+        ...cycleState,
+        closureStatus: (cycleState as any).closureStatus || "not_started",
+      };
+    });
+  }
+  
   return {
     ...defaultState,
     ...oldState,
+    cycles: migratedCycles,
+    dismissedAlerts: oldState.dismissedAlerts || [],
     schemaVersion: SCHEMA_VERSION,
   };
 }
@@ -228,6 +271,203 @@ export function setCycleState(cycleId: string, cycleState: CycleState): void {
   setState({
     cycles: { ...state.cycles, [cycleId]: cycleState },
   });
+}
+
+// Calculate delayed status for actions based on due date
+export function isActionDelayed(dueDate: string | null, status: string): boolean {
+  if (!dueDate || status === 'completed') return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate);
+  due.setHours(0, 0, 0, 0);
+  return due < today;
+}
+
+// Auto-calculate and update action statuses
+export function recalculateActionStatuses(): void {
+  const state = getState();
+  let hasChanges = false;
+  
+  Object.entries(state.cycles).forEach(([cycleId, cycleState]) => {
+    cycleState.factors.forEach(factor => {
+      factor.actions.forEach(action => {
+        if (action.enabled && action.status !== 'completed') {
+          const shouldBeDelayed = isActionDelayed(action.dueDate, action.status);
+          if (shouldBeDelayed && action.status !== 'delayed') {
+            action.status = 'delayed';
+            hasChanges = true;
+          }
+        }
+      });
+    });
+  });
+  
+  if (hasChanges) {
+    setState({ cycles: state.cycles });
+  }
+}
+
+// Get all actions from all cycles (for indicators)
+export function getAllCycleActions(): Array<{
+  cycleId: string;
+  factorId: string;
+  action: CycleFactorAction;
+  isDelayed: boolean;
+}> {
+  const state = getState();
+  const actions: Array<{
+    cycleId: string;
+    factorId: string;
+    action: CycleFactorAction;
+    isDelayed: boolean;
+  }> = [];
+  
+  Object.entries(state.cycles).forEach(([cycleId, cycleState]) => {
+    cycleState.factors.forEach(factor => {
+      factor.actions.forEach(action => {
+        if (action.enabled) {
+          actions.push({
+            cycleId,
+            factorId: factor.id,
+            action,
+            isDelayed: isActionDelayed(action.dueDate, action.status),
+          });
+        }
+      });
+    });
+  });
+  
+  return actions;
+}
+
+// Get all delayed actions across all cycles
+export function getDelayedActions(): { cycleId: string; factorId: string; action: CycleFactorAction }[] {
+  const state = getState();
+  const delayed: { cycleId: string; factorId: string; action: CycleFactorAction }[] = [];
+  
+  Object.entries(state.cycles).forEach(([cycleId, cycleState]) => {
+    cycleState.factors.forEach(factor => {
+      factor.actions.forEach(action => {
+        if (action.enabled && isActionDelayed(action.dueDate, action.status)) {
+          delayed.push({ cycleId, factorId: factor.id, action });
+        }
+      });
+    });
+  });
+  
+  return delayed;
+}
+
+// Generate smart alerts based on current state
+export function generateSmartAlerts(): SmartAlert[] {
+  const state = getState();
+  const alerts: SmartAlert[] = [];
+  const now = new Date().toISOString();
+  
+  // 1. Check for delayed actions
+  const delayedActions = getDelayedActions();
+  delayedActions.forEach((delayed, index) => {
+    if (index < 5) { // Limit to 5 delayed action alerts
+      alerts.push({
+        id: `alert-delayed-${delayed.cycleId}-${delayed.action.id}`,
+        type: "delayed_action",
+        title: `Ação atrasada no ${delayed.cycleId}`,
+        description: `"${delayed.action.id}" está pendente além do prazo`,
+        severity: "danger",
+        cycleId: delayed.cycleId,
+        actionId: delayed.action.id,
+        createdAt: now,
+        dismissed: state.dismissedAlerts.includes(`alert-delayed-${delayed.cycleId}-${delayed.action.id}`),
+        navigateTo: `/ciclos?cycle=${delayed.cycleId}`,
+      });
+    }
+  });
+  
+  // 2. Check for delayed turmas
+  const delayedTurmas = state.turmas.filter(t => {
+    if (t.status === 'completed') return false;
+    if (!t.endDate) return false;
+    const end = new Date(t.endDate);
+    end.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return end < today;
+  });
+  
+  delayedTurmas.slice(0, 3).forEach(turma => {
+    alerts.push({
+      id: `alert-turma-delayed-${turma.id}`,
+      type: "turma_delayed",
+      title: `Turma "${turma.name}" atrasada`,
+      description: `A turma do ciclo ${turma.cycleId} passou do prazo de término`,
+      severity: "warning",
+      cycleId: turma.cycleId,
+      turmaId: turma.id,
+      createdAt: now,
+      dismissed: state.dismissedAlerts.includes(`alert-turma-delayed-${turma.id}`),
+      navigateTo: `/turmas?cycle=${turma.cycleId}`,
+    });
+  });
+  
+  // 3. Check for cycles ready to close
+  CYCLE_IDS.forEach(cycleId => {
+    const cycleState = state.cycles[cycleId];
+    if (!cycleState || cycleState.closureStatus === 'closed') return;
+    
+    const cycleActions = getAllCycleActions().filter(a => a.cycleId === cycleId);
+    const completedActions = cycleActions.filter(a => a.action.status === 'completed').length;
+    const totalActions = cycleActions.length;
+    const completionPercent = totalActions > 0 ? (completedActions / totalActions) * 100 : 0;
+    
+    const cycleTurmas = state.turmas.filter(t => t.cycleId === cycleId);
+    const completedTurmas = cycleTurmas.filter(t => t.status === 'completed').length;
+    
+    if (completionPercent >= 80 && completedTurmas >= 1 && cycleState.closureStatus !== 'ready_to_close') {
+      alerts.push({
+        id: `alert-cycle-ready-${cycleId}`,
+        type: "cycle_ready",
+        title: `Ciclo ${cycleId} pronto para encerrar`,
+        description: `${Math.round(completionPercent)}% das ações concluídas, ${completedTurmas} turma(s) finalizadas`,
+        severity: "info",
+        cycleId,
+        createdAt: now,
+        dismissed: state.dismissedAlerts.includes(`alert-cycle-ready-${cycleId}`),
+        navigateTo: `/ciclos?cycle=${cycleId}`,
+      });
+    }
+  });
+  
+  // 4. Check for pending decisions
+  const pendingDecisions = state.records.filter(r => 
+    r.type === 'decision' && r.status === 'open'
+  );
+  
+  pendingDecisions.slice(0, 3).forEach(decision => {
+    alerts.push({
+      id: `alert-decision-${decision.id}`,
+      type: "decision_pending",
+      title: "Decisão pendente",
+      description: `"${decision.title}" aguarda resolução`,
+      severity: "warning",
+      recordId: decision.id,
+      cycleId: decision.cycleId || undefined,
+      createdAt: now,
+      dismissed: state.dismissedAlerts.includes(`alert-decision-${decision.id}`),
+      navigateTo: `/registros?type=decision`,
+    });
+  });
+  
+  // Filter out dismissed alerts
+  return alerts.filter(a => !a.dismissed).sort((a, b) => {
+    const priorityOrder = { danger: 0, warning: 1, info: 2 };
+    return priorityOrder[a.severity] - priorityOrder[b.severity];
+  });
+}
+
+// Dismiss an alert
+export function dismissAlert(alertId: string): void {
+  const state = getState();
+  setState({ dismissedAlerts: [...state.dismissedAlerts, alertId] });
 }
 
 // Turmas helpers
@@ -280,39 +520,6 @@ export function deleteRecord(recordId: string): void {
   setRecords(records.filter(r => r.id !== recordId));
 }
 
-// Get all actions from all cycles (for indicators)
-export function getAllCycleActions(): Array<{
-  cycleId: string;
-  factorId: string;
-  action: CycleFactorAction;
-  isDelayed: boolean;
-}> {
-  const state = getState();
-  const actions: Array<{
-    cycleId: string;
-    factorId: string;
-    action: CycleFactorAction;
-    isDelayed: boolean;
-  }> = [];
-  
-  Object.entries(state.cycles).forEach(([cycleId, cycleState]) => {
-    cycleState.factors.forEach(factor => {
-      factor.actions.forEach(action => {
-        if (action.enabled) {
-          actions.push({
-            cycleId,
-            factorId: factor.id,
-            action,
-            isDelayed: isActionDelayed(action.dueDate, action.status),
-          });
-        }
-      });
-    });
-  });
-  
-  return actions;
-}
-
 // Plan Actions helpers
 export function getPlanActions(): PlanActionState[] {
   return getState().planActions;
@@ -359,32 +566,51 @@ export function addCompany(company: CompanyState): void {
   setCompanies([...companies, company]);
 }
 
-// Calculate delayed status for actions based on due date
-export function isActionDelayed(dueDate: string | null, status: string): boolean {
-  if (!dueDate || status === 'completed') return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDate);
-  due.setHours(0, 0, 0, 0);
-  return due < today;
+// Cycle closure helpers
+export function getCycleClosureInfo(cycleId: string): {
+  canClose: boolean;
+  completionPercent: number;
+  completedTurmas: number;
+  totalTurmas: number;
+  delayedActions: number;
+  status: CycleState["closureStatus"];
+} {
+  const state = getState();
+  const cycleState = state.cycles[cycleId];
+  
+  const cycleActions = getAllCycleActions().filter(a => a.cycleId === cycleId);
+  const completedActions = cycleActions.filter(a => a.action.status === 'completed').length;
+  const totalActions = cycleActions.length;
+  const delayedActions = cycleActions.filter(a => a.isDelayed).length;
+  const completionPercent = totalActions > 0 ? Math.round((completedActions / totalActions) * 100) : 0;
+  
+  const cycleTurmas = state.turmas.filter(t => t.cycleId === cycleId);
+  const completedTurmas = cycleTurmas.filter(t => t.status === 'completed').length;
+  
+  const canClose = completionPercent >= 80 && completedTurmas >= 1;
+  
+  return {
+    canClose,
+    completionPercent,
+    completedTurmas,
+    totalTurmas: cycleTurmas.length,
+    delayedActions,
+    status: cycleState?.closureStatus || "not_started",
+  };
 }
 
-// Get all delayed actions across all cycles
-export function getDelayedActions(): { cycleId: string; factorId: string; action: CycleFactorAction }[] {
+export function closeCycle(cycleId: string, notes: string): void {
   const state = getState();
-  const delayed: { cycleId: string; factorId: string; action: CycleFactorAction }[] = [];
+  const cycleState = state.cycles[cycleId];
   
-  Object.entries(state.cycles).forEach(([cycleId, cycleState]) => {
-    cycleState.factors.forEach(factor => {
-      factor.actions.forEach(action => {
-        if (action.enabled && isActionDelayed(action.dueDate, action.status)) {
-          delayed.push({ cycleId, factorId: factor.id, action });
-        }
-      });
+  if (cycleState) {
+    setCycleState(cycleId, {
+      ...cycleState,
+      closureStatus: "closed",
+      closedAt: new Date().toISOString(),
+      closureNotes: notes,
     });
-  });
-  
-  return delayed;
+  }
 }
 
 // Reset storage (for debugging)
