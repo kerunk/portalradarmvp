@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import type { CompanyState } from './storage';
+import type { CompanyState, TurmaState } from './storage';
 
 export function generateAccessPDF(company: CompanyState): void {
   const doc = new jsPDF();
@@ -247,4 +247,68 @@ export function generateCycleSummaryPDF(
   
   // Download
   doc.save(`ciclo-${cycleId.toLowerCase()}-resumo.pdf`);
+}
+
+export function generateTurmaPDF(turma: TurmaState): void {
+  const doc = new jsPDF();
+  
+  const primaryColor: [number, number, number] = [41, 98, 255];
+  const textColor: [number, number, number] = [30, 30, 30];
+  const grayColor: [number, number, number] = [120, 120, 120];
+  
+  // Header
+  doc.setFillColor(...primaryColor);
+  doc.rect(0, 0, 210, 35, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Turma: ${turma.name}`, 20, 20);
+  
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Ciclo ${turma.cycleId} | Facilitador: ${turma.facilitator}`, 20, 28);
+  
+  let yPos = 50;
+  
+  // Info
+  doc.setTextColor(...textColor);
+  doc.setFontSize(11);
+  doc.text(`Status: ${turma.status}`, 20, yPos);
+  if (turma.startDate) {
+    doc.text(`Início: ${new Date(turma.startDate).toLocaleDateString('pt-BR')}`, 80, yPos);
+  }
+  if (turma.endDate) {
+    doc.text(`Término: ${new Date(turma.endDate).toLocaleDateString('pt-BR')}`, 140, yPos);
+  }
+  yPos += 15;
+  
+  // Participants
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Participantes (${turma.participants.length})`, 20, yPos);
+  yPos += 10;
+  
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...grayColor);
+  
+  turma.participants.forEach((p, i) => {
+    if (yPos > 270) {
+      doc.addPage();
+      yPos = 20;
+    }
+    doc.text(`${i + 1}. ${p.name} - ${p.sector} (${p.role})`, 25, yPos);
+    yPos += 6;
+  });
+  
+  // Footer
+  doc.setFillColor(...primaryColor);
+  doc.rect(0, 280, 210, 17, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.text(`Turma ${turma.name} - MVP Portal`, 20, 290);
+  doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 150, 290);
+  
+  doc.save(`turma-${turma.name.toLowerCase().replace(/\s+/g, '-')}.pdf`);
 }

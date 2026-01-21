@@ -13,6 +13,7 @@ import {
   ChevronRight,
   LogOut,
   User,
+  Users,
   Rocket,
   Target,
 } from "lucide-react";
@@ -22,6 +23,7 @@ const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Plano de Implementação", href: "/plano", icon: ClipboardList },
   { name: "Ciclos MVP", href: "/ciclos", icon: Rocket },
+  { name: "Turmas", href: "/turmas", icon: Users },
   { name: "Fatores de Sucesso", href: "/fatores", icon: Target },
   { name: "Registros", href: "/registros", icon: FileCheck },
   { name: "Indicadores", href: "/indicadores", icon: BarChart3 },
