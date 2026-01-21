@@ -23,7 +23,7 @@ const navigation = [
   { name: "Plano de Implementação", href: "/plano", icon: ClipboardList },
   { name: "Meses (M1–M12)", href: "/meses", icon: CalendarDays },
   { name: "Fatores de Sucesso", href: "/fatores", icon: Target },
-  { name: "Atividades e Evidências", href: "/atividades", icon: FileCheck },
+  { name: "Registros", href: "/registros", icon: FileCheck },
   { name: "Indicadores", href: "/indicadores", icon: BarChart3 },
   { name: "Relatórios", href: "/relatorios", icon: FileText },
   { name: "Maturidade", href: "/maturidade", icon: TrendingUp },

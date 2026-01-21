@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import ImplementationPlan from "./pages/ImplementationPlan";
-import Activities from "./pages/Activities";
+import Records from "./pages/Records";
 import Indicators from "./pages/Indicators";
 import Reports from "./pages/Reports";
 import Maturity from "./pages/Maturity";
@@ -27,7 +27,7 @@ const App = () => (
           <Route path="/plano" element={<ImplementationPlan />} />
           <Route path="/meses" element={<Months />} />
           <Route path="/fatores" element={<SuccessFactors />} />
-          <Route path="/atividades" element={<Activities />} />
+          <Route path="/registros" element={<Records />} />
           <Route path="/indicadores" element={<Indicators />} />
           <Route path="/relatorios" element={<Reports />} />
           <Route path="/maturidade" element={<Maturity />} />
