@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
-import type { CompanyState, TurmaState } from './storage';
+import type { CompanyState, TurmaState, CycleState } from './storage';
+import { mvpCycles } from '@/data/mvpCycles';
 
 export function generateAccessPDF(company: CompanyState): void {
   const doc = new jsPDF();
@@ -138,8 +139,6 @@ export function generateCycleSummaryPDF(
   const primaryColor: [number, number, number] = [41, 98, 255];
   const textColor: [number, number, number] = [30, 30, 30];
   const grayColor: [number, number, number] = [120, 120, 120];
-  const successColor: [number, number, number] = [34, 197, 94];
-  const warningColor: [number, number, number] = [245, 158, 11];
   
   // Header
   doc.setFillColor(...primaryColor);
@@ -256,34 +255,76 @@ export function generateTurmaPDF(turma: TurmaState): void {
   const textColor: [number, number, number] = [30, 30, 30];
   const grayColor: [number, number, number] = [120, 120, 120];
   
+  // Get cycle info
+  const cycle = mvpCycles.find(c => c.id === turma.cycleId);
+  
   // Header
   doc.setFillColor(...primaryColor);
-  doc.rect(0, 0, 210, 35, 'F');
+  doc.rect(0, 0, 210, 40, 'F');
   
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Turma: ${turma.name}`, 20, 20);
+  doc.text(`Turma: ${turma.name}`, 20, 18);
   
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Ciclo ${turma.cycleId} | Facilitador: ${turma.facilitator}`, 20, 28);
+  doc.text(`Ciclo ${turma.cycleId} - ${cycle?.phaseName || 'MVP'}`, 20, 28);
+  doc.text(`Facilitador: ${turma.facilitator}`, 20, 36);
   
-  let yPos = 50;
+  let yPos = 55;
   
-  // Info
+  // Cycle objectives if available
+  if (cycle) {
+    doc.setTextColor(...textColor);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Módulo', 20, yPos);
+    yPos += 8;
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...grayColor);
+    doc.text(cycle.title, 20, yPos);
+    yPos += 10;
+    
+    const splitContext = doc.splitTextToSize(cycle.context, 170);
+    doc.text(splitContext, 20, yPos);
+    yPos += (splitContext.length * 5) + 10;
+  }
+  
+  // Turma Info box
+  doc.setFillColor(245, 245, 250);
+  doc.roundedRect(15, yPos, 180, 30, 3, 3, 'F');
+  
   doc.setTextColor(...textColor);
   doc.setFontSize(11);
-  doc.text(`Status: ${turma.status}`, 20, yPos);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Informações da Turma', 25, yPos + 10);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(...grayColor);
+  
+  const statusLabels: Record<string, string> = {
+    planned: 'Planejada',
+    in_progress: 'Em andamento',
+    completed: 'Concluída',
+    delayed: 'Atrasada',
+  };
+  
+  doc.text(`Status: ${statusLabels[turma.status] || turma.status}`, 25, yPos + 20);
   if (turma.startDate) {
-    doc.text(`Início: ${new Date(turma.startDate).toLocaleDateString('pt-BR')}`, 80, yPos);
+    doc.text(`Início: ${new Date(turma.startDate).toLocaleDateString('pt-BR')}`, 80, yPos + 20);
   }
   if (turma.endDate) {
-    doc.text(`Término: ${new Date(turma.endDate).toLocaleDateString('pt-BR')}`, 140, yPos);
+    doc.text(`Término: ${new Date(turma.endDate).toLocaleDateString('pt-BR')}`, 140, yPos + 20);
   }
-  yPos += 15;
+  
+  yPos += 45;
   
   // Participants
+  doc.setTextColor(...textColor);
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text(`Participantes (${turma.participants.length})`, 20, yPos);
@@ -294,13 +335,33 @@ export function generateTurmaPDF(turma: TurmaState): void {
   doc.setTextColor(...grayColor);
   
   turma.participants.forEach((p, i) => {
-    if (yPos > 270) {
+    if (yPos > 265) {
       doc.addPage();
       yPos = 20;
     }
     doc.text(`${i + 1}. ${p.name} - ${p.sector} (${p.role})`, 25, yPos);
     yPos += 6;
   });
+  
+  // Notes if present
+  if (turma.notes) {
+    yPos += 10;
+    if (yPos > 250) {
+      doc.addPage();
+      yPos = 20;
+    }
+    doc.setTextColor(...textColor);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Observações', 20, yPos);
+    yPos += 8;
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...grayColor);
+    const splitNotes = doc.splitTextToSize(turma.notes, 170);
+    doc.text(splitNotes, 20, yPos);
+  }
   
   // Footer
   doc.setFillColor(...primaryColor);
@@ -311,4 +372,135 @@ export function generateTurmaPDF(turma: TurmaState): void {
   doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 150, 290);
   
   doc.save(`turma-${turma.name.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+}
+
+// Generate cycle closure report
+export function generateCycleClosurePDF(
+  cycleId: string,
+  cycleTitle: string,
+  phaseName: string,
+  completionPercent: number,
+  completedTurmas: number,
+  totalTurmas: number,
+  activeActions: Array<{
+    title: string;
+    factorName: string;
+    status: string;
+    observation: string;
+    responsible: string;
+    dueDate: string | null;
+  }>,
+  closureNotes: string
+): void {
+  const doc = new jsPDF();
+  
+  const primaryColor: [number, number, number] = [34, 197, 94]; // Green for closure
+  const textColor: [number, number, number] = [30, 30, 30];
+  const grayColor: [number, number, number] = [120, 120, 120];
+  
+  // Header
+  doc.setFillColor(...primaryColor);
+  doc.rect(0, 0, 210, 40, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Encerramento do Ciclo ${cycleId}`, 20, 20);
+  
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${phaseName} - ${cycleTitle}`, 20, 32);
+  
+  let yPos = 55;
+  
+  // Summary box
+  doc.setFillColor(245, 245, 250);
+  doc.roundedRect(15, yPos, 180, 45, 3, 3, 'F');
+  
+  doc.setTextColor(...textColor);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Resumo do Ciclo', 25, yPos + 12);
+  
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  
+  doc.text(`Conclusão de ações: ${completionPercent}%`, 25, yPos + 25);
+  doc.text(`Turmas concluídas: ${completedTurmas}/${totalTurmas}`, 25, yPos + 35);
+  doc.text(`Data de encerramento: ${new Date().toLocaleDateString('pt-BR')}`, 110, yPos + 25);
+  
+  yPos += 60;
+  
+  // Actions summary
+  doc.setTextColor(...textColor);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Status das Ações', 20, yPos);
+  yPos += 10;
+  
+  const completedActions = activeActions.filter(a => a.status === 'completed').length;
+  const delayedActions = activeActions.filter(a => a.status === 'delayed').length;
+  const pendingActions = activeActions.filter(a => a.status === 'pending' || a.status === 'in_progress').length;
+  
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...grayColor);
+  
+  doc.text(`✓ Concluídas: ${completedActions}`, 25, yPos);
+  doc.text(`⚠ Atrasadas: ${delayedActions}`, 80, yPos);
+  doc.text(`○ Pendentes: ${pendingActions}`, 135, yPos);
+  yPos += 15;
+  
+  // List completed actions
+  if (completedActions > 0) {
+    doc.setTextColor(...textColor);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Ações Concluídas', 20, yPos);
+    yPos += 8;
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...grayColor);
+    
+    activeActions.filter(a => a.status === 'completed').slice(0, 8).forEach((action, i) => {
+      if (yPos > 250) {
+        doc.addPage();
+        yPos = 20;
+      }
+      doc.text(`${i + 1}. ${action.title} (${action.responsible || 'N/A'})`, 25, yPos);
+      yPos += 5;
+    });
+    yPos += 10;
+  }
+  
+  // Closure notes
+  if (closureNotes) {
+    if (yPos > 240) {
+      doc.addPage();
+      yPos = 20;
+    }
+    
+    doc.setTextColor(...textColor);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Observações de Encerramento', 20, yPos);
+    yPos += 8;
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...grayColor);
+    const splitNotes = doc.splitTextToSize(closureNotes, 170);
+    doc.text(splitNotes, 20, yPos);
+  }
+  
+  // Footer
+  doc.setFillColor(...primaryColor);
+  doc.rect(0, 280, 210, 17, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.text(`Ciclo ${cycleId} - Encerrado | MVP Portal`, 20, 290);
+  doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 150, 290);
+  
+  doc.save(`ciclo-${cycleId.toLowerCase()}-encerramento.pdf`);
 }
