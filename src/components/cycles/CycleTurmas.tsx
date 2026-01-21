@@ -63,6 +63,7 @@ interface CycleTurmasProps {
   onAddTurma: (turma: Omit<Turma, "id">) => void;
   onUpdateTurma: (turmaId: string, updates: Partial<Turma>) => void;
   onDeleteTurma: (turmaId: string) => void;
+  isLocked?: boolean;
 }
 
 const statusConfig: Record<TurmaStatus, { label: string; color: string; icon: React.ReactNode }> = {
@@ -116,6 +117,7 @@ export function CycleTurmas({
   onAddTurma,
   onUpdateTurma,
   onDeleteTurma,
+  isLocked = false,
 }: CycleTurmasProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newTurmaName, setNewTurmaName] = useState("");
@@ -177,149 +179,151 @@ export function CycleTurmas({
             Gerencie as turmas móveis para o ciclo {cycleName}
           </p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-1">
-              <Plus size={16} />
-              Nova Turma
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Criar Nova Turma</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="turma-name">Nome da Turma</Label>
-                <Input
-                  id="turma-name"
-                  placeholder={`Ex: Turma ${cycleId} – Maio`}
-                  value={newTurmaName}
-                  onChange={(e) => setNewTurmaName(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Facilitador Responsável</Label>
-                <Select
-                  value={selectedFacilitator}
-                  onValueChange={setSelectedFacilitator}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o facilitador" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableFacilitators.map((f) => (
-                      <SelectItem key={f} value={f}>
-                        {f}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+        {!isLocked && (
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-1">
+                <Plus size={16} />
+                Nova Turma
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Criar Nova Turma</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Data de Início</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !startDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {startDate
-                          ? format(startDate, "dd/MM/yyyy", { locale: ptBR })
-                          : "Selecionar data"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={startDate}
-                        onSelect={setStartDate}
-                        initialFocus
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <Label htmlFor="turma-name">Nome da Turma</Label>
+                  <Input
+                    id="turma-name"
+                    placeholder={`Ex: Turma ${cycleId} – Maio`}
+                    value={newTurmaName}
+                    onChange={(e) => setNewTurmaName(e.target.value)}
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label>Data de Término</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !endDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {endDate
-                          ? format(endDate, "dd/MM/yyyy", { locale: ptBR })
-                          : "Selecionar data"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={endDate}
-                        onSelect={setEndDate}
-                        initialFocus
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label>Participantes ({selectedParticipants.length} selecionados)</Label>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Clique para selecionar os participantes desta turma
-                </p>
-                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded-lg p-3">
-                  {mockEmployees.map((employee) => {
-                    const isSelected = selectedParticipants.includes(employee.id);
-                    return (
-                      <button
-                        key={employee.id}
-                        onClick={() => toggleParticipant(employee.id)}
-                        className={cn(
-                          "flex items-center gap-2 p-2 rounded-lg border text-left transition-all text-sm",
-                          isSelected
-                            ? "bg-primary/10 border-primary/30 text-foreground"
-                            : "bg-muted/30 border-transparent hover:bg-muted/50 text-muted-foreground"
-                        )}
-                      >
-                        <User size={14} />
-                        <div className="flex-1 min-w-0">
-                          <div className="truncate font-medium">{employee.name}</div>
-                          <div className="text-xs opacity-70">
-                            {employee.sector} • {employee.role}
+                <div className="space-y-2">
+                  <Label>Facilitador Responsável</Label>
+                  <Select
+                    value={selectedFacilitator}
+                    onValueChange={setSelectedFacilitator}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o facilitador" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableFacilitators.map((f) => (
+                        <SelectItem key={f} value={f}>
+                          {f}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Data de Início</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !startDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {startDate
+                            ? format(startDate, "dd/MM/yyyy", { locale: ptBR })
+                            : "Selecionar data"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={setStartDate}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Data de Término</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !endDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {endDate
+                            ? format(endDate, "dd/MM/yyyy", { locale: ptBR })
+                            : "Selecionar data"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={setEndDate}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Participantes ({selectedParticipants.length} selecionados)</Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Clique para selecionar os participantes desta turma
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded-lg p-3">
+                    {mockEmployees.map((employee) => {
+                      const isSelected = selectedParticipants.includes(employee.id);
+                      return (
+                        <button
+                          key={employee.id}
+                          onClick={() => toggleParticipant(employee.id)}
+                          className={cn(
+                            "flex items-center gap-2 p-2 rounded-lg border text-left transition-all text-sm",
+                            isSelected
+                              ? "bg-primary/10 border-primary/30 text-foreground"
+                              : "bg-muted/30 border-transparent hover:bg-muted/50 text-muted-foreground"
+                          )}
+                        >
+                          <User size={14} />
+                          <div className="flex-1 min-w-0">
+                            <div className="truncate font-medium">{employee.name}</div>
+                            <div className="text-xs opacity-70">
+                              {employee.sector} • {employee.role}
+                            </div>
                           </div>
-                        </div>
-                        {isSelected && <CheckCircle2 size={14} className="text-primary" />}
-                      </button>
-                    );
-                  })}
+                          {isSelected && <CheckCircle2 size={14} className="text-primary" />}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleAddTurma} disabled={!newTurmaName || !selectedFacilitator}>
-                Criar Turma
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleAddTurma} disabled={!newTurmaName || !selectedFacilitator}>
+                  Criar Turma
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {/* Stats */}
@@ -382,30 +386,38 @@ export function CycleTurmas({
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Select
-                      value={turma.status}
-                      onValueChange={(value) =>
-                        onUpdateTurma(turma.id, { status: value as TurmaStatus })
-                      }
-                    >
-                      <SelectTrigger className="w-32 h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="planned">Planejada</SelectItem>
-                        <SelectItem value="in_progress">Em Andamento</SelectItem>
-                        <SelectItem value="completed">Concluída</SelectItem>
-                        <SelectItem value="delayed">Atrasada</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => onDeleteTurma(turma.id)}
-                    >
-                      <Trash2 size={14} />
-                    </Button>
+                    {!isLocked ? (
+                      <>
+                        <Select
+                          value={turma.status}
+                          onValueChange={(value) =>
+                            onUpdateTurma(turma.id, { status: value as TurmaStatus })
+                          }
+                        >
+                          <SelectTrigger className="w-32 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="planned">Planejada</SelectItem>
+                            <SelectItem value="in_progress">Em Andamento</SelectItem>
+                            <SelectItem value="completed">Concluída</SelectItem>
+                            <SelectItem value="delayed">Atrasada</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => onDeleteTurma(turma.id)}
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      </>
+                    ) : (
+                      <Badge className={cn("text-xs gap-1", status.color)}>
+                        {status.label}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>

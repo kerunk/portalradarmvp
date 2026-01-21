@@ -489,26 +489,23 @@ export default function MVPCycles() {
   };
 
   const handleExportClosurePDF = () => {
-    const evaluation = avaliarEncerramentoDeCiclo(selectedCycleId);
     const cycleTurmas = turmas.filter(t => t.cycleId === selectedCycleId);
     
     generateCycleClosurePDF(
       selectedCycleId,
       currentCycle.title,
       currentCycle.phaseName,
-      {
-        totalActions: activeActions.length,
-        completedActions: activeActions.filter(a => a.action.status === 'completed').length,
-        completionPercent: cycleProgress.percentage,
-        turmasCompleted: cycleTurmas.filter(t => t.status === 'completed').length,
-        turmasTotal: cycleTurmas.length,
-      },
+      cycleProgress.percentage,
+      cycleTurmas.filter(t => t.status === 'completed').length,
+      cycleTurmas.length,
       activeActions.map(a => ({
         title: a.title,
+        factorName: a.factorName,
         status: a.isDelayed ? 'delayed' : a.action.status,
+        observation: a.action.observation,
         responsible: a.action.responsible,
+        dueDate: a.action.dueDate,
       })),
-      evaluation.warnings,
       cycleGovernance?.closureNotes || ""
     );
     toast({ title: "PDF de encerramento gerado!" });
