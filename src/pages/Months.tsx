@@ -1,116 +1,314 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Target, Clock, CheckCircle2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CalendarDays, Target, Clock, CheckCircle2, AlertTriangle, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const months = Array.from({ length: 12 }, (_, i) => ({
+type ActionStatus = "planned" | "in_progress" | "completed";
+
+interface Action {
+  id: number;
+  title: string;
+  status: ActionStatus;
+  observation: string;
+}
+
+interface MonthData {
+  id: string;
+  label: string;
+  focus: string;
+  actions: Action[];
+}
+
+// Mock data - em produção virá do banco
+const initialMonths: MonthData[] = Array.from({ length: 12 }, (_, i) => ({
   id: `M${i + 1}`,
   label: `M${i + 1}`,
-  focus: `Foco do mês ${i + 1} - Descrição placeholder do objetivo principal deste período do programa MVP.`,
-  actions: [
-    { id: 1, title: "Ação sugerida 1 - Exemplo de atividade estrutural", status: "completed" as const },
-    { id: 2, title: "Ação sugerida 2 - Reunião de alinhamento com liderança", status: "in_progress" as const },
-    { id: 3, title: "Ação sugerida 3 - Comunicação interna sobre o programa", status: "planned" as const },
-    { id: 4, title: "Ação sugerida 4 - Treinamento de equipe operacional", status: "planned" as const },
-    { id: 5, title: "Ação sugerida 5 - Registro de evidências e indicadores", status: "planned" as const },
-  ],
+  focus: getFocusForMonth(i + 1),
+  actions: getActionsForMonth(i + 1),
 }));
 
+function getFocusForMonth(month: number): string {
+  const focuses: Record<number, string> = {
+    1: "Estruturação inicial do programa e alinhamento da liderança",
+    2: "Comunicação interna e engajamento das equipes",
+    3: "Primeiros treinamentos e formação do núcleo",
+    4: "Consolidação dos processos e primeiros indicadores",
+    5: "Avaliação intermediária e ajustes de rota",
+    6: "Fortalecimento da cultura e práticas diárias",
+    7: "Expansão do programa para outras áreas",
+    8: "Medição de resultados e evidências",
+    9: "Reconhecimento e celebração de conquistas",
+    10: "Preparação para sustentabilidade do programa",
+    11: "Avaliação final e documentação",
+    12: "Fechamento do ciclo e planejamento do próximo ano",
+  };
+  return focuses[month] || `Foco do mês ${month}`;
+}
+
+function getActionsForMonth(month: number): Action[] {
+  const baseActions = [
+    "Reunião de alinhamento com liderança",
+    "Comunicação interna sobre o programa",
+    "Treinamento da equipe operacional",
+    "Registro de indicadores do período",
+    "Acompanhamento das metas estabelecidas",
+  ];
+  
+  return baseActions.map((title, idx) => ({
+    id: idx + 1,
+    title,
+    status: idx === 0 ? "completed" : idx === 1 ? "in_progress" : "planned" as ActionStatus,
+    observation: "",
+  }));
+}
+
 const statusConfig = {
-  planned: { label: "Planejado", color: "bg-muted text-muted-foreground", icon: Clock },
-  in_progress: { label: "Em andamento", color: "bg-warning/10 text-warning", icon: Target },
-  completed: { label: "Concluído", color: "bg-success/10 text-success", icon: CheckCircle2 },
+  planned: { 
+    label: "Planejado", 
+    color: "bg-muted text-muted-foreground border-muted", 
+    icon: Clock,
+    value: 0 
+  },
+  in_progress: { 
+    label: "Em andamento", 
+    color: "bg-warning/10 text-warning border-warning/30", 
+    icon: Target,
+    value: 50 
+  },
+  completed: { 
+    label: "Concluído", 
+    color: "bg-success/10 text-success border-success/30", 
+    icon: CheckCircle2,
+    value: 100 
+  },
 };
 
 export default function Months() {
   const [selectedMonth, setSelectedMonth] = useState("M1");
-  const currentMonth = months.find((m) => m.id === selectedMonth) || months[0];
+  const [monthsData, setMonthsData] = useState<MonthData[]>(initialMonths);
+  
+  const currentMonthIndex = parseInt(selectedMonth.replace("M", "")) - 1;
+  const currentMonth = monthsData[currentMonthIndex];
+  const previousMonth = currentMonthIndex > 0 ? monthsData[currentMonthIndex - 1] : null;
+  
+  // Calcular ações pendentes do mês anterior
+  const previousPendingActions = previousMonth 
+    ? previousMonth.actions.filter(a => a.status !== "completed").length 
+    : 0;
+
+  // Calcular progresso do mês atual
+  const completedActions = currentMonth.actions.filter(a => a.status === "completed").length;
+  const totalActions = currentMonth.actions.length;
+  const monthProgress = totalActions > 0 ? Math.round((completedActions / totalActions) * 100) : 0;
+
+  const handleStatusChange = (actionId: number, newStatus: ActionStatus) => {
+    setMonthsData(prev => prev.map((month, idx) => {
+      if (idx === currentMonthIndex) {
+        return {
+          ...month,
+          actions: month.actions.map(action => 
+            action.id === actionId ? { ...action, status: newStatus } : action
+          )
+        };
+      }
+      return month;
+    }));
+  };
+
+  const handleObservationChange = (actionId: number, observation: string) => {
+    setMonthsData(prev => prev.map((month, idx) => {
+      if (idx === currentMonthIndex) {
+        return {
+          ...month,
+          actions: month.actions.map(action => 
+            action.id === actionId ? { ...action, observation } : action
+          )
+        };
+      }
+      return month;
+    }));
+  };
 
   return (
     <AppLayout
       title="Meses (M1–M12)"
-      subtitle="Execução do programa por mês (estrutura padrão MVP)."
+      subtitle="Acompanhamento mensal do programa. Atualize o status e observações de cada ação."
     >
       <div className="space-y-6 animate-fade-in">
-        {/* Month Selector */}
-        <Tabs value={selectedMonth} onValueChange={setSelectedMonth}>
-          <TabsList className="flex flex-wrap h-auto gap-1 bg-secondary/50 p-1">
-            {months.map((month) => (
-              <TabsTrigger
+        {/* Month Navigation - Horizontal scroll on mobile */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {monthsData.map((month, idx) => {
+            const monthCompleted = month.actions.filter(a => a.status === "completed").length;
+            const monthTotal = month.actions.length;
+            const isComplete = monthCompleted === monthTotal;
+            const hasPending = month.actions.some(a => a.status !== "completed");
+            
+            return (
+              <button
                 key={month.id}
-                value={month.id}
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-4 py-2"
+                onClick={() => setSelectedMonth(month.id)}
+                className={cn(
+                  "flex-shrink-0 px-4 py-2 rounded-lg font-medium transition-all text-sm",
+                  "border-2 min-w-[60px]",
+                  selectedMonth === month.id
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : isComplete
+                    ? "bg-success/10 text-success border-success/30 hover:bg-success/20"
+                    : hasPending && idx < currentMonthIndex
+                    ? "bg-warning/10 text-warning border-warning/30 hover:bg-warning/20"
+                    : "bg-secondary/50 text-muted-foreground border-transparent hover:bg-secondary"
+                )}
               >
                 {month.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+              </button>
+            );
+          })}
+        </div>
 
-        {/* Month Content */}
-        <Card className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-              <CalendarDays size={24} className="text-primary" />
+        {/* Previous Month Warning */}
+        {previousPendingActions > 0 && (
+          <Alert className="border-warning/50 bg-warning/5">
+            <AlertTriangle className="h-4 w-4 text-warning" />
+            <AlertDescription className="text-warning">
+              <span className="font-medium">{previousPendingActions} ação(ões)</span> do mês anterior ({previousMonth?.id}) ainda não foram concluídas.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Month Header Card */}
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <CalendarDays size={24} className="text-primary" />
+              </div>
+              <div>
+                <h2 className="text-xl font-display font-bold text-foreground">
+                  {currentMonth.id} - Mês {currentMonthIndex + 1}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {completedActions} de {totalActions} ações concluídas
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-display font-bold text-foreground">
-                {currentMonth.id}
-              </h2>
-              <p className="text-sm text-muted-foreground">Mês do programa</p>
+            <div className="text-right">
+              <span className="text-2xl font-bold text-primary">{monthProgress}%</span>
+              <Progress value={monthProgress} className="w-24 h-2 mt-1" />
             </div>
           </div>
 
           {/* Focus Section */}
-          <div className="mb-6">
-            <h3 className="text-sm font-semibold text-foreground mb-2 uppercase tracking-wide">
+          <div className="bg-secondary/30 p-4 rounded-lg border border-border/50">
+            <h3 className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">
               Foco do Mês
             </h3>
-            <p className="text-muted-foreground bg-secondary/30 p-4 rounded-lg">
+            <p className="text-foreground font-medium">
               {currentMonth.focus}
             </p>
           </div>
-
-          {/* Actions Section */}
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wide">
-              Ações Sugeridas
-            </h3>
-            <div className="space-y-3">
-              {currentMonth.actions.map((action) => {
-                const status = statusConfig[action.status];
-                const StatusIcon = status.icon;
-                return (
-                  <div
-                    key={action.id}
-                    className="flex items-center justify-between p-4 bg-secondary/20 rounded-lg border border-border/50 hover:border-border transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
-                        {action.id}
-                      </div>
-                      <span className="text-foreground">{action.title}</span>
-                    </div>
-                    <Badge
-                      variant="secondary"
-                      className={cn("flex items-center gap-1", status.color)}
-                    >
-                      <StatusIcon size={12} />
-                      {status.label}
-                    </Badge>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </Card>
 
-        {/* Info Note */}
-        <p className="text-xs text-muted-foreground text-center">
-          Esta é uma visualização placeholder. A estrutura de meses e ações é definida pelo Admin MVP.
+        {/* Actions List */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide flex items-center gap-2">
+            <ChevronRight size={16} className="text-primary" />
+            Ações do Mês ({currentMonth.actions.length})
+          </h3>
+          
+          {currentMonth.actions.map((action) => {
+            const status = statusConfig[action.status];
+            const StatusIcon = status.icon;
+            
+            return (
+              <Card
+                key={action.id}
+                className={cn(
+                  "p-4 transition-all border-l-4",
+                  action.status === "completed" && "border-l-success",
+                  action.status === "in_progress" && "border-l-warning",
+                  action.status === "planned" && "border-l-muted"
+                )}
+              >
+                <div className="space-y-3">
+                  {/* Action Header */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-semibold text-muted-foreground">
+                        {action.id}
+                      </div>
+                      <span className="text-foreground font-medium">{action.title}</span>
+                    </div>
+                    
+                    {/* Status Selector */}
+                    <Select
+                      value={action.status}
+                      onValueChange={(value: ActionStatus) => handleStatusChange(action.id, value)}
+                    >
+                      <SelectTrigger className={cn("w-[160px] h-9", status.color)}>
+                        <div className="flex items-center gap-2">
+                          <StatusIcon size={14} />
+                          <SelectValue />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="planned">
+                          <div className="flex items-center gap-2">
+                            <Clock size={14} />
+                            Planejado
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="in_progress">
+                          <div className="flex items-center gap-2">
+                            <Target size={14} />
+                            Em andamento
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="completed">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 size={14} />
+                            Concluído
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Progress Indicator */}
+                  <Progress value={status.value} className="h-1.5" />
+
+                  {/* Observation Field */}
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">
+                      Observações (opcional)
+                    </label>
+                    <Textarea
+                      placeholder="Adicione observações, anotações ou referências externas..."
+                      value={action.observation}
+                      onChange={(e) => handleObservationChange(action.id, e.target.value)}
+                      className="min-h-[60px] text-sm resize-none"
+                    />
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Footer Note */}
+        <p className="text-xs text-muted-foreground text-center py-4">
+          As alterações são salvas automaticamente. Navegue livremente entre os meses.
         </p>
       </div>
     </AppLayout>
