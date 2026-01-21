@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 interface CycleIdentityProps {
   cycleId: string;
   moduleTitle: string;
+  moduleNumber?: number;
   phaseName: string;
   phase: "M" | "V" | "P";
   estimatedDuration: string;
@@ -36,6 +37,7 @@ const phaseConfig = {
 export function CycleIdentity({
   cycleId,
   moduleTitle,
+  moduleNumber,
   phaseName,
   phase,
   estimatedDuration,
@@ -65,7 +67,7 @@ export function CycleIdentity({
                 Fase {phaseName}
               </Badge>
               <h2 className="text-xl font-display font-semibold text-foreground">
-                {moduleTitle}
+                {moduleNumber ? `Módulo ${moduleNumber}: ` : ""}{moduleTitle}
               </h2>
             </div>
           </div>

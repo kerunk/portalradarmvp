@@ -11,6 +11,7 @@ import {
   Users, 
   FileText,
   Lock,
+  AlertCircle,
   X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ const alertIcons = {
   turma_delayed: Clock,
   record_without_action: FileText,
   low_participation: Users,
+  action_missing_info: AlertCircle,
 };
 
 const severityStyles = {

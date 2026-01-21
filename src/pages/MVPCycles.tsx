@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/select";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { mvpCycles, type MVPCycle } from "@/data/mvpCycles";
+import { mvpCycles, type MVPCycle, getModuleNumber } from "@/data/mvpCycles";
 import {
   getState,
   setState,
@@ -602,10 +602,10 @@ export default function MVPCycles() {
             <div className="flex items-center gap-4">
               <div>
                 <h2 className="text-xl font-display font-bold text-foreground">
-                  Ciclo {selectedCycleId}: {currentCycle.title}
+                  Módulo {currentCycle.moduleNumber ?? getModuleNumber(currentCycle.id)}: {currentCycle.title}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Fase {currentCycle.phaseName} • {currentCycle.estimatedDuration}
+                  Fase {currentCycle.phaseName} ({currentCycle.id}) • {currentCycle.estimatedDuration}
                 </p>
               </div>
               {cycleGovernance && (
@@ -670,6 +670,7 @@ export default function MVPCycles() {
         <CycleIdentity
           cycleId={currentCycle.id}
           moduleTitle={currentCycle.title}
+          moduleNumber={currentCycle.moduleNumber ?? getModuleNumber(currentCycle.id)}
           phaseName={currentCycle.phaseName}
           phase={currentCycle.phase}
           estimatedDuration={currentCycle.estimatedDuration}

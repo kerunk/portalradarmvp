@@ -557,7 +557,7 @@ export function obterIndicadoresTodosCiclos(): CycleIndicators[] {
 
 export interface EnhancedSmartAlert {
   id: string;
-  type: 'delayed_action' | 'cycle_ready' | 'cycle_blocked' | 'turma_delayed' | 'record_without_action' | 'low_participation';
+  type: 'delayed_action' | 'cycle_ready' | 'cycle_blocked' | 'turma_delayed' | 'record_without_action' | 'low_participation' | 'action_missing_info';
   severity: 'info' | 'warning' | 'danger';
   title: string;
   description: string;
@@ -697,6 +697,34 @@ export function gerarAlertasInteligentes(): EnhancedSmartAlert[] {
           autoResolves: true,
         });
       }
+    }
+  });
+
+  // 6. Actions ON without responsible or due date
+  Object.entries(state.cycles).forEach(([cycleId, cycleState]) => {
+    if (cycleState.closureStatus === 'closed') return;
+    
+    let missingCount = 0;
+    cycleState.factors.forEach(factor => {
+      factor.actions.forEach(action => {
+        if (action.enabled && (!action.responsible || !action.dueDate)) {
+          missingCount++;
+        }
+      });
+    });
+    
+    if (missingCount > 0) {
+      alerts.push({
+        id: `missing-info-${cycleId}`,
+        type: 'action_missing_info',
+        severity: 'warning',
+        title: `${missingCount} ações sem prazo/responsável`,
+        description: `Ciclo ${cycleId} - Complete as informações para melhor controle`,
+        cycleId,
+        navigateTo: `/ciclos?cycle=${cycleId}`,
+        createdAt: now,
+        autoResolves: true,
+      });
     }
   });
 
