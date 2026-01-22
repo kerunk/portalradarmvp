@@ -112,6 +112,7 @@ export interface CompanyState {
   adminEmail: string;
   tempPassword: string;
   createdAt: string;
+  logo?: string;
 }
 
 // Smart Alert Interface

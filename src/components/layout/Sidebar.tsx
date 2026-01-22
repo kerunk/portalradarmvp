@@ -1,4 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import React from "react";
 import {
   LayoutDashboard,
   ClipboardList,
@@ -29,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import logoMvp from "@/assets/logo-mvp.jpeg";
 
 // Navigation for Admin MVP (Master)
 const adminNavigation = [
@@ -62,6 +64,7 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: SidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, isAdminMVP, switchRole, logout } = useAuth();
   
   // Use internal state if not controlled
@@ -70,6 +73,11 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
   const setCollapsed = onCollapsedChange ?? setInternalCollapsed;
 
   const navigation = isAdminMVP ? adminNavigation : clientNavigation;
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   return (
     <aside
@@ -82,21 +90,23 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
       <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border">
         {!collapsed && (
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
-              <span className="text-sidebar-primary-foreground font-display font-bold text-sm">
-                MVP
-              </span>
-            </div>
+            <img 
+              src={logoMvp} 
+              alt="MVP" 
+              className="h-8 w-auto object-contain"
+            />
             <span className="text-sidebar-foreground font-display font-semibold text-lg">
               Portal
             </span>
           </div>
         )}
         {collapsed && (
-          <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center mx-auto">
-            <span className="text-sidebar-primary-foreground font-display font-bold text-sm">
-              M
-            </span>
+          <div className="mx-auto">
+            <img 
+              src={logoMvp} 
+              alt="MVP" 
+              className="h-8 w-8 object-contain"
+            />
           </div>
         )}
         <button
@@ -198,8 +208,9 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
           )}
           {!collapsed && (
             <button 
-              onClick={logout}
+              onClick={handleLogout}
               className="p-1.5 rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+              title="Sair"
             >
               <LogOut size={16} />
             </button>
@@ -209,5 +220,3 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
     </aside>
   );
 }
-
-import React from "react";
