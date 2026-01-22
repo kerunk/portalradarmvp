@@ -4,6 +4,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+
+// Public pages
+import Login from "./pages/Login";
+import ChangePassword from "./pages/ChangePassword";
+import Onboarding from "./pages/Onboarding";
+
+// Protected pages
 import Dashboard from "./pages/Dashboard";
 import ImplementationPlan from "./pages/ImplementationPlan";
 import Records from "./pages/Records";
@@ -27,17 +35,70 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/plano" element={<ImplementationPlan />} />
-            <Route path="/ciclos" element={<MVPCycles />} />
-            <Route path="/turmas" element={<Turmas />} />
-            <Route path="/fatores" element={<SuccessFactors />} />
-            <Route path="/praticas" element={<BestPracticesGlobal />} />
-            <Route path="/registros" element={<Records />} />
-            <Route path="/indicadores" element={<Indicators />} />
-            <Route path="/relatorios" element={<Reports />} />
-            <Route path="/maturidade" element={<Maturity />} />
-            <Route path="/empresas" element={<Companies />} />
+            {/* Public Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/alterar-senha" element={<ChangePassword />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            
+            {/* Protected Routes */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/plano" element={
+              <ProtectedRoute>
+                <ImplementationPlan />
+              </ProtectedRoute>
+            } />
+            <Route path="/ciclos" element={
+              <ProtectedRoute>
+                <MVPCycles />
+              </ProtectedRoute>
+            } />
+            <Route path="/turmas" element={
+              <ProtectedRoute>
+                <Turmas />
+              </ProtectedRoute>
+            } />
+            <Route path="/fatores" element={
+              <ProtectedRoute>
+                <SuccessFactors />
+              </ProtectedRoute>
+            } />
+            <Route path="/registros" element={
+              <ProtectedRoute>
+                <Records />
+              </ProtectedRoute>
+            } />
+            <Route path="/indicadores" element={
+              <ProtectedRoute>
+                <Indicators />
+              </ProtectedRoute>
+            } />
+            <Route path="/relatorios" element={
+              <ProtectedRoute>
+                <Reports />
+              </ProtectedRoute>
+            } />
+            <Route path="/maturidade" element={
+              <ProtectedRoute>
+                <Maturity />
+              </ProtectedRoute>
+            } />
+            
+            {/* Admin Only Routes */}
+            <Route path="/empresas" element={
+              <ProtectedRoute requireAdmin>
+                <Companies />
+              </ProtectedRoute>
+            } />
+            <Route path="/praticas" element={
+              <ProtectedRoute requireAdmin>
+                <BestPracticesGlobal />
+              </ProtectedRoute>
+            } />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

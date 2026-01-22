@@ -1,9 +1,10 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { getCompanies, type CompanyState } from "@/lib/storage";
 
 // ============================================================
 // MVP Portal Authentication Context
-// Simulates two access levels: Admin MVP (Master) and Portal Cliente
-// Prepared for future real authentication integration
+// Full governance with Admin MVP (Master) and Portal Cliente
+// Supports password change, onboarding flow, and company isolation
 // ============================================================
 
 export type UserRole = "admin_mvp" | "cliente";
@@ -13,8 +14,12 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  companyId?: string; // Only for 'cliente' role
+  companyId?: string;
   companyName?: string;
+  companyLogo?: string;
+  mustChangePassword?: boolean;
+  needsOnboarding?: boolean;
+  password?: string;
 }
 
 interface AuthContextType {
@@ -22,37 +27,98 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdminMVP: boolean;
   isCliente: boolean;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  switchRole: (role: UserRole) => void; // For demo/testing purposes
+  switchRole: (role: UserRole) => void;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
+  completeOnboarding: () => Promise<void>;
+  updateCompanyLogo: (logoUrl: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const STORAGE_KEY = "mvp_portal_auth";
+const USERS_KEY = "mvp_portal_users";
 
-// Demo users for testing
-const DEMO_USERS: Record<string, User & { password: string }> = {
-  "admin@mvp.com": {
-    id: "admin-1",
-    name: "Administrador MVP",
-    email: "admin@mvp.com",
-    role: "admin_mvp",
-    password: "admin123",
-  },
-  "cliente@alpha.com": {
-    id: "cliente-1",
-    name: "Carlos Silva",
-    email: "cliente@alpha.com",
-    role: "cliente",
-    companyId: "company-1",
-    companyName: "Empresa Alpha",
-    password: "cliente123",
-  },
+// Fixed Admin MVP user
+const ADMIN_USER: User & { password: string } = {
+  id: "admin-1",
+  name: "Administrador MVP",
+  email: "admin@mvp.com",
+  role: "admin_mvp",
+  password: "admin123",
+  mustChangePassword: false,
+  needsOnboarding: false,
 };
+
+// Get all users (demo + created from companies)
+function getAllUsers(): Record<string, User & { password: string }> {
+  const users: Record<string, User & { password: string }> = {
+    "admin@mvp.com": ADMIN_USER,
+  };
+  
+  // Load custom users from storage
+  try {
+    const storedUsers = localStorage.getItem(USERS_KEY);
+    if (storedUsers) {
+      const parsed = JSON.parse(storedUsers);
+      Object.assign(users, parsed);
+    }
+  } catch (e) {
+    console.error("Error loading users:", e);
+  }
+  
+  // Also create users from companies
+  const companies = getCompanies();
+  companies.forEach((company) => {
+    if (!users[company.adminEmail.toLowerCase()]) {
+      users[company.adminEmail.toLowerCase()] = {
+        id: `user-${company.id}`,
+        name: company.adminName,
+        email: company.adminEmail,
+        role: "cliente",
+        companyId: company.id,
+        companyName: company.name,
+        password: company.tempPassword,
+        mustChangePassword: true,
+        needsOnboarding: true,
+      };
+    }
+  });
+  
+  // Demo client user
+  if (!users["cliente@alpha.com"]) {
+    users["cliente@alpha.com"] = {
+      id: "cliente-1",
+      name: "Carlos Silva",
+      email: "cliente@alpha.com",
+      role: "cliente",
+      companyId: "company-1",
+      companyName: "Empresa Alpha",
+      password: "cliente123",
+      mustChangePassword: false,
+      needsOnboarding: false,
+    };
+  }
+  
+  return users;
+}
+
+function saveUser(user: User & { password: string }): void {
+  try {
+    const storedUsers = localStorage.getItem(USERS_KEY);
+    const users = storedUsers ? JSON.parse(storedUsers) : {};
+    users[user.email.toLowerCase()] = user;
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  } catch (e) {
+    console.error("Error saving user:", e);
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load user from storage on mount
   useEffect(() => {
@@ -61,18 +127,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (stored) {
         const parsed = JSON.parse(stored);
         setUser(parsed);
-      } else {
-        // Default to Admin MVP for demo
-        setUser({
-          id: "admin-1",
-          name: "Administrador MVP",
-          email: "admin@mvp.com",
-          role: "admin_mvp",
-        });
       }
     } catch (error) {
       console.error("Error loading auth state:", error);
     }
+    setIsLoading(false);
   }, []);
 
   // Save user to storage when it changes
@@ -85,12 +144,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    const demoUser = DEMO_USERS[email.toLowerCase()];
-    if (demoUser && demoUser.password === password) {
-      const { password: _, ...userData } = demoUser;
+    const users = getAllUsers();
+    const foundUser = users[email.toLowerCase()];
+    
+    if (foundUser && foundUser.password === password) {
+      const { password: _, ...userData } = foundUser;
       setUser(userData);
       return true;
     }
@@ -102,7 +162,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(STORAGE_KEY);
   };
 
-  // For demo: quickly switch between roles
   const switchRole = (role: UserRole) => {
     if (role === "admin_mvp") {
       setUser({
@@ -123,14 +182,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
+    if (!user) return false;
+    
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    const users = getAllUsers();
+    const foundUser = users[user.email.toLowerCase()];
+    
+    if (foundUser && foundUser.password === currentPassword) {
+      const updatedUser = {
+        ...foundUser,
+        password: newPassword,
+        mustChangePassword: false,
+      };
+      saveUser(updatedUser);
+      
+      setUser({
+        ...user,
+        mustChangePassword: false,
+      });
+      
+      return true;
+    }
+    return false;
+  };
+
+  const completeOnboarding = async (): Promise<void> => {
+    if (!user) return;
+    
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    const users = getAllUsers();
+    const foundUser = users[user.email.toLowerCase()];
+    
+    if (foundUser) {
+      const updatedUser = {
+        ...foundUser,
+        needsOnboarding: false,
+      };
+      saveUser(updatedUser);
+      
+      setUser({
+        ...user,
+        needsOnboarding: false,
+      });
+    }
+  };
+
+  const updateCompanyLogo = (logoUrl: string) => {
+    if (!user) return;
+    
+    setUser({
+      ...user,
+      companyLogo: logoUrl,
+    });
+  };
+
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
     isAdminMVP: user?.role === "admin_mvp",
     isCliente: user?.role === "cliente",
+    isLoading,
     login,
     logout,
     switchRole,
+    changePassword,
+    completeOnboarding,
+    updateCompanyLogo,
   };
 
   return (

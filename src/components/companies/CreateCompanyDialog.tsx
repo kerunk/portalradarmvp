@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Building2, User, Mail, Lock, FileDown, CheckCircle2 } from "lucide-react";
+import { Building2, User, Mail, Lock, FileDown, CheckCircle2, Upload, Image } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { addCompany, type CompanyState } from "@/lib/storage";
 import { generateAccessPDF } from "@/lib/pdfGenerator";
@@ -33,6 +33,7 @@ interface CreatedCompanyData {
   adminName: string;
   adminEmail: string;
   tempPassword: string;
+  companyLogo?: string;
 }
 
 const sectors = [
@@ -55,6 +56,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [companyName, setCompanyName] = useState("");
+  const [companyLogo, setCompanyLogo] = useState<string>("");
   const [sector, setSector] = useState("");
   const [employees, setEmployees] = useState("");
   const [adminName, setAdminName] = useState("");
@@ -66,6 +68,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
   const resetForm = () => {
     setStep("form");
     setCompanyName("");
+    setCompanyLogo("");
     setSector("");
     setEmployees("");
     setAdminName("");
@@ -77,6 +80,18 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
   const handleClose = () => {
     resetForm();
     onOpenChange(false);
+  };
+
+  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    // Convert to base64 for demo (in production would upload to storage)
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCompanyLogo(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,6 +119,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
       adminEmail: adminEmail.trim().toLowerCase(),
       tempPassword,
       createdAt: new Date().toISOString().split('T')[0],
+      logo: companyLogo || undefined,
     };
     
     addCompany(company);
@@ -116,6 +132,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
       adminName: company.adminName,
       adminEmail: company.adminEmail,
       tempPassword,
+      companyLogo: companyLogo || undefined,
     });
     
     setStep("confirmation");
@@ -167,6 +184,42 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
                     onChange={(e) => setCompanyName(e.target.value)}
                     required
                   />
+                </div>
+
+                {/* Logo Upload */}
+                <div className="space-y-2">
+                  <Label>Logotipo da Empresa (opcional)</Label>
+                  <div className="flex items-center gap-4">
+                    {companyLogo ? (
+                      <div className="relative">
+                        <img 
+                          src={companyLogo} 
+                          alt="Logo" 
+                          className="h-16 w-16 rounded-lg object-contain border border-border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setCompanyLogo("")}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-destructive text-destructive-foreground rounded-full text-xs"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center h-16 w-16 rounded-lg border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors">
+                        <Image className="h-6 w-6 text-muted-foreground" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleLogoUpload}
+                        />
+                      </label>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Faça upload do logo oficial da empresa (PNG, JPG)
+                    </p>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -270,9 +323,17 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
                 {/* Company Summary */}
                 <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Building2 className="h-6 w-6 text-primary" />
-                    </div>
+                    {createdData.companyLogo ? (
+                      <img 
+                        src={createdData.companyLogo} 
+                        alt={createdData.companyName}
+                        className="w-12 h-12 rounded-lg object-contain"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Building2 className="h-6 w-6 text-primary" />
+                      </div>
+                    )}
                     <div>
                       <h3 className="font-semibold text-foreground">
                         {createdData.companyName}
@@ -317,6 +378,12 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
                       </div>
                     </div>
                   </div>
+                  
+                  <div className="p-3 rounded-lg bg-warning/10 border border-warning/20">
+                    <p className="text-xs text-warning-foreground">
+                      ⚠️ O cliente deverá trocar a senha no primeiro acesso.
+                    </p>
+                  </div>
                 </div>
 
                 {/* PDF Generation */}
@@ -326,7 +393,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
                   className="w-full"
                 >
                   <FileDown className="h-4 w-4 mr-2" />
-                  Gerar PDF de Acesso do Cliente
+                  Baixar PDF de Boas-Vindas
                 </Button>
 
                 {/* Actions */}
