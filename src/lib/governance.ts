@@ -557,7 +557,7 @@ export function obterIndicadoresTodosCiclos(): CycleIndicators[] {
 
 export interface EnhancedSmartAlert {
   id: string;
-  type: 'delayed_action' | 'cycle_ready' | 'cycle_blocked' | 'turma_delayed' | 'record_without_action' | 'low_participation' | 'action_missing_info';
+  type: 'delayed_action' | 'cycle_ready' | 'cycle_blocked' | 'turma_delayed' | 'record_without_action' | 'low_participation' | 'action_missing_info' | 'consultant_reminder';
   severity: 'info' | 'warning' | 'danger';
   title: string;
   description: string;
@@ -568,7 +568,16 @@ export interface EnhancedSmartAlert {
   navigateTo: string;
   createdAt: string;
   autoResolves: boolean; // Whether this alert disappears when condition is resolved
+  responsible?: string; // Who should handle this
+  dueDate?: string; // When this should be handled
 }
+
+// Consultant return reminders - M2→M3, V2→V3, P2→P3
+const CONSULTANT_REMINDER_CYCLES: Record<string, string> = {
+  M2: "M3",
+  V2: "V3",
+  P2: "P3",
+};
 
 /**
  * Generates all smart alerts based on current state
@@ -582,6 +591,8 @@ export function gerarAlertasInteligentes(): EnhancedSmartAlert[] {
 
   // 1. Delayed Actions
   Object.entries(state.cycles).forEach(([cycleId, cycleState]) => {
+    if (cycleState.closureStatus === 'closed') return;
+    
     cycleState.factors.forEach(factor => {
       factor.actions.forEach(action => {
         if (action.enabled && action.dueDate && action.status !== 'completed') {
@@ -604,6 +615,8 @@ export function gerarAlertasInteligentes(): EnhancedSmartAlert[] {
               navigateTo: `/ciclos?cycle=${cycleId}`,
               createdAt: now,
               autoResolves: true,
+              responsible: action.responsible || undefined,
+              dueDate: action.dueDate,
             });
           }
         }
@@ -611,7 +624,42 @@ export function gerarAlertasInteligentes(): EnhancedSmartAlert[] {
     });
   });
 
-  // 2. Cycles ready to close
+  // 2. Consultant Return Reminders - M2→M3, V2→V3, P2→P3
+  Object.entries(CONSULTANT_REMINDER_CYCLES).forEach(([currentCycle, nextCycle]) => {
+    const currentCycleState = state.cycles[currentCycle];
+    const nextCycleState = state.cycles[nextCycle];
+    
+    // Only show if current cycle is active and next is not yet scheduled
+    if (currentCycleState && 
+        currentCycleState.closureStatus !== 'closed' &&
+        currentCycleState.factors.some(f => f.actions.some(a => a.enabled))) {
+      
+      // Check if there's already an action for consultant scheduling
+      const hasConsultantAction = currentCycleState.factors.some(f =>
+        f.actions.some(a => 
+          a.enabled && 
+          (a.observation?.toLowerCase().includes('consultor') || 
+           a.observation?.toLowerCase().includes('retorno'))
+        )
+      );
+      
+      if (!hasConsultantAction) {
+        alerts.push({
+          id: `consultant-${currentCycle}`,
+          type: 'consultant_reminder',
+          severity: 'warning',
+          title: `Agendar retorno do consultor para ${nextCycle}`,
+          description: `O próximo ciclo (${nextCycle}) é de Liderança. O agendamento do consultor é obrigatório.`,
+          cycleId: currentCycle,
+          navigateTo: `/ciclos?cycle=${currentCycle}`,
+          createdAt: now,
+          autoResolves: false,
+        });
+      }
+    }
+  });
+
+  // 3. Cycles ready to close
   CYCLE_IDS.forEach(cycleId => {
     const governance = obterGovernancaDeCiclo(cycleId);
     if (governance.status === 'ready_to_close') {
@@ -630,7 +678,7 @@ export function gerarAlertasInteligentes(): EnhancedSmartAlert[] {
     }
   });
 
-  // 3. Cycles blocked by lack of decision
+  // 4. Cycles blocked by lack of decision
   CYCLE_IDS.forEach(cycleId => {
     const cycleState = state.cycles[cycleId];
     if (!cycleState || cycleState.closureStatus === 'closed') return;
@@ -655,7 +703,7 @@ export function gerarAlertasInteligentes(): EnhancedSmartAlert[] {
     }
   });
 
-  // 4. Delayed turmas
+  // 5. Delayed turmas
   state.turmas.forEach(turma => {
     if (turma.status === 'completed') return;
     if (!turma.endDate) return;
@@ -679,7 +727,7 @@ export function gerarAlertasInteligentes(): EnhancedSmartAlert[] {
     }
   });
 
-  // 5. Critical records without action
+  // 6. Critical records without action
   state.records.forEach(record => {
     if (record.type === 'risk' && record.status === 'open') {
       const hasLinkedActions = record.linkedActionIds && record.linkedActionIds.length > 0;
@@ -700,7 +748,7 @@ export function gerarAlertasInteligentes(): EnhancedSmartAlert[] {
     }
   });
 
-  // 6. Actions ON without responsible or due date
+  // 7. Actions ON without responsible or due date
   Object.entries(state.cycles).forEach(([cycleId, cycleState]) => {
     if (cycleState.closureStatus === 'closed') return;
     

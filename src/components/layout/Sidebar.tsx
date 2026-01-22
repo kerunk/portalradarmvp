@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -16,25 +15,61 @@ import {
   Users,
   Rocket,
   Target,
+  BookOpen,
+  FolderOpen,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Plano de Implementação", href: "/plano", icon: ClipboardList },
+// Navigation for Admin MVP (Master)
+const adminNavigation = [
+  { name: "Dashboard Geral", href: "/", icon: LayoutDashboard },
+  { name: "Empresas", href: "/empresas", icon: Building2 },
+  { name: "Projetos", href: "/plano", icon: FolderOpen },
   { name: "Ciclos MVP", href: "/ciclos", icon: Rocket },
   { name: "Turmas", href: "/turmas", icon: Users },
   { name: "Fatores de Sucesso", href: "/fatores", icon: Target },
+  { name: "Prateleira Global", href: "/praticas", icon: BookOpen },
   { name: "Registros", href: "/registros", icon: FileCheck },
   { name: "Indicadores", href: "/indicadores", icon: BarChart3 },
   { name: "Relatórios", href: "/relatorios", icon: FileText },
   { name: "Maturidade", href: "/maturidade", icon: TrendingUp },
-  { name: "Empresas", href: "/empresas", icon: Building2 },
 ];
 
-export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+// Navigation for Client Portal
+const clientNavigation = [
+  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Planejamento", href: "/plano", icon: ClipboardList },
+  { name: "Ciclos MVP", href: "/ciclos", icon: Rocket },
+  { name: "Turmas", href: "/turmas", icon: Users },
+  { name: "Ações & Alertas", href: "/indicadores", icon: Target },
+  { name: "Relatórios", href: "/relatorios", icon: FileText },
+];
+
+interface SidebarProps {
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
+}
+
+export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: SidebarProps) {
   const location = useLocation();
+  const { user, isAdminMVP, switchRole, logout } = useAuth();
+  
+  // Use internal state if not controlled
+  const [internalCollapsed, setInternalCollapsed] = React.useState(false);
+  const collapsed = controlledCollapsed ?? internalCollapsed;
+  const setCollapsed = onCollapsedChange ?? setInternalCollapsed;
+
+  const navigation = isAdminMVP ? adminNavigation : clientNavigation;
 
   return (
     <aside
@@ -72,6 +107,33 @@ export function Sidebar() {
         </button>
       </div>
 
+      {/* Role indicator */}
+      {!collapsed && (
+        <div className="px-3 py-2 border-b border-sidebar-border">
+          <Badge 
+            variant="outline" 
+            className={cn(
+              "w-full justify-center py-1",
+              isAdminMVP 
+                ? "bg-purple-500/10 text-purple-400 border-purple-500/30" 
+                : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+            )}
+          >
+            {isAdminMVP ? (
+              <>
+                <ShieldCheck size={12} className="mr-1" />
+                Admin MVP
+              </>
+            ) : (
+              <>
+                <Building2 size={12} className="mr-1" />
+                {user?.companyName || "Portal Cliente"}
+              </>
+            )}
+          </Badge>
+        </div>
+      )}
+
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navigation.map((item) => {
@@ -94,7 +156,23 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-3 py-4 border-t border-sidebar-border space-y-1">
+      <div className="px-3 py-4 border-t border-sidebar-border space-y-2">
+        {/* Role switcher (for demo) */}
+        {!collapsed && (
+          <Select 
+            value={user?.role || "admin_mvp"} 
+            onValueChange={(value) => switchRole(value as "admin_mvp" | "cliente")}
+          >
+            <SelectTrigger className="h-8 text-xs bg-sidebar-accent border-sidebar-border text-sidebar-foreground">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="admin_mvp">👑 Admin MVP</SelectItem>
+              <SelectItem value="cliente">🏢 Portal Cliente</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+
         <Link
           to="/configuracoes"
           className="sidebar-nav-item"
@@ -111,15 +189,18 @@ export function Sidebar() {
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-sidebar-foreground truncate">
-                Admin MVP
+                {user?.name || "Usuário"}
               </p>
               <p className="text-xs text-sidebar-foreground/60 truncate">
-                admin@mvp.com
+                {user?.email || "user@mvp.com"}
               </p>
             </div>
           )}
           {!collapsed && (
-            <button className="p-1.5 rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
+            <button 
+              onClick={logout}
+              className="p-1.5 rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+            >
               <LogOut size={16} />
             </button>
           )}
@@ -128,3 +209,5 @@ export function Sidebar() {
     </aside>
   );
 }
+
+import React from "react";

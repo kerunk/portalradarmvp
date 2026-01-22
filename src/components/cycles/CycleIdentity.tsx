@@ -1,7 +1,9 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Users, Layers } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Clock, Users, Layers, Crown, AlertTriangle, CalendarCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getCycleAudience, getConsultantReminder, isLeadershipCycle } from "@/lib/cycleAudience";
 
 interface CycleIdentityProps {
   cycleId: string;
@@ -44,6 +46,9 @@ export function CycleIdentity({
   impactedGroups,
 }: CycleIdentityProps) {
   const config = phaseConfig[phase];
+  const audienceInfo = getCycleAudience(cycleId);
+  const consultantReminder = getConsultantReminder(cycleId);
+  const isLeadership = isLeadershipCycle(cycleId);
 
   return (
     <Card className={cn("p-6 border-l-4 bg-gradient-to-r", config.bgGradient, {
@@ -62,10 +67,25 @@ export function CycleIdentity({
               {cycleId}
             </div>
             <div>
-              <Badge className={cn("mb-1", config.color)}>
-                <Layers size={12} className="mr-1" />
-                Fase {phaseName}
-              </Badge>
+              <div className="flex items-center gap-2 mb-1">
+                <Badge className={cn(config.color)}>
+                  <Layers size={12} className="mr-1" />
+                  Fase {phaseName}
+                </Badge>
+                {/* Audience Badge */}
+                <Badge 
+                  variant="outline"
+                  className={cn(
+                    "gap-1",
+                    isLeadership 
+                      ? "bg-purple-500/10 text-purple-600 border-purple-500/30" 
+                      : "bg-teal-500/10 text-teal-600 border-teal-500/30"
+                  )}
+                >
+                  {isLeadership ? <Crown size={12} /> : <Users size={12} />}
+                  {audienceInfo.audienceLabel}
+                </Badge>
+              </div>
               <h2 className="text-xl font-display font-semibold text-foreground">
                 {moduleNumber ? `Módulo ${moduleNumber}: ` : ""}{moduleTitle}
               </h2>
@@ -91,6 +111,26 @@ export function CycleIdentity({
             </div>
           </div>
         </div>
+
+        {/* Leadership Tasks Alert */}
+        {audienceInfo.hasLeadershipTasks && audienceInfo.leadershipTasksNote && (
+          <Alert className="bg-purple-500/5 border-purple-500/20 mt-2">
+            <Crown className="h-4 w-4 text-purple-600" />
+            <AlertDescription className="text-purple-700 font-medium">
+              ⚠️ {audienceInfo.leadershipTasksNote}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Consultant Return Reminder */}
+        {consultantReminder && (
+          <Alert className="bg-warning/10 border-warning/30 mt-2">
+            <CalendarCheck className="h-4 w-4 text-warning" />
+            <AlertDescription className="text-foreground">
+              <strong>Ação Obrigatória:</strong> {consultantReminder.reminderText}
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
     </Card>
   );

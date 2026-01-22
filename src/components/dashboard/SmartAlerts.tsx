@@ -12,7 +12,9 @@ import {
   FileText,
   Lock,
   AlertCircle,
-  X
+  X,
+  CalendarCheck,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -35,6 +37,7 @@ const alertIcons = {
   record_without_action: FileText,
   low_participation: Users,
   action_missing_info: AlertCircle,
+  consultant_reminder: CalendarCheck,
 };
 
 const severityStyles = {
@@ -122,11 +125,19 @@ export function SmartAlerts({ onAlertDismissed, maxAlerts = 5, refreshTrigger = 
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">{alert.description}</p>
-                  {alert.cycleId && (
-                    <Badge variant="outline" className="mt-2 text-xs">
-                      Ciclo {alert.cycleId}
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    {alert.cycleId && (
+                      <Badge variant="outline" className="text-xs">
+                        Ciclo {alert.cycleId}
+                      </Badge>
+                    )}
+                    {alert.responsible && (
+                      <Badge variant="outline" className="text-xs gap-1">
+                        <User size={10} />
+                        {alert.responsible}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <ArrowRight size={14} className="text-muted-foreground flex-shrink-0" />
               </div>
