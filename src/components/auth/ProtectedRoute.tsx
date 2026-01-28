@@ -29,9 +29,9 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     return <Navigate to="/alterar-senha" replace />;
   }
 
-  // User needs onboarding (only for clients)
+  // User needs onboarding (only for clients with incomplete onboarding)
   if (
-    user.needsOnboarding && 
+    user.onboardingStatus !== 'completed' && 
     user.role === "cliente" && 
     location.pathname !== "/onboarding" &&
     location.pathname !== "/alterar-senha"

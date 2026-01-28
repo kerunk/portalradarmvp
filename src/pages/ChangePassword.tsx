@@ -68,7 +68,7 @@ export default function ChangePassword() {
       });
       
       // Redirect to onboarding if not completed, otherwise dashboard
-      if (user.needsOnboarding) {
+      if (user.onboardingStatus !== 'completed') {
         navigate("/onboarding");
       } else {
         navigate("/");

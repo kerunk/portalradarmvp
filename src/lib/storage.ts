@@ -5,7 +5,9 @@
 import { CYCLE_IDS, type CycleId } from './constants';
 
 const STORAGE_KEY = 'mvp_portal_data';
-const SCHEMA_VERSION = 3; // Upgraded for governance features
+const SCHEMA_VERSION = 4; // Upgraded for onboarding status per company
+
+export type OnboardingStatus = 'not_started' | 'in_progress' | 'completed';
 
 // ============================================================
 // TYPES - Core Data Structures
@@ -113,6 +115,7 @@ export interface CompanyState {
   tempPassword: string;
   createdAt: string;
   logo?: string;
+  onboardingStatus: OnboardingStatus;
 }
 
 // Smart Alert Interface
@@ -195,6 +198,7 @@ function getDefaultCompanies(): CompanyState[] {
       adminEmail: "admin@alpha.com",
       tempPassword: "Alpha2024!",
       createdAt: "2024-01-15",
+      onboardingStatus: "completed", // Demo company already onboarded
     },
     {
       id: "company-2",
@@ -205,8 +209,24 @@ function getDefaultCompanies(): CompanyState[] {
       adminEmail: "admin@techsolutions.com",
       tempPassword: "Tech2024!",
       createdAt: "2024-02-20",
+      onboardingStatus: "not_started",
     },
   ];
+}
+
+// Update company onboarding status
+export function updateCompanyOnboardingStatus(companyId: string, status: OnboardingStatus): void {
+  const companies = getCompanies();
+  const updated = companies.map(c => 
+    c.id === companyId ? { ...c, onboardingStatus: status } : c
+  );
+  setCompanies(updated);
+}
+
+// Get company by ID
+export function getCompanyById(companyId: string): CompanyState | null {
+  const companies = getCompanies();
+  return companies.find(c => c.id === companyId) || null;
 }
 
 // Get full state
@@ -261,10 +281,17 @@ function migrateState(oldState: Partial<PortalState>): PortalState {
     });
   }
   
+  // Migrate companies to include onboardingStatus (v4)
+  const migratedCompanies: CompanyState[] = (oldState.companies || defaultState.companies).map(company => ({
+    ...company,
+    onboardingStatus: (company as any).onboardingStatus || "not_started",
+  }));
+  
   return {
     ...defaultState,
     ...oldState,
     cycles: migratedCycles,
+    companies: migratedCompanies,
     dismissedAlerts: oldState.dismissedAlerts || [],
     schemaVersion: SCHEMA_VERSION,
   };

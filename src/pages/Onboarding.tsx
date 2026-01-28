@@ -29,7 +29,7 @@ interface TeamMember {
 export default function Onboarding() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, completeOnboarding, isAuthenticated } = useAuth();
+  const { user, completeOnboarding, startOnboarding, isAuthenticated } = useAuth();
   
   const [step, setStep] = useState(1);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -47,6 +47,12 @@ export default function Onboarding() {
   // Redirect if not authenticated or not cliente
   if (!isAuthenticated || !user) {
     navigate("/login");
+    return null;
+  }
+
+  // If onboarding already completed, redirect to home
+  if (user.onboardingStatus === 'completed') {
+    navigate("/");
     return null;
   }
 
