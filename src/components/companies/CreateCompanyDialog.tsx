@@ -120,6 +120,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
       tempPassword,
       createdAt: new Date().toISOString().split('T')[0],
       logo: companyLogo || undefined,
+      onboardingStatus: 'not_started',
     };
     
     addCompany(company);

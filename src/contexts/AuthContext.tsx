@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { getCompanies, type CompanyState } from "@/lib/storage";
+import { getCompanies, updateCompanyOnboardingStatus, getCompanyById, type CompanyState, type OnboardingStatus } from "@/lib/storage";
 
 // ============================================================
 // MVP Portal Authentication Context
@@ -18,7 +18,7 @@ export interface User {
   companyName?: string;
   companyLogo?: string;
   mustChangePassword?: boolean;
-  needsOnboarding?: boolean;
+  onboardingStatus?: OnboardingStatus;
   password?: string;
 }
 
@@ -32,6 +32,7 @@ interface AuthContextType {
   logout: () => void;
   switchRole: (role: UserRole) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
+  startOnboarding: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
   updateCompanyLogo: (logoUrl: string) => void;
 }
@@ -49,7 +50,7 @@ const ADMIN_USER: User & { password: string } = {
   role: "admin_mvp",
   password: "admin123",
   mustChangePassword: false,
-  needsOnboarding: false,
+  onboardingStatus: 'completed', // Admin doesn't need onboarding
 };
 
 // Get all users (demo + created from companies)
@@ -80,14 +81,15 @@ function getAllUsers(): Record<string, User & { password: string }> {
         role: "cliente",
         companyId: company.id,
         companyName: company.name,
+        companyLogo: company.logo,
         password: company.tempPassword,
-        mustChangePassword: true,
-        needsOnboarding: true,
+        mustChangePassword: company.onboardingStatus === 'not_started',
+        onboardingStatus: company.onboardingStatus,
       };
     }
   });
   
-  // Demo client user
+  // Demo client user (with completed onboarding)
   if (!users["cliente@alpha.com"]) {
     users["cliente@alpha.com"] = {
       id: "cliente-1",
@@ -98,7 +100,7 @@ function getAllUsers(): Record<string, User & { password: string }> {
       companyName: "Empresa Alpha",
       password: "cliente123",
       mustChangePassword: false,
-      needsOnboarding: false,
+      onboardingStatus: "completed",
     };
   }
   
@@ -191,21 +193,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const foundUser = users[user.email.toLowerCase()];
     
     if (foundUser && foundUser.password === currentPassword) {
+      // Determine new onboarding status after password change
+      let newOnboardingStatus = foundUser.onboardingStatus;
+      if (foundUser.onboardingStatus === 'not_started') {
+        newOnboardingStatus = 'in_progress';
+        // Update company onboarding status in storage
+        if (foundUser.companyId) {
+          updateCompanyOnboardingStatus(foundUser.companyId, 'in_progress');
+        }
+      }
+      
       const updatedUser = {
         ...foundUser,
         password: newPassword,
         mustChangePassword: false,
+        onboardingStatus: newOnboardingStatus,
       };
       saveUser(updatedUser);
       
       setUser({
         ...user,
         mustChangePassword: false,
+        onboardingStatus: newOnboardingStatus,
       });
       
       return true;
     }
     return false;
+  };
+
+  const startOnboarding = async (): Promise<void> => {
+    if (!user || !user.companyId) return;
+    
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Update company status to in_progress if not already
+    if (user.onboardingStatus === 'not_started') {
+      updateCompanyOnboardingStatus(user.companyId, 'in_progress');
+      
+      const users = getAllUsers();
+      const foundUser = users[user.email.toLowerCase()];
+      if (foundUser) {
+        const updatedUser = { ...foundUser, onboardingStatus: 'in_progress' as OnboardingStatus };
+        saveUser(updatedUser);
+      }
+      
+      setUser({
+        ...user,
+        onboardingStatus: 'in_progress',
+      });
+    }
   };
 
   const completeOnboarding = async (): Promise<void> => {
@@ -219,13 +256,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (foundUser) {
       const updatedUser = {
         ...foundUser,
-        needsOnboarding: false,
+        onboardingStatus: 'completed' as OnboardingStatus,
       };
       saveUser(updatedUser);
       
+      // Update company onboarding status in storage
+      if (user.companyId) {
+        updateCompanyOnboardingStatus(user.companyId, 'completed');
+      }
+      
       setUser({
         ...user,
-        needsOnboarding: false,
+        onboardingStatus: 'completed',
       });
     }
   };
@@ -249,6 +291,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     switchRole,
     changePassword,
+    startOnboarding,
     completeOnboarding,
     updateCompanyLogo,
   };
