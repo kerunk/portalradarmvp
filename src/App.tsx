@@ -27,6 +27,7 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Main App component with AuthProvider wrapping all routes
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
