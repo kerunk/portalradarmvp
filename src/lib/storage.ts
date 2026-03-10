@@ -249,13 +249,16 @@ export function getCompanyById(companyId: string): CompanyState | null {
   return companies.find(c => c.id === companyId) || null;
 }
 
-// Get full state
+// Get full state (company-scoped when active company is set)
 export function getState(): PortalState {
+  const key = getStorageKey();
+  const isCompanyScoped = !!_activeCompanyId;
+  
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(key);
     if (!stored) {
-      const defaultState = getDefaultState();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultState));
+      const defaultState = getDefaultState(isCompanyScoped);
+      localStorage.setItem(key, JSON.stringify(defaultState));
       return defaultState;
     }
     
@@ -264,25 +267,58 @@ export function getState(): PortalState {
     // Handle schema migration if needed
     if (!parsed.schemaVersion || parsed.schemaVersion < SCHEMA_VERSION) {
       const migrated = migrateState(parsed);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+      localStorage.setItem(key, JSON.stringify(migrated));
       return migrated;
     }
     
     return parsed;
   } catch (error) {
     console.error('Error reading state from localStorage:', error);
-    return getDefaultState();
+    return getDefaultState(isCompanyScoped);
   }
 }
 
 // Update state (partial update)
 export function setState(partialUpdate: Partial<PortalState>): void {
+  const key = getStorageKey();
   try {
     const current = getState();
     const updated = { ...current, ...partialUpdate };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(key, JSON.stringify(updated));
   } catch (error) {
     console.error('Error saving state to localStorage:', error);
+  }
+}
+
+// Get global state (always from global key, for companies list)
+export function getGlobalState(): PortalState {
+  try {
+    const stored = localStorage.getItem(GLOBAL_STORAGE_KEY);
+    if (!stored) {
+      const defaultState = getDefaultState(false);
+      localStorage.setItem(GLOBAL_STORAGE_KEY, JSON.stringify(defaultState));
+      return defaultState;
+    }
+    const parsed = JSON.parse(stored) as PortalState;
+    if (!parsed.schemaVersion || parsed.schemaVersion < SCHEMA_VERSION) {
+      const migrated = migrateState(parsed);
+      localStorage.setItem(GLOBAL_STORAGE_KEY, JSON.stringify(migrated));
+      return migrated;
+    }
+    return parsed;
+  } catch (error) {
+    return getDefaultState(false);
+  }
+}
+
+// Set global state
+function setGlobalState(partialUpdate: Partial<PortalState>): void {
+  try {
+    const current = getGlobalState();
+    const updated = { ...current, ...partialUpdate };
+    localStorage.setItem(GLOBAL_STORAGE_KEY, JSON.stringify(updated));
+  } catch (error) {
+    console.error('Error saving global state:', error);
   }
 }
 
