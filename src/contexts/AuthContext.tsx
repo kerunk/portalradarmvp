@@ -165,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
+    setActiveCompany(null);
     localStorage.removeItem(STORAGE_KEY);
   };
 
