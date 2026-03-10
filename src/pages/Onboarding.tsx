@@ -394,7 +394,7 @@ export default function Onboarding() {
       {populationMembers.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">
-            Colaboradores cadastrados ({populationMembers.length}) · Facilitadores: {facilitatorCount}
+            Colaboradores cadastrados ({populationMembers.length})
           </p>
           <div className="space-y-2 max-h-56 overflow-y-auto">
             {populationMembers.map(member => (
