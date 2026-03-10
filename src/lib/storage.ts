@@ -645,13 +645,13 @@ export function addFacilitator(facilitator: FacilitatorState): void {
   setFacilitators([...facilitators, facilitator]);
 }
 
-// Companies helpers
+// Companies helpers - ALWAYS use global state
 export function getCompanies(): CompanyState[] {
-  return getState().companies;
+  return getGlobalState().companies;
 }
 
 export function setCompanies(companies: CompanyState[]): void {
-  setState({ companies });
+  setGlobalState({ companies });
 }
 
 export function addCompany(company: CompanyState): void {
