@@ -155,6 +155,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (foundUser && foundUser.password === password) {
       const { password: _, ...userData } = foundUser;
+      // Set active company for scoped storage
+      setActiveCompany(userData.role === 'cliente' ? userData.companyId || null : null);
       setUser(userData);
       return true;
     }
