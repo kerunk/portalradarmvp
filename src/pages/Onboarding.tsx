@@ -346,7 +346,7 @@ export default function Onboarding() {
         <Database className="h-10 w-10 text-primary mx-auto" />
         <h2 className="text-2xl font-display font-bold text-foreground">Base Populacional</h2>
         <p className="text-sm text-muted-foreground">
-          Cadastre todos os colaboradores da empresa, incluindo os do núcleo. Marque quem é facilitador.
+          Cadastre todos os colaboradores da empresa, incluindo os do núcleo.
         </p>
       </div>
 
