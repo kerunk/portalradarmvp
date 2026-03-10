@@ -402,7 +402,6 @@ export default function Onboarding() {
                 <div>
                   <p className="text-sm font-medium">
                     {member.name}
-                    {member.facilitator && <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Facilitador</span>}
                   </p>
                   <p className="text-xs text-muted-foreground">{member.sector}{member.role && ` • ${member.role}`}</p>
                 </div>
