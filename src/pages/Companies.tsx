@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -24,106 +24,33 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CreateCompanyDialog } from "@/components/companies/CreateCompanyDialog";
-
-interface Company {
-  id: string;
-  name: string;
-  logo?: string;
-  sector: string;
-  employees: number;
-  phase: number;
-  phaseName: string;
-  adherence: number;
-  adherenceTrend: number;
-  leadership: number;
-  maturityLevel: number;
-  maturityName: string;
-  alerts: number;
-  lastActivity: string;
-}
-
-const mockCompanies: Company[] = [
-  {
-    id: "1",
-    name: "Empresa Alpha",
-    sector: "Indústria",
-    employees: 320,
-    phase: 3,
-    phaseName: "Implementação",
-    adherence: 78,
-    adherenceTrend: 5,
-    leadership: 82,
-    maturityLevel: 2,
-    maturityName: "Em Desenvolvimento",
-    alerts: 2,
-    lastActivity: "Há 2 horas",
-  },
-  {
-    id: "2",
-    name: "Tech Solutions",
-    sector: "Tecnologia",
-    employees: 150,
-    phase: 4,
-    phaseName: "Consolidação",
-    adherence: 85,
-    adherenceTrend: 3,
-    leadership: 90,
-    maturityLevel: 3,
-    maturityName: "Consolidado",
-    alerts: 0,
-    lastActivity: "Há 1 dia",
-  },
-  {
-    id: "3",
-    name: "Varejo Nacional",
-    sector: "Varejo",
-    employees: 800,
-    phase: 2,
-    phaseName: "Sensibilização",
-    adherence: 52,
-    adherenceTrend: -2,
-    leadership: 65,
-    maturityLevel: 1,
-    maturityName: "Inicial",
-    alerts: 4,
-    lastActivity: "Há 3 dias",
-  },
-  {
-    id: "4",
-    name: "Construtora Beta",
-    sector: "Construção",
-    employees: 450,
-    phase: 3,
-    phaseName: "Implementação",
-    adherence: 71,
-    adherenceTrend: 8,
-    leadership: 75,
-    maturityLevel: 2,
-    maturityName: "Em Desenvolvimento",
-    alerts: 1,
-    lastActivity: "Há 5 horas",
-  },
-];
+import { getCompanies, type CompanyState } from "@/lib/storage";
+import { Badge } from "@/components/ui/badge";
 
 export default function Companies() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [companies, setCompanies] = useState<CompanyState[]>([]);
 
-  const filteredCompanies = mockCompanies.filter((company) => {
+  // Load companies from storage (and reload when dialog closes)
+  useEffect(() => {
+    setCompanies(getCompanies());
+  }, [createDialogOpen]);
+
+  const filteredCompanies = companies.filter((company) => {
     const matchesSearch = company.name
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
+    if (filterStatus === "risk") return matchesSearch && company.onboardingStatus === "not_started";
+    if (filterStatus === "on-track") return matchesSearch && company.onboardingStatus === "completed";
     return matchesSearch;
   });
 
   // Aggregate stats
-  const totalCompanies = mockCompanies.length;
-  const avgAdherence = Math.round(
-    mockCompanies.reduce((sum, c) => sum + c.adherence, 0) / totalCompanies
-  );
-  const totalAlerts = mockCompanies.reduce((sum, c) => sum + c.alerts, 0);
-  const companiesAtRisk = mockCompanies.filter((c) => c.alerts > 2).length;
+  const totalCompanies = companies.length;
+  const completedOnboarding = companies.filter(c => c.onboardingStatus === "completed").length;
+  const pendingOnboarding = companies.filter(c => c.onboardingStatus !== "completed").length;
 
   return (
     <AppLayout
@@ -132,7 +59,7 @@ export default function Companies() {
     >
       <div className="space-y-6 animate-fade-in">
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -142,7 +69,7 @@ export default function Companies() {
                 <p className="text-2xl font-display font-bold text-foreground">
                   {totalCompanies}
                 </p>
-                <p className="text-sm text-muted-foreground">Empresas Ativas</p>
+                <p className="text-sm text-muted-foreground">Empresas Cadastradas</p>
               </div>
             </div>
           </Card>
@@ -153,9 +80,9 @@ export default function Companies() {
               </div>
               <div>
                 <p className="text-2xl font-display font-bold text-foreground">
-                  {avgAdherence}%
+                  {completedOnboarding}
                 </p>
-                <p className="text-sm text-muted-foreground">Adesão Média</p>
+                <p className="text-sm text-muted-foreground">Onboarding Concluído</p>
               </div>
             </div>
           </Card>
@@ -166,22 +93,9 @@ export default function Companies() {
               </div>
               <div>
                 <p className="text-2xl font-display font-bold text-foreground">
-                  {totalAlerts}
+                  {pendingOnboarding}
                 </p>
-                <p className="text-sm text-muted-foreground">Alertas Totais</p>
-              </div>
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-                <Users size={20} className="text-destructive" />
-              </div>
-              <div>
-                <p className="text-2xl font-display font-bold text-foreground">
-                  {companiesAtRisk}
-                </p>
-                <p className="text-sm text-muted-foreground">Empresas em Risco</p>
+                <p className="text-sm text-muted-foreground">Onboarding Pendente</p>
               </div>
             </div>
           </Card>
@@ -210,8 +124,8 @@ export default function Companies() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="risk">Em risco</SelectItem>
-                <SelectItem value="on-track">No prazo</SelectItem>
+                <SelectItem value="risk">Pendentes</SelectItem>
+                <SelectItem value="on-track">Concluídas</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -231,11 +145,15 @@ export default function Companies() {
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center">
-                    <span className="text-lg font-bold text-secondary-foreground">
-                      {company.name.charAt(0)}
-                    </span>
-                  </div>
+                  {company.logo ? (
+                    <img src={company.logo} alt={company.name} className="w-12 h-12 rounded-lg object-contain border border-border" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center">
+                      <span className="text-lg font-bold text-secondary-foreground">
+                        {company.name.charAt(0)}
+                      </span>
+                    </div>
+                  )}
                   <div>
                     <h3 className="font-semibold text-foreground">{company.name}</h3>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -245,65 +163,41 @@ export default function Companies() {
                     </div>
                   </div>
                 </div>
-                {company.alerts > 0 && (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-destructive/10 text-destructive rounded-full text-xs font-medium">
-                    <AlertTriangle size={12} />
-                    {company.alerts}
-                  </div>
-                )}
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-xs",
+                    company.onboardingStatus === "completed"
+                      ? "bg-success/10 text-success border-success/30"
+                      : company.onboardingStatus === "in_progress"
+                      ? "bg-warning/10 text-warning border-warning/30"
+                      : "bg-muted text-muted-foreground border-border"
+                  )}
+                >
+                  {company.onboardingStatus === "completed"
+                    ? "Ativo"
+                    : company.onboardingStatus === "in_progress"
+                    ? "Em Progresso"
+                    : "Pendente"}
+                </Badge>
               </div>
 
-              {/* Metrics */}
-              <div className="grid grid-cols-3 gap-4 mb-4">
+              {/* Info */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Adesão</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-semibold">{company.adherence}%</span>
-                    <span
-                      className={cn(
-                        "text-xs flex items-center gap-0.5",
-                        company.adherenceTrend > 0
-                          ? "text-success"
-                          : company.adherenceTrend < 0
-                          ? "text-destructive"
-                          : "text-muted-foreground"
-                      )}
-                    >
-                      {company.adherenceTrend > 0 ? (
-                        <TrendingUp size={12} />
-                      ) : (
-                        <TrendingDown size={12} />
-                      )}
-                      {Math.abs(company.adherenceTrend)}%
-                    </span>
-                  </div>
+                  <p className="text-xs text-muted-foreground mb-1">Responsável</p>
+                  <span className="text-sm font-medium">{company.adminName}</span>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Liderança</p>
-                  <span className="text-lg font-semibold">{company.leadership}%</span>
+                  <p className="text-xs text-muted-foreground mb-1">Email</p>
+                  <span className="text-sm font-medium truncate block">{company.adminEmail}</span>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Maturidade</p>
-                  <span className="text-sm font-medium text-primary">
-                    Nível {company.maturityLevel}
-                  </span>
-                </div>
-              </div>
-
-              {/* Phase Progress */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">
-                    Fase {company.phase}: {company.phaseName}
-                  </span>
-                </div>
-                <Progress value={(company.phase / 5) * 100} className="h-1.5" />
               </div>
 
               {/* Footer */}
               <div className="flex items-center justify-between pt-3 border-t border-border">
                 <span className="text-xs text-muted-foreground">
-                  Última atividade: {company.lastActivity}
+                  Criada em: {company.createdAt}
                 </span>
                 <Button
                   variant="ghost"
