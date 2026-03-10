@@ -166,16 +166,16 @@ export interface PortalState {
   dismissedAlerts: string[];
 }
 
-// Default initial state
-const getDefaultState = (): PortalState => ({
+// Default initial state - empty for company-scoped, with defaults for global
+const getDefaultState = (forCompany: boolean = false): PortalState => ({
   schemaVersion: SCHEMA_VERSION,
   cycles: {},
   turmas: [],
   records: [],
   planActions: [],
-  employees: getDefaultEmployees(),
-  facilitators: getDefaultFacilitators(),
-  companies: getDefaultCompanies(),
+  employees: forCompany ? [] : getDefaultEmployees(),
+  facilitators: forCompany ? [] : getDefaultFacilitators(),
+  companies: forCompany ? [] : getDefaultCompanies(),
   dismissedAlerts: [],
 });
 
