@@ -24,6 +24,7 @@ import Turmas from "./pages/Turmas";
 import SuccessFactors from "./pages/SuccessFactors";
 import BestPracticesGlobal from "./pages/BestPracticesGlobal";
 import Settings from "./pages/Settings";
+import BasePopulacional from "./pages/BasePopulacional";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
