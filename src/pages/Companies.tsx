@@ -48,12 +48,9 @@ export default function Companies() {
   });
 
   // Aggregate stats
-  const totalCompanies = mockCompanies.length;
-  const avgAdherence = Math.round(
-    mockCompanies.reduce((sum, c) => sum + c.adherence, 0) / totalCompanies
-  );
-  const totalAlerts = mockCompanies.reduce((sum, c) => sum + c.alerts, 0);
-  const companiesAtRisk = mockCompanies.filter((c) => c.alerts > 2).length;
+  const totalCompanies = companies.length;
+  const completedOnboarding = companies.filter(c => c.onboardingStatus === "completed").length;
+  const pendingOnboarding = companies.filter(c => c.onboardingStatus !== "completed").length;
 
   return (
     <AppLayout
