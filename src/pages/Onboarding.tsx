@@ -49,7 +49,7 @@ export default function Onboarding() {
   // Population state
   const [populationMembers, setPopulationMembers] = useState<PopulationMember[]>([]);
   const [editingPopId, setEditingPopId] = useState<string | null>(null);
-  const [popForm, setPopForm] = useState({ name: "", email: "", sector: "", role: "", facilitator: false });
+  const [popForm, setPopForm] = useState({ name: "", email: "", sector: "", role: "" });
 
   const totalSteps = 4;
 
