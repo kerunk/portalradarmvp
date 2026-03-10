@@ -222,7 +222,7 @@ export default function Onboarding() {
     setIsLoading(false);
   };
 
-  const facilitatorCount = populationMembers.filter(m => m.facilitator).length;
+  
 
   // ========== RENDER STEPS ==========
 
