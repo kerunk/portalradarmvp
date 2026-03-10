@@ -129,6 +129,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (stored) {
         const parsed = JSON.parse(stored);
         setUser(parsed);
+        // Set active company for scoped storage
+        setActiveCompany(parsed.role === 'cliente' ? parsed.companyId || null : null);
       }
     } catch (error) {
       console.error("Error loading auth state:", error);
