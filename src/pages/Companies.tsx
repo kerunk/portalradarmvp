@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -24,96 +24,26 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CreateCompanyDialog } from "@/components/companies/CreateCompanyDialog";
-
-interface Company {
-  id: string;
-  name: string;
-  logo?: string;
-  sector: string;
-  employees: number;
-  phase: number;
-  phaseName: string;
-  adherence: number;
-  adherenceTrend: number;
-  leadership: number;
-  maturityLevel: number;
-  maturityName: string;
-  alerts: number;
-  lastActivity: string;
-}
-
-const mockCompanies: Company[] = [
-  {
-    id: "1",
-    name: "Empresa Alpha",
-    sector: "Indústria",
-    employees: 320,
-    phase: 3,
-    phaseName: "Implementação",
-    adherence: 78,
-    adherenceTrend: 5,
-    leadership: 82,
-    maturityLevel: 2,
-    maturityName: "Em Desenvolvimento",
-    alerts: 2,
-    lastActivity: "Há 2 horas",
-  },
-  {
-    id: "2",
-    name: "Tech Solutions",
-    sector: "Tecnologia",
-    employees: 150,
-    phase: 4,
-    phaseName: "Consolidação",
-    adherence: 85,
-    adherenceTrend: 3,
-    leadership: 90,
-    maturityLevel: 3,
-    maturityName: "Consolidado",
-    alerts: 0,
-    lastActivity: "Há 1 dia",
-  },
-  {
-    id: "3",
-    name: "Varejo Nacional",
-    sector: "Varejo",
-    employees: 800,
-    phase: 2,
-    phaseName: "Sensibilização",
-    adherence: 52,
-    adherenceTrend: -2,
-    leadership: 65,
-    maturityLevel: 1,
-    maturityName: "Inicial",
-    alerts: 4,
-    lastActivity: "Há 3 dias",
-  },
-  {
-    id: "4",
-    name: "Construtora Beta",
-    sector: "Construção",
-    employees: 450,
-    phase: 3,
-    phaseName: "Implementação",
-    adherence: 71,
-    adherenceTrend: 8,
-    leadership: 75,
-    maturityLevel: 2,
-    maturityName: "Em Desenvolvimento",
-    alerts: 1,
-    lastActivity: "Há 5 horas",
-  },
-];
+import { getCompanies, type CompanyState } from "@/lib/storage";
+import { Badge } from "@/components/ui/badge";
 
 export default function Companies() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [companies, setCompanies] = useState<CompanyState[]>([]);
 
-  const filteredCompanies = mockCompanies.filter((company) => {
+  // Load companies from storage (and reload when dialog closes)
+  useEffect(() => {
+    setCompanies(getCompanies());
+  }, [createDialogOpen]);
+
+  const filteredCompanies = companies.filter((company) => {
     const matchesSearch = company.name
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
+    if (filterStatus === "risk") return matchesSearch && company.onboardingStatus === "not_started";
+    if (filterStatus === "on-track") return matchesSearch && company.onboardingStatus === "completed";
     return matchesSearch;
   });
 
