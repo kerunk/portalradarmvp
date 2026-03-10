@@ -1,11 +1,31 @@
 // MVP Portal Storage Layer
 // Unified localStorage persistence with versioning
 // Prepared for future API migration
+// Company-scoped: operational data is isolated per company
 
 import { CYCLE_IDS, type CycleId } from './constants';
 
-const STORAGE_KEY = 'mvp_portal_data';
-const SCHEMA_VERSION = 4; // Upgraded for onboarding status per company
+const GLOBAL_STORAGE_KEY = 'mvp_portal_data';
+const STORAGE_KEY = 'mvp_portal_data'; // Legacy fallback
+const SCHEMA_VERSION = 5; // v5: company-scoped data isolation
+
+// Active company for scoped storage
+let _activeCompanyId: string | null = null;
+
+export function setActiveCompany(companyId: string | null): void {
+  _activeCompanyId = companyId;
+}
+
+export function getActiveCompany(): string | null {
+  return _activeCompanyId;
+}
+
+function getStorageKey(): string {
+  if (_activeCompanyId) {
+    return `mvp_portal_company_${_activeCompanyId}`;
+  }
+  return GLOBAL_STORAGE_KEY;
+}
 
 export type OnboardingStatus = 'not_started' | 'in_progress' | 'completed';
 
