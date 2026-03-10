@@ -708,5 +708,5 @@ export function closeCycle(cycleId: string, notes: string): void {
 
 // Reset storage (for debugging)
 export function resetStorage(): void {
-  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(GLOBAL_STORAGE_KEY);
 }
