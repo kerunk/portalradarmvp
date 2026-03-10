@@ -100,6 +100,11 @@ const App = () => (
                 <BestPracticesGlobal />
               </ProtectedRoute>
             } />
+            <Route path="/configuracoes" element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            } />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
