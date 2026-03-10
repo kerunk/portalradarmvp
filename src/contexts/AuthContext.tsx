@@ -176,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser({
         id: "cliente-1",
         name: "Carlos Silva",
-        email: "cliente@alpha.com",
+        email: "admin@alpha.com",
         role: "cliente",
         companyId: "company-1",
         companyName: "Empresa Alpha",
