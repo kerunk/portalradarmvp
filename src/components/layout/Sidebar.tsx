@@ -53,6 +53,7 @@ const clientNavigation = [
   { name: "Planejamento", href: "/plano", icon: ClipboardList },
   { name: "Ciclos MVP", href: "/ciclos", icon: Rocket },
   { name: "Turmas", href: "/turmas", icon: Users },
+  { name: "Base Populacional", href: "/base-populacional", icon: Database },
   { name: "Ações & Alertas", href: "/indicadores", icon: Target },
   { name: "Relatórios", href: "/relatorios", icon: FileText },
 ];
