@@ -1,11 +1,31 @@
 // MVP Portal Storage Layer
 // Unified localStorage persistence with versioning
 // Prepared for future API migration
+// Company-scoped: operational data is isolated per company
 
 import { CYCLE_IDS, type CycleId } from './constants';
 
-const STORAGE_KEY = 'mvp_portal_data';
-const SCHEMA_VERSION = 4; // Upgraded for onboarding status per company
+const GLOBAL_STORAGE_KEY = 'mvp_portal_data';
+const STORAGE_KEY = 'mvp_portal_data'; // Legacy fallback
+const SCHEMA_VERSION = 5; // v5: company-scoped data isolation
+
+// Active company for scoped storage
+let _activeCompanyId: string | null = null;
+
+export function setActiveCompany(companyId: string | null): void {
+  _activeCompanyId = companyId;
+}
+
+export function getActiveCompany(): string | null {
+  return _activeCompanyId;
+}
+
+function getStorageKey(): string {
+  if (_activeCompanyId) {
+    return `mvp_portal_company_${_activeCompanyId}`;
+  }
+  return GLOBAL_STORAGE_KEY;
+}
 
 export type OnboardingStatus = 'not_started' | 'in_progress' | 'completed';
 
@@ -146,16 +166,16 @@ export interface PortalState {
   dismissedAlerts: string[];
 }
 
-// Default initial state
-const getDefaultState = (): PortalState => ({
+// Default initial state - empty for company-scoped, with defaults for global
+const getDefaultState = (forCompany: boolean = false): PortalState => ({
   schemaVersion: SCHEMA_VERSION,
   cycles: {},
   turmas: [],
   records: [],
   planActions: [],
-  employees: getDefaultEmployees(),
-  facilitators: getDefaultFacilitators(),
-  companies: getDefaultCompanies(),
+  employees: forCompany ? [] : getDefaultEmployees(),
+  facilitators: forCompany ? [] : getDefaultFacilitators(),
+  companies: forCompany ? [] : getDefaultCompanies(),
   dismissedAlerts: [],
 });
 
@@ -229,13 +249,16 @@ export function getCompanyById(companyId: string): CompanyState | null {
   return companies.find(c => c.id === companyId) || null;
 }
 
-// Get full state
+// Get full state (company-scoped when active company is set)
 export function getState(): PortalState {
+  const key = getStorageKey();
+  const isCompanyScoped = !!_activeCompanyId;
+  
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(key);
     if (!stored) {
-      const defaultState = getDefaultState();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultState));
+      const defaultState = getDefaultState(isCompanyScoped);
+      localStorage.setItem(key, JSON.stringify(defaultState));
       return defaultState;
     }
     
@@ -244,25 +267,58 @@ export function getState(): PortalState {
     // Handle schema migration if needed
     if (!parsed.schemaVersion || parsed.schemaVersion < SCHEMA_VERSION) {
       const migrated = migrateState(parsed);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+      localStorage.setItem(key, JSON.stringify(migrated));
       return migrated;
     }
     
     return parsed;
   } catch (error) {
     console.error('Error reading state from localStorage:', error);
-    return getDefaultState();
+    return getDefaultState(isCompanyScoped);
   }
 }
 
 // Update state (partial update)
 export function setState(partialUpdate: Partial<PortalState>): void {
+  const key = getStorageKey();
   try {
     const current = getState();
     const updated = { ...current, ...partialUpdate };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(key, JSON.stringify(updated));
   } catch (error) {
     console.error('Error saving state to localStorage:', error);
+  }
+}
+
+// Get global state (always from global key, for companies list)
+export function getGlobalState(): PortalState {
+  try {
+    const stored = localStorage.getItem(GLOBAL_STORAGE_KEY);
+    if (!stored) {
+      const defaultState = getDefaultState(false);
+      localStorage.setItem(GLOBAL_STORAGE_KEY, JSON.stringify(defaultState));
+      return defaultState;
+    }
+    const parsed = JSON.parse(stored) as PortalState;
+    if (!parsed.schemaVersion || parsed.schemaVersion < SCHEMA_VERSION) {
+      const migrated = migrateState(parsed);
+      localStorage.setItem(GLOBAL_STORAGE_KEY, JSON.stringify(migrated));
+      return migrated;
+    }
+    return parsed;
+  } catch (error) {
+    return getDefaultState(false);
+  }
+}
+
+// Set global state
+function setGlobalState(partialUpdate: Partial<PortalState>): void {
+  try {
+    const current = getGlobalState();
+    const updated = { ...current, ...partialUpdate };
+    localStorage.setItem(GLOBAL_STORAGE_KEY, JSON.stringify(updated));
+  } catch (error) {
+    console.error('Error saving global state:', error);
   }
 }
 
@@ -589,13 +645,13 @@ export function addFacilitator(facilitator: FacilitatorState): void {
   setFacilitators([...facilitators, facilitator]);
 }
 
-// Companies helpers
+// Companies helpers - ALWAYS use global state
 export function getCompanies(): CompanyState[] {
-  return getState().companies;
+  return getGlobalState().companies;
 }
 
 export function setCompanies(companies: CompanyState[]): void {
-  setState({ companies });
+  setGlobalState({ companies });
 }
 
 export function addCompany(company: CompanyState): void {
@@ -652,5 +708,5 @@ export function closeCycle(cycleId: string, notes: string): void {
 
 // Reset storage (for debugging)
 export function resetStorage(): void {
-  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(GLOBAL_STORAGE_KEY);
 }

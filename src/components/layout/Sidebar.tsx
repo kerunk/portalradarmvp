@@ -19,6 +19,7 @@ import {
   BookOpen,
   FolderOpen,
   ShieldCheck,
+  Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -53,6 +54,7 @@ const clientNavigation = [
   { name: "Planejamento", href: "/plano", icon: ClipboardList },
   { name: "Ciclos MVP", href: "/ciclos", icon: Rocket },
   { name: "Turmas", href: "/turmas", icon: Users },
+  { name: "Base Populacional", href: "/base-populacional", icon: Database },
   { name: "Ações & Alertas", href: "/indicadores", icon: Target },
   { name: "Relatórios", href: "/relatorios", icon: FileText },
 ];

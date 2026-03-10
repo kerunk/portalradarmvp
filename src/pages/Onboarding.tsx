@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
+
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -49,7 +49,7 @@ export default function Onboarding() {
   // Population state
   const [populationMembers, setPopulationMembers] = useState<PopulationMember[]>([]);
   const [editingPopId, setEditingPopId] = useState<string | null>(null);
-  const [popForm, setPopForm] = useState({ name: "", email: "", sector: "", role: "", facilitator: false });
+  const [popForm, setPopForm] = useState({ name: "", email: "", sector: "", role: "" });
 
   const totalSteps = 4;
 
@@ -104,7 +104,7 @@ export default function Onboarding() {
   // ========== POPULATION HANDLERS ==========
 
   const resetPopForm = () => {
-    setPopForm({ name: "", email: "", sector: "", role: "", facilitator: false });
+    setPopForm({ name: "", email: "", sector: "", role: "" });
     setEditingPopId(null);
   };
 
@@ -125,14 +125,14 @@ export default function Onboarding() {
       ));
       toast({ title: "Atualizado!", description: `${popForm.name} foi atualizado.` });
     } else {
-      setPopulationMembers(prev => [...prev, { ...popForm, id: `pop-${Date.now()}`, active: true }]);
+      setPopulationMembers(prev => [...prev, { ...popForm, facilitator: false, id: `pop-${Date.now()}`, active: true }]);
       toast({ title: "Adicionado!", description: `${popForm.name} foi incluído na base.` });
     }
     resetPopForm();
   };
 
   const handleEditPop = (member: PopulationMember) => {
-    setPopForm({ name: member.name, email: member.email, sector: member.sector, role: member.role, facilitator: member.facilitator });
+    setPopForm({ name: member.name, email: member.email, sector: member.sector, role: member.role });
     setEditingPopId(member.id);
   };
 
@@ -222,7 +222,7 @@ export default function Onboarding() {
     setIsLoading(false);
   };
 
-  const facilitatorCount = populationMembers.filter(m => m.facilitator).length;
+  
 
   // ========== RENDER STEPS ==========
 
@@ -346,7 +346,7 @@ export default function Onboarding() {
         <Database className="h-10 w-10 text-primary mx-auto" />
         <h2 className="text-2xl font-display font-bold text-foreground">Base Populacional</h2>
         <p className="text-sm text-muted-foreground">
-          Cadastre todos os colaboradores da empresa, incluindo os do núcleo. Marque quem é facilitador.
+          Cadastre todos os colaboradores da empresa, incluindo os do núcleo.
         </p>
       </div>
 
@@ -380,10 +380,6 @@ export default function Onboarding() {
             <Label>Email</Label>
             <Input type="email" placeholder="email@empresa.com" value={popForm.email} onChange={e => setPopForm(f => ({ ...f, email: e.target.value }))} />
           </div>
-          <div className="col-span-2 flex items-center gap-3">
-            <Switch checked={popForm.facilitator} onCheckedChange={v => setPopForm(f => ({ ...f, facilitator: v }))} />
-            <Label className="cursor-pointer">Facilitador habilitado</Label>
-          </div>
         </div>
         <Button type="button" variant="outline" className="w-full" onClick={handleAddPop}>
           <UserPlus size={16} className="mr-2" />
@@ -398,7 +394,7 @@ export default function Onboarding() {
       {populationMembers.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">
-            Colaboradores cadastrados ({populationMembers.length}) · Facilitadores: {facilitatorCount}
+            Colaboradores cadastrados ({populationMembers.length})
           </p>
           <div className="space-y-2 max-h-56 overflow-y-auto">
             {populationMembers.map(member => (
@@ -406,7 +402,6 @@ export default function Onboarding() {
                 <div>
                   <p className="text-sm font-medium">
                     {member.name}
-                    {member.facilitator && <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Facilitador</span>}
                   </p>
                   <p className="text-xs text-muted-foreground">{member.sector}{member.role && ` • ${member.role}`}</p>
                 </div>
@@ -440,7 +435,7 @@ export default function Onboarding() {
   );
 
   const finalPopulation = mergeNucleoIntoPopulation();
-  const finalFacilitators = finalPopulation.filter(m => m.facilitator).length;
+  const finalFacilitators = finalPopulation.filter(m => m.facilitator).length; // Will be 0 since facilitators are set later
 
   const renderStep4 = () => (
     <div className="text-center space-y-6">

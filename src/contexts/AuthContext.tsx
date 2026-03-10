@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { getCompanies, updateCompanyOnboardingStatus, getCompanyById, type CompanyState, type OnboardingStatus } from "@/lib/storage";
+import { getCompanies, updateCompanyOnboardingStatus, getCompanyById, setActiveCompany, type CompanyState, type OnboardingStatus } from "@/lib/storage";
 
 // ============================================================
 // MVP Portal Authentication Context
@@ -129,6 +129,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (stored) {
         const parsed = JSON.parse(stored);
         setUser(parsed);
+        // Set active company for scoped storage
+        setActiveCompany(parsed.role === 'cliente' ? parsed.companyId || null : null);
       }
     } catch (error) {
       console.error("Error loading auth state:", error);
@@ -153,6 +155,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (foundUser && foundUser.password === password) {
       const { password: _, ...userData } = foundUser;
+      // Set active company for scoped storage
+      setActiveCompany(userData.role === 'cliente' ? userData.companyId || null : null);
       setUser(userData);
       return true;
     }
@@ -161,11 +165,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
+    setActiveCompany(null);
     localStorage.removeItem(STORAGE_KEY);
   };
 
   const switchRole = (role: UserRole) => {
     if (role === "admin_mvp") {
+      setActiveCompany(null);
       setUser({
         id: "admin-1",
         name: "Administrador MVP",
@@ -173,6 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: "admin_mvp",
       });
     } else {
+      setActiveCompany("company-1");
       setUser({
         id: "cliente-1",
         name: "Carlos Silva",
