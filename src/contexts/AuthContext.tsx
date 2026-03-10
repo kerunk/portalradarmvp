@@ -89,12 +89,12 @@ function getAllUsers(): Record<string, User & { password: string }> {
     }
   });
   
-  // Demo client user (with completed onboarding)
-  if (!users["cliente@alpha.com"]) {
-    users["cliente@alpha.com"] = {
+  // Demo client user (matching default company-1 admin email)
+  if (!users["admin@alpha.com"]) {
+    users["admin@alpha.com"] = {
       id: "cliente-1",
       name: "Carlos Silva",
-      email: "cliente@alpha.com",
+      email: "admin@alpha.com",
       role: "cliente",
       companyId: "company-1",
       companyName: "Empresa Alpha",
