@@ -171,6 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const switchRole = (role: UserRole) => {
     if (role === "admin_mvp") {
+      setActiveCompany(null);
       setUser({
         id: "admin-1",
         name: "Administrador MVP",
@@ -178,6 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: "admin_mvp",
       });
     } else {
+      setActiveCompany("company-1");
       setUser({
         id: "cliente-1",
         name: "Carlos Silva",
