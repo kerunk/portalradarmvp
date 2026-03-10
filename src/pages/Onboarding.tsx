@@ -435,7 +435,7 @@ export default function Onboarding() {
   );
 
   const finalPopulation = mergeNucleoIntoPopulation();
-  const finalFacilitators = finalPopulation.filter(m => m.facilitator).length;
+  const finalFacilitators = finalPopulation.filter(m => m.facilitator).length; // Will be 0 since facilitators are set later
 
   const renderStep4 = () => (
     <div className="text-center space-y-6">

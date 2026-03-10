@@ -106,6 +106,11 @@ const App = () => (
                 <Settings />
               </ProtectedRoute>
             } />
+            <Route path="/base-populacional" element={
+              <ProtectedRoute>
+                <BasePopulacional />
+              </ProtectedRoute>
+            } />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
