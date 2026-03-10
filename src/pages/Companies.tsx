@@ -59,7 +59,7 @@ export default function Companies() {
     >
       <div className="space-y-6 animate-fade-in">
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -69,7 +69,7 @@ export default function Companies() {
                 <p className="text-2xl font-display font-bold text-foreground">
                   {totalCompanies}
                 </p>
-                <p className="text-sm text-muted-foreground">Empresas Ativas</p>
+                <p className="text-sm text-muted-foreground">Empresas Cadastradas</p>
               </div>
             </div>
           </Card>
@@ -80,9 +80,9 @@ export default function Companies() {
               </div>
               <div>
                 <p className="text-2xl font-display font-bold text-foreground">
-                  {avgAdherence}%
+                  {completedOnboarding}
                 </p>
-                <p className="text-sm text-muted-foreground">Adesão Média</p>
+                <p className="text-sm text-muted-foreground">Onboarding Concluído</p>
               </div>
             </div>
           </Card>
@@ -93,22 +93,9 @@ export default function Companies() {
               </div>
               <div>
                 <p className="text-2xl font-display font-bold text-foreground">
-                  {totalAlerts}
+                  {pendingOnboarding}
                 </p>
-                <p className="text-sm text-muted-foreground">Alertas Totais</p>
-              </div>
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-                <Users size={20} className="text-destructive" />
-              </div>
-              <div>
-                <p className="text-2xl font-display font-bold text-foreground">
-                  {companiesAtRisk}
-                </p>
-                <p className="text-sm text-muted-foreground">Empresas em Risco</p>
+                <p className="text-sm text-muted-foreground">Onboarding Pendente</p>
               </div>
             </div>
           </Card>
@@ -137,8 +124,8 @@ export default function Companies() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="risk">Em risco</SelectItem>
-                <SelectItem value="on-track">No prazo</SelectItem>
+                <SelectItem value="risk">Pendentes</SelectItem>
+                <SelectItem value="on-track">Concluídas</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -158,11 +145,15 @@ export default function Companies() {
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center">
-                    <span className="text-lg font-bold text-secondary-foreground">
-                      {company.name.charAt(0)}
-                    </span>
-                  </div>
+                  {company.logo ? (
+                    <img src={company.logo} alt={company.name} className="w-12 h-12 rounded-lg object-contain border border-border" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center">
+                      <span className="text-lg font-bold text-secondary-foreground">
+                        {company.name.charAt(0)}
+                      </span>
+                    </div>
+                  )}
                   <div>
                     <h3 className="font-semibold text-foreground">{company.name}</h3>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -172,65 +163,41 @@ export default function Companies() {
                     </div>
                   </div>
                 </div>
-                {company.alerts > 0 && (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-destructive/10 text-destructive rounded-full text-xs font-medium">
-                    <AlertTriangle size={12} />
-                    {company.alerts}
-                  </div>
-                )}
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-xs",
+                    company.onboardingStatus === "completed"
+                      ? "bg-success/10 text-success border-success/30"
+                      : company.onboardingStatus === "in_progress"
+                      ? "bg-warning/10 text-warning border-warning/30"
+                      : "bg-muted text-muted-foreground border-border"
+                  )}
+                >
+                  {company.onboardingStatus === "completed"
+                    ? "Ativo"
+                    : company.onboardingStatus === "in_progress"
+                    ? "Em Progresso"
+                    : "Pendente"}
+                </Badge>
               </div>
 
-              {/* Metrics */}
-              <div className="grid grid-cols-3 gap-4 mb-4">
+              {/* Info */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Adesão</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-semibold">{company.adherence}%</span>
-                    <span
-                      className={cn(
-                        "text-xs flex items-center gap-0.5",
-                        company.adherenceTrend > 0
-                          ? "text-success"
-                          : company.adherenceTrend < 0
-                          ? "text-destructive"
-                          : "text-muted-foreground"
-                      )}
-                    >
-                      {company.adherenceTrend > 0 ? (
-                        <TrendingUp size={12} />
-                      ) : (
-                        <TrendingDown size={12} />
-                      )}
-                      {Math.abs(company.adherenceTrend)}%
-                    </span>
-                  </div>
+                  <p className="text-xs text-muted-foreground mb-1">Responsável</p>
+                  <span className="text-sm font-medium">{company.adminName}</span>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Liderança</p>
-                  <span className="text-lg font-semibold">{company.leadership}%</span>
+                  <p className="text-xs text-muted-foreground mb-1">Email</p>
+                  <span className="text-sm font-medium truncate block">{company.adminEmail}</span>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Maturidade</p>
-                  <span className="text-sm font-medium text-primary">
-                    Nível {company.maturityLevel}
-                  </span>
-                </div>
-              </div>
-
-              {/* Phase Progress */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">
-                    Fase {company.phase}: {company.phaseName}
-                  </span>
-                </div>
-                <Progress value={(company.phase / 5) * 100} className="h-1.5" />
               </div>
 
               {/* Footer */}
               <div className="flex items-center justify-between pt-3 border-t border-border">
                 <span className="text-xs text-muted-foreground">
-                  Última atividade: {company.lastActivity}
+                  Criada em: {company.createdAt}
                 </span>
                 <Button
                   variant="ghost"
