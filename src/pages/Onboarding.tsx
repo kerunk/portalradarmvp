@@ -125,7 +125,7 @@ export default function Onboarding() {
       ));
       toast({ title: "Atualizado!", description: `${popForm.name} foi atualizado.` });
     } else {
-      setPopulationMembers(prev => [...prev, { ...popForm, id: `pop-${Date.now()}`, active: true }]);
+      setPopulationMembers(prev => [...prev, { ...popForm, facilitator: false, id: `pop-${Date.now()}`, active: true }]);
       toast({ title: "Adicionado!", description: `${popForm.name} foi incluído na base.` });
     }
     resetPopForm();
