@@ -380,10 +380,6 @@ export default function Onboarding() {
             <Label>Email</Label>
             <Input type="email" placeholder="email@empresa.com" value={popForm.email} onChange={e => setPopForm(f => ({ ...f, email: e.target.value }))} />
           </div>
-          <div className="col-span-2 flex items-center gap-3">
-            <Switch checked={popForm.facilitator} onCheckedChange={v => setPopForm(f => ({ ...f, facilitator: v }))} />
-            <Label className="cursor-pointer">Facilitador habilitado</Label>
-          </div>
         </div>
         <Button type="button" variant="outline" className="w-full" onClick={handleAddPop}>
           <UserPlus size={16} className="mr-2" />
