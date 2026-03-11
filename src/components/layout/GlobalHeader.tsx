@@ -1,7 +1,7 @@
-import { Bell, HelpCircle, LogOut, User } from "lucide-react";
+import { HelpCircle, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NotificationsDropdown } from "./NotificationsDropdown";
 import logoMvp from "@/assets/logo-mvp.jpeg";
 
 interface GlobalHeaderProps {
