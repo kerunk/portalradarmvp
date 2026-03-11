@@ -6,12 +6,11 @@ import { MaturityGaugePremium } from "./MaturityGaugePremium";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Building2, Users, Target, TrendingUp, CheckCircle, AlertTriangle,
-  BarChart3, Rocket, GraduationCap, Zap, ShieldAlert, ShieldCheck,
-  AlertCircle, ArrowRight,
+  Building2, Users, TrendingUp, CheckCircle,
+  AlertTriangle, BarChart3, Rocket, GraduationCap,
+  ShieldAlert, ShieldCheck, AlertCircle, ArrowRight,
 } from "lucide-react";
 import { getCompanies, setActiveCompany, getState } from "@/lib/storage";
-import { obterIndicadoresGlobais } from "@/lib/governance";
 import { getCompanyRiskData, type CompanyRiskData } from "@/lib/adminNotifications";
 import type { CompanyState } from "@/lib/storage";
 import { cn } from "@/lib/utils";
@@ -58,7 +57,6 @@ function getMainAlert(data: CompanyRiskData): string {
 }
 
 function getCurrentCycle(data: CompanyRiskData): string {
-  // Find the most advanced cycle with activity
   const company = data.company;
   setActiveCompany(company.id);
   const state = getState();
@@ -78,7 +76,6 @@ function getCurrentCycle(data: CompanyRiskData): string {
 export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardProps) {
   const navigate = useNavigate();
   const companies = useMemo(() => getCompanies(), [refreshKey]);
-  const globalIndicators = useMemo(() => obterIndicadoresGlobais(), [refreshKey]);
 
   const companiesCompleted = companies.filter(c => c.onboardingStatus === "completed").length;
   const companiesPending = companies.filter(c => c.onboardingStatus !== "completed").length;
@@ -100,8 +97,6 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
   const totalEmployeesAll = companyData.reduce((s, c) => s + c.data.totalEmployees, 0);
   const totalTurmasAll = companyData.reduce((s, c) => s + c.data.totalTurmas, 0);
   const activeTurmasAll = companyData.reduce((s, c) => s + c.data.activeTurmas, 0);
-  const totalActionsAll = companyData.reduce((s, c) => s + c.data.totalActions, 0);
-  const completedActionsAll = companyData.reduce((s, c) => s + c.data.completedActions, 0);
   const avgMaturity = companyData.length > 0
     ? Math.round(companyData.reduce((s, c) => s + c.data.maturityScore, 0) / companyData.length)
     : 0;
@@ -144,7 +139,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
     return levels;
   }, [companyData]);
 
-  // Critical actions (companies sorted by delayed actions)
+  // Companies with most delayed actions (strategic view — no individual actions shown)
   const criticalCompanies = useMemo(() => {
     return [...companyData]
       .filter(c => c.data.delayedActions > 0)
@@ -152,18 +147,11 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
       .slice(0, 5);
   }, [companyData]);
 
-  const maturityLevels: Record<string, { label: string; color: string }> = {
-    "0": { label: "Inicial", color: "bg-muted text-muted-foreground" },
-    "1": { label: "Estruturando", color: "bg-amber-500/15 text-amber-400" },
-    "2": { label: "Evoluindo", color: "bg-primary/15 text-primary" },
-    "3": { label: "Consolidando", color: "bg-emerald-500/15 text-emerald-400" },
-  };
-
   function getMaturityLevel(score: number) {
-    if (score >= 76) return maturityLevels["3"];
-    if (score >= 51) return maturityLevels["2"];
-    if (score >= 26) return maturityLevels["1"];
-    return maturityLevels["0"];
+    if (score >= 76) return { label: "Consolidando", color: "bg-emerald-500/15 text-emerald-400" };
+    if (score >= 51) return { label: "Evoluindo", color: "bg-primary/15 text-primary" };
+    if (score >= 26) return { label: "Estruturando", color: "bg-amber-500/15 text-amber-400" };
+    return { label: "Inicial", color: "bg-muted text-muted-foreground" };
   }
 
   const cycleBarColor = (cycle: string) => {
@@ -171,6 +159,9 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
     if (cycle.startsWith("V")) return "hsl(38, 92%, 50%)";
     return "hsl(142, 71%, 45%)";
   };
+
+  // Total cycles across portfolio
+  const totalCyclesInProgress = companyData.reduce((s, c) => s + c.data.cyclesInProgress, 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -182,26 +173,52 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
           </div>
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-0.5">
-              Painel Administrativo MVP
+              Painel Estratégico da Carteira MVP
             </p>
             <p className="text-sm font-medium text-foreground">
-              {companies.length} empresas na carteira — {companiesCompleted} ativas, {companiesPending} com onboarding pendente.
+              {companies.length} empresas na carteira — {companiesCompleted} ativas, {companiesPending} em onboarding.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Top metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <MetricCard title="Empresas Ativas" value={companiesCompleted} icon={Building2} subtitle={`${companiesPending} pendentes`} variant="default" />
-        <MetricCard title="Colaboradores" value={totalEmployeesAll} icon={Users} subtitle="cadastrados no total" variant="default" />
-        <MetricCard title="Ciclos MVP" value={`${globalIndicators.closedCycles}/${globalIndicators.totalCycles}`} icon={Rocket} subtitle={`${globalIndicators.cyclesInProgress} em andamento`} variant={globalIndicators.closedCycles > 0 ? "success" : "default"} />
-        <MetricCard title="Turmas" value={totalTurmasAll} icon={GraduationCap} subtitle={`${activeTurmasAll} em execução`} variant="default" />
-        <MetricCard title="Ações Globais" value={`${completedActionsAll}/${totalActionsAll}`} icon={CheckCircle} subtitle={`${totalActionsAll > 0 ? Math.round((completedActionsAll / totalActionsAll) * 100) : 0}% concluído`} variant="success" />
-        <MetricCard title="Taxa Decisão→Ação" value={`${globalIndicators.decisionConversionRate}%`} icon={Zap} subtitle={`${globalIndicators.decisionsWithActions} convertidas`} variant={globalIndicators.decisionConversionRate >= 50 ? "success" : "warning"} />
+      {/* BLOCO 1 — Visão Geral da Carteira */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <MetricCard
+          title="Empresas Ativas"
+          value={companiesCompleted}
+          icon={Building2}
+          subtitle={`${companiesPending} em onboarding`}
+          tooltip="Empresas com onboarding concluído"
+          variant="default"
+        />
+        <MetricCard
+          title="Colaboradores"
+          value={totalEmployeesAll}
+          icon={Users}
+          subtitle="cadastrados na carteira"
+          tooltip="Total de colaboradores em todas as empresas"
+          variant="default"
+        />
+        <MetricCard
+          title="Maturidade Média"
+          value={`${avgMaturity}%`}
+          icon={TrendingUp}
+          subtitle={getMaturityLevel(avgMaturity).label}
+          tooltip="Índice médio de maturidade de todas as empresas"
+          variant={avgMaturity >= 50 ? "success" : avgMaturity >= 25 ? "warning" : "default"}
+        />
+        <MetricCard
+          title="Cobertura Média"
+          value={`${avgCoverage}%`}
+          icon={GraduationCap}
+          subtitle="treinamento da carteira"
+          tooltip="Média de cobertura de treinamento das empresas"
+          variant={avgCoverage >= 50 ? "success" : avgCoverage >= 20 ? "warning" : "danger"}
+        />
       </div>
 
-      {/* Health panel */}
+      {/* BLOCO 2 — Saúde da Carteira */}
       <Card className="p-5">
         <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
           <ShieldCheck size={18} className="text-primary" />
@@ -226,7 +243,72 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
         </div>
       </Card>
 
-      {/* Charts row */}
+      {/* BLOCO 3 — Empresas que Precisam de Atenção + Alertas */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-medium text-foreground">Empresas na Carteira</h3>
+              <button onClick={() => navigate("/empresas")} className="text-xs text-primary hover:text-primary/80 font-medium">
+                Ver todas →
+              </button>
+            </div>
+            <div className="space-y-0">
+              {/* Table header */}
+              <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider border-b border-border/50">
+                <div className="col-span-3">Empresa</div>
+                <div className="col-span-1 text-center">Ciclo</div>
+                <div className="col-span-2 text-center">Status</div>
+                <div className="col-span-2 text-center">Maturidade</div>
+                <div className="col-span-4">Alerta Principal</div>
+              </div>
+              {companyData.map(({ company, data, health, mainAlert, currentCycle }) => {
+                const healthInfo = getHealthLabel(health);
+                const HealthIcon = healthInfo.icon;
+                return (
+                  <div key={company.id} className="grid grid-cols-12 gap-2 items-center px-3 py-3 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
+                    <div className="col-span-3 flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Building2 size={14} className="text-primary" />
+                      </div>
+                      <p className="text-sm font-medium text-foreground truncate">{company.name}</p>
+                    </div>
+                    <div className="col-span-1 text-center">
+                      <Badge variant="outline" className="text-xs">{currentCycle}</Badge>
+                    </div>
+                    <div className="col-span-2 text-center">
+                      <Badge className={cn("text-xs gap-1", healthInfo.color)}>
+                        <HealthIcon size={10} />
+                        {healthInfo.label}
+                      </Badge>
+                    </div>
+                    <div className="col-span-2 flex items-center justify-center gap-1">
+                      <div className="flex-1 max-w-[60px] h-2 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${data.maturityScore}%` }} />
+                      </div>
+                      <span className="text-xs font-medium text-foreground">{data.maturityScore}%</span>
+                    </div>
+                    <div className="col-span-4">
+                      <p className={cn("text-xs", health === "risk" ? "text-destructive font-medium" : health === "warning" ? "text-amber-500" : "text-muted-foreground")}>
+                        {health === "risk" ? "🔴" : health === "warning" ? "🟡" : "🟢"} {mainAlert}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+              {companies.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-6">Nenhuma empresa cadastrada</p>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <SmartAlerts onAlertDismissed={onAlertDismissed} maxAlerts={4} refreshTrigger={refreshKey} />
+        </div>
+      </div>
+
+      {/* BLOCO 4 — Evolução da Carteira (charts) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Cycle distribution */}
         <Card className="p-5">
@@ -291,11 +373,11 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
         </Card>
       </div>
 
-      {/* Coverage + Critical actions row */}
+      {/* BLOCO 5 — Cobertura + Ações Críticas da Carteira */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Coverage */}
         <Card className="p-5">
-          <h3 className="font-medium text-foreground mb-4">Cobertura de Treinamento</h3>
+          <h3 className="font-medium text-foreground mb-4">Cobertura de Treinamento da Carteira</h3>
           <div className="flex items-center gap-6">
             <div className="relative w-28 h-28">
               <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
@@ -326,16 +408,16 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
           </div>
         </Card>
 
-        {/* Critical actions */}
+        {/* Critical — companies with most delayed actions (NO individual actions shown) */}
         <Card className="p-5">
           <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
             <AlertCircle size={16} className="text-destructive" />
-            Ações Críticas da Carteira
+            Empresas com Ações Atrasadas
           </h3>
           {criticalCompanies.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <CheckCircle size={28} className="mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Nenhuma ação atrasada na carteira</p>
+              <p className="text-sm">Nenhuma empresa com ações atrasadas</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -358,72 +440,18 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
         </Card>
       </div>
 
-      {/* Company table + alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-medium text-foreground">Empresas na Carteira</h3>
-              <button onClick={() => navigate("/empresas")} className="text-xs text-primary hover:text-primary/80 font-medium">
-                Ver todas →
-              </button>
-            </div>
-            <div className="space-y-0">
-              {/* Table header */}
-              <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider border-b border-border/50">
-                <div className="col-span-3">Empresa</div>
-                <div className="col-span-1 text-center">Ciclo</div>
-                <div className="col-span-2 text-center">Status</div>
-                <div className="col-span-2 text-center">Maturidade</div>
-                <div className="col-span-4">Alerta</div>
-              </div>
-              {companyData.map(({ company, data, health, mainAlert, currentCycle }) => {
-                const healthInfo = getHealthLabel(health);
-                const HealthIcon = healthInfo.icon;
-                const matLevel = getMaturityLevel(data.maturityScore);
-                return (
-                  <div key={company.id} className="grid grid-cols-12 gap-2 items-center px-3 py-3 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
-                    <div className="col-span-3 flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <Building2 size={14} className="text-primary" />
-                      </div>
-                      <p className="text-sm font-medium text-foreground truncate">{company.name}</p>
-                    </div>
-                    <div className="col-span-1 text-center">
-                      <Badge variant="outline" className="text-xs">{currentCycle}</Badge>
-                    </div>
-                    <div className="col-span-2 text-center">
-                      <Badge className={cn("text-xs gap-1", healthInfo.color)}>
-                        <HealthIcon size={10} />
-                        {healthInfo.label}
-                      </Badge>
-                    </div>
-                    <div className="col-span-2 flex items-center justify-center gap-1">
-                      <div className="flex-1 max-w-[60px] h-2 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${data.maturityScore}%` }} />
-                      </div>
-                      <span className="text-xs font-medium text-foreground">{data.maturityScore}%</span>
-                    </div>
-                    <div className="col-span-4">
-                      <p className={cn("text-xs", health === "risk" ? "text-destructive font-medium" : health === "warning" ? "text-amber-500" : "text-muted-foreground")}>
-                        {health === "risk" ? "🔴" : health === "warning" ? "🟡" : "🟢"} {mainAlert}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-              {companies.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-6">Nenhuma empresa cadastrada</p>
-              )}
-            </div>
-          </Card>
+      {/* Maturity gauge — portfolio average */}
+      <Card className="p-5">
+        <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
+          <TrendingUp size={18} className="text-primary" />
+          Índice Médio de Maturidade da Carteira MVP
+        </h3>
+        <div className="flex justify-center">
+          <div className="max-w-md w-full">
+            <MaturityGaugePremium score={avgMaturity} />
+          </div>
         </div>
-
-        <div className="space-y-6">
-          <SmartAlerts onAlertDismissed={onAlertDismissed} maxAlerts={4} refreshTrigger={refreshKey} />
-          <MaturityGaugePremium score={avgMaturity} />
-        </div>
-      </div>
+      </Card>
     </div>
   );
 }
