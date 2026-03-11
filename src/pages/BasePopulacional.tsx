@@ -108,30 +108,29 @@ export default function BasePopulacional() {
   const stats = useMemo(() => getPopulationStats(companyId), [companyId, refreshKey]);
   const orgStructure = useMemo(() => getOrgStructure(companyId), [companyId, refreshKey]);
 
-  // Dynamic filter options from data
-  const sectors = useMemo(() => {
-    const fromPop = population.map(m => m.sector).filter(Boolean);
-    const fromOrg = orgStructure.sectors.filter(s => !s.archived).map(s => s.name);
-    return Array.from(new Set([...fromPop, ...fromOrg])).sort();
-  }, [population, orgStructure]);
+  // Org structure options (source of truth for selects in form)
+  const orgSectors = useMemo(() => orgStructure.sectors.filter(s => !s.archived).map(s => s.name).sort(), [orgStructure]);
+  const orgUnits = useMemo(() => orgStructure.units.filter(u => !u.archived).map(u => u.name).sort(), [orgStructure]);
+  const orgShifts = useMemo(() => orgStructure.shifts.filter(s => !s.archived).map(s => s.name).sort(), [orgStructure]);
+  const orgPositions = useMemo(() => orgStructure.positions.filter(p => !p.archived).map(p => p.name).sort(), [orgStructure]);
 
-  const units = useMemo(() => {
-    const fromPop = population.map(m => m.unit).filter(Boolean);
-    const fromOrg = orgStructure.units.filter(u => !u.archived).map(u => u.name);
-    return Array.from(new Set([...fromPop, ...fromOrg])).sort();
-  }, [population, orgStructure]);
-
-  const shifts = useMemo(() => {
-    const fromPop = population.map(m => m.shift).filter(Boolean);
-    const fromOrg = orgStructure.shifts.filter(s => !s.archived).map(s => s.name);
-    return Array.from(new Set([...fromPop, ...fromOrg])).sort();
-  }, [population, orgStructure]);
-
-  const roles = useMemo(() => {
-    const fromPop = population.map(m => m.role).filter(Boolean);
-    const fromOrg = orgStructure.positions.filter(p => !p.archived).map(p => p.name);
-    return Array.from(new Set([...fromPop, ...fromOrg])).sort();
-  }, [population, orgStructure]);
+  // Filter options: combine org structure + existing population values for backwards compat
+  const filterSectors = useMemo(() => {
+    const all = new Set([...orgSectors, ...population.map(m => m.sector).filter(Boolean)]);
+    return Array.from(all).sort();
+  }, [orgSectors, population]);
+  const filterUnits = useMemo(() => {
+    const all = new Set([...orgUnits, ...population.map(m => m.unit).filter(Boolean)]);
+    return Array.from(all).sort();
+  }, [orgUnits, population]);
+  const filterShifts = useMemo(() => {
+    const all = new Set([...orgShifts, ...population.map(m => m.shift).filter(Boolean)]);
+    return Array.from(all).sort();
+  }, [orgShifts, population]);
+  const filterRoles = useMemo(() => {
+    const all = new Set([...orgPositions, ...population.map(m => m.role).filter(Boolean)]);
+    return Array.from(all).sort();
+  }, [orgPositions, population]);
 
   // Filtered list
   const filtered = useMemo(() => {
