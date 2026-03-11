@@ -193,6 +193,12 @@ export default function BasePopulacional() {
       return;
     }
 
+    // Auto-save any new org values typed by the user
+    ensureOrgValue("positions", form.role);
+    ensureOrgValue("sectors", form.sector);
+    ensureOrgValue("units", form.unit);
+    ensureOrgValue("shifts", form.shift);
+
     const pop = getPopulation(companyId);
 
     if (editingId) {
