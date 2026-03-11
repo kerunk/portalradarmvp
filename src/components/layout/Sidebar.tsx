@@ -20,7 +20,9 @@ import {
   ShieldCheck,
   Database,
   Layers,
-  
+  UserCog,
+  BookMarked,
+  SlidersHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,19 +36,48 @@ import {
 } from "@/components/ui/select";
 import logoMvp from "@/assets/logo-mvp.jpeg";
 
-// Navigation for Admin MVP (Master)
-const adminNavigation = [
-  { name: "Dashboard Geral", href: "/", icon: LayoutDashboard },
-  { name: "Empresas", href: "/empresas", icon: Building2 },
-  { name: "Projetos", href: "/plano", icon: FolderOpen },
-  { name: "Ciclos MVP", href: "/ciclos", icon: Rocket },
-  { name: "Turmas", href: "/turmas", icon: Users },
-  { name: "Fatores de Sucesso", href: "/fatores", icon: Target },
-  { name: "Prateleira Global", href: "/praticas", icon: BookOpen },
-  { name: "Registros", href: "/registros", icon: FileCheck },
-  { name: "Indicadores", href: "/indicadores", icon: BarChart3 },
-  { name: "Relatórios", href: "/relatorios", icon: FileText },
-  { name: "Maturidade", href: "/maturidade", icon: TrendingUp },
+// Admin navigation organized in 4 blocks
+interface NavSection {
+  label: string;
+  items: { name: string; href: string; icon: React.ElementType }[];
+}
+
+const adminSections: NavSection[] = [
+  {
+    label: "CONTROLE DA PLATAFORMA",
+    items: [
+      { name: "Dashboard Geral", href: "/", icon: LayoutDashboard },
+      { name: "Empresas", href: "/empresas", icon: Building2 },
+      { name: "Usuários", href: "/usuarios", icon: UserCog },
+      { name: "Projetos", href: "/plano", icon: FolderOpen },
+    ],
+  },
+  {
+    label: "OPERAÇÃO DO PROGRAMA",
+    items: [
+      { name: "Ciclos MVP", href: "/ciclos", icon: Rocket },
+      { name: "Turmas", href: "/turmas", icon: Users },
+      { name: "Fatores de Sucesso", href: "/fatores", icon: Target },
+      { name: "Registros", href: "/registros", icon: FileCheck },
+    ],
+  },
+  {
+    label: "INTELIGÊNCIA",
+    items: [
+      { name: "Indicadores", href: "/indicadores", icon: BarChart3 },
+      { name: "Relatórios", href: "/relatorios", icon: FileText },
+      { name: "Maturidade", href: "/maturidade", icon: TrendingUp },
+    ],
+  },
+  {
+    label: "ADMINISTRAÇÃO DO SISTEMA",
+    items: [
+      { name: "Prateleira Global", href: "/praticas", icon: BookOpen },
+      { name: "Manual Global MVP", href: "/manual-editor", icon: BookMarked },
+      { name: "Config. Indicadores", href: "/config-indicadores", icon: SlidersHorizontal },
+      { name: "Configurações", href: "/configuracoes", icon: Settings },
+    ],
+  },
 ];
 
 // Navigation for Client Portal
@@ -75,8 +106,6 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
   const [internalCollapsed, setInternalCollapsed] = React.useState(false);
   const collapsed = controlledCollapsed ?? internalCollapsed;
   const setCollapsed = onCollapsedChange ?? setInternalCollapsed;
-
-  const navigation = isAdminMVP ? adminNavigation : clientNavigation;
 
   const handleLogout = () => {
     logout();
@@ -134,20 +163,49 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navigation.map((item) => {
-          const isActive = location.pathname === item.href;
-          return (
-            <Link
-              key={item.name}
-              to={item.href}
-              className={cn("sidebar-nav-item", isActive && "active")}
-              title={collapsed ? item.name : undefined}
-            >
-              <item.icon size={20} className="flex-shrink-0" />
-              {!collapsed && <span>{item.name}</span>}
-            </Link>
-          );
-        })}
+        {isAdminMVP ? (
+          // Admin: sectioned navigation
+          adminSections.map((section) => (
+            <div key={section.label} className="mb-4">
+              {!collapsed && (
+                <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/40">
+                  {section.label}
+                </p>
+              )}
+              {collapsed && <div className="border-t border-sidebar-border/30 my-2" />}
+              {section.items.map((item) => {
+                const isActive = location.pathname === item.href;
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={cn("sidebar-nav-item", isActive && "active")}
+                    title={collapsed ? item.name : undefined}
+                  >
+                    <item.icon size={20} className="flex-shrink-0" />
+                    {!collapsed && <span>{item.name}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          ))
+        ) : (
+          // Client: flat navigation
+          clientNavigation.map((item) => {
+            const isActive = location.pathname === item.href;
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={cn("sidebar-nav-item", isActive && "active")}
+                title={collapsed ? item.name : undefined}
+              >
+                <item.icon size={20} className="flex-shrink-0" />
+                {!collapsed && <span>{item.name}</span>}
+              </Link>
+            );
+          })
+        )}
       </nav>
 
       {/* Footer */}
@@ -165,13 +223,6 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
               <SelectItem value="cliente">🏢 Portal Cliente</SelectItem>
             </SelectContent>
           </Select>
-        )}
-
-        {isAdminMVP && (
-          <Link to="/configuracoes" className="sidebar-nav-item" title={collapsed ? "Configurações" : undefined}>
-            <Settings size={20} className="flex-shrink-0" />
-            {!collapsed && <span>Configurações</span>}
-          </Link>
         )}
         
         <div className="flex items-center gap-3 px-3 py-2.5">
