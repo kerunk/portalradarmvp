@@ -280,6 +280,7 @@ export function criarAcoesDeDecisao(
     
     const newAction: CycleFactorAction = {
       id: newActionId,
+      title: actionData.title,
       enabled: true,
       disabledReason: '',
       responsible: actionData.responsible,
