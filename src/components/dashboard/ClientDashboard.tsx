@@ -121,18 +121,18 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
 
       {/* Row 1: People & Structure */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard title="Base Populacional" value={activePopulation} icon={Users} subtitle={`${popStats.sectors} setores · ${popStats.units} unidades`} variant="default" />
-        <MetricCard title="Núcleo de Sustentação" value={popStats.nucleoCount} icon={Shield} subtitle={`${popStats.leaders} lideranças`} variant="default" />
-        <MetricCard title="Facilitadores" value={popStats.facilitators} icon={UserCheck} subtitle="habilitados" variant={popStats.facilitators > 0 ? "success" : "default"} />
-        <MetricCard title="Turmas Realizadas" value={`${trainingStats.turmasRealizadas}/${trainingStats.turmasTotal}`} icon={GraduationCap} subtitle={`${trainingStats.pessoasTreinadas} pessoas treinadas`} variant="default" />
+        <MetricCard title="Base Populacional" value={activePopulation} icon={Users} subtitle={`${popStats.sectors} setores · ${popStats.units} unidades`} variant="default" tooltip="Total de colaboradores ativos cadastrados na base populacional da empresa." />
+        <MetricCard title="Núcleo de Sustentação" value={popStats.nucleoCount} icon={Shield} subtitle={`${popStats.leaders} lideranças`} variant="default" tooltip="Membros do núcleo que conduzem e sustentam o programa na organização." />
+        <MetricCard title="Facilitadores" value={popStats.facilitators} icon={UserCheck} subtitle="habilitados" variant={popStats.facilitators > 0 ? "success" : "default"} tooltip="Facilitadores habilitados para aplicar turmas e práticas do programa MVP." />
+        <MetricCard title="Turmas Realizadas" value={`${trainingStats.turmasRealizadas}/${trainingStats.turmasTotal}`} icon={GraduationCap} subtitle={`${trainingStats.pessoasTreinadas} pessoas treinadas`} variant="default" tooltip="Turmas de treinamento concluídas em relação ao total planejado." />
       </div>
 
       {/* Row 2: Execution */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard title="Ciclos Encerrados" value={`${globalIndicators.closedCycles}/${globalIndicators.totalCycles}`} icon={Target} subtitle={`${globalIndicators.cyclesReadyToClose} prontos para encerrar`} variant={globalIndicators.closedCycles > 0 ? "success" : "default"} />
-        <MetricCard title="Ações Concluídas" value={`${globalIndicators.completedActions}/${globalIndicators.totalActions}`} icon={CheckCircle} subtitle={`${globalIndicators.overallCompletionPercent}% do plano`} variant="success" />
-        <MetricCard title="Ações Atrasadas" value={globalIndicators.delayedActions} icon={AlertTriangle} subtitle={`${globalIndicators.actionBacklog} no backlog`} variant={globalIndicators.delayedActions > 0 ? "danger" : "default"} />
-        <MetricCard title="Taxa Decisão→Ação" value={`${globalIndicators.decisionConversionRate}%`} icon={TrendingUp} subtitle={`${globalIndicators.decisionsWithActions} decisões convertidas`} variant={globalIndicators.decisionConversionRate >= 50 ? "success" : "warning"} />
+        <MetricCard title="Ciclos Encerrados" value={`${globalIndicators.closedCycles}/${globalIndicators.totalCycles}`} icon={Target} subtitle={`${globalIndicators.cyclesReadyToClose} prontos para encerrar`} variant={globalIndicators.closedCycles > 0 ? "success" : "default"} tooltip="Ciclos MVP finalizados. Cada ciclo encerrado indica progresso na implementação." />
+        <MetricCard title="Ações Concluídas" value={`${globalIndicators.completedActions}/${globalIndicators.totalActions}`} icon={CheckCircle} subtitle={`${globalIndicators.overallCompletionPercent}% do plano`} variant="success" tooltip="Ações práticas executadas em relação ao total planejado no programa." />
+        <MetricCard title="Ações Atrasadas" value={globalIndicators.delayedActions} icon={AlertTriangle} subtitle={`${globalIndicators.actionBacklog} no backlog`} variant={globalIndicators.delayedActions > 0 ? "danger" : "default"} tooltip="Ações com prazo vencido que precisam de atenção imediata." />
+        <MetricCard title="Taxa Decisão→Ação" value={`${globalIndicators.decisionConversionRate}%`} icon={TrendingUp} subtitle={`${globalIndicators.decisionsWithActions} decisões convertidas`} variant={globalIndicators.decisionConversionRate >= 50 ? "success" : "warning"} tooltip="Percentual de decisões tomadas nos ciclos que foram convertidas em ações concretas. Acima de 50% é considerado saudável." />
       </div>
 
       {/* Row 3: Culture Score + Coverage + Maturity + Alerts */}
