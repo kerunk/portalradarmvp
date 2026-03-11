@@ -73,6 +73,7 @@ const App = () => (
             <Route path="/usuarios" element={<ProtectedRoute requireAdmin><UserManagement /></ProtectedRoute>} />
             <Route path="/manual-editor" element={<ProtectedRoute requireAdmin><ManualEditor /></ProtectedRoute>} />
             <Route path="/config-indicadores" element={<ProtectedRoute requireAdmin><IndicatorSettings /></ProtectedRoute>} />
+            <Route path="/admin-ajuda" element={<ProtectedRoute requireAdmin><AdminHelp /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
