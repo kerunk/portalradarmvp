@@ -27,7 +27,7 @@ import Settings from "./pages/Settings";
 import BasePopulacional from "./pages/BasePopulacional";
 import OrgStructure from "./pages/OrgStructure";
 import NucleoGovernance from "./pages/NucleoGovernance";
-import ExperiencesMVP from "./pages/ExperiencesMVP";
+
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
