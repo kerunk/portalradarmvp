@@ -1,6 +1,7 @@
 // Report Export - PDF and Excel (CSV) generation
 import jsPDF from 'jspdf';
 import type { ExecutiveReportData, TurmaReportData, NucleoReportData, CoverageReportData, CycleReportData, CollaboratorProgressData, SectorMaturityData } from './reportData';
+import { calculateCultureScore } from './reportData';
 
 // ============ COLORS ============
 const TEAL: [number, number, number] = [20, 90, 90];

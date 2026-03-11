@@ -4,15 +4,20 @@ import { ProgressCard } from "./ProgressCard";
 import { SmartAlerts } from "./SmartAlerts";
 import { ExecutiveSummary } from "./ExecutiveSummary";
 import { CoverageDonut } from "./CoverageDonut";
+import { CultureScoreGauge } from "./CultureScoreGauge";
 import { MaturityGaugePremium } from "./MaturityGaugePremium";
 import { ProgramTimeline } from "./ProgramTimeline";
+import { ProgramEvolutionChart } from "./ProgramEvolutionChart";
+import { CulturalMaturityRadar } from "./CulturalMaturityRadar";
+import { ImplementationTimeline } from "./ImplementationTimeline";
+import { SmartRecommendations } from "./SmartRecommendations";
 import { Card } from "@/components/ui/card";
 import { Users, Target, CheckCircle, TrendingUp, GraduationCap, Shield, UserCheck, AlertTriangle, CheckCircle2, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPopulationStats, getPopulation } from "@/lib/companyStorage";
 import { obterIndicadoresGlobais, obterIndicadoresTodosCiclos } from "@/lib/governance";
 import { getState } from "@/lib/storage";
-import { generateInsights } from "@/lib/reportData";
+import { generateInsights, calculateCultureScore } from "@/lib/reportData";
 
 interface ClientDashboardProps {
   companyId: string;
@@ -26,13 +31,10 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
   const globalIndicators = useMemo(() => obterIndicadoresGlobais(), [refreshKey]);
   const cycleIndicators = useMemo(() => obterIndicadoresTodosCiclos(), [refreshKey]);
 
-  // Training coverage: unique people with attendance "present" / active population
   const trainingStats = useMemo(() => {
     const state = getState();
     const turmas = state.turmas;
     const turmasRealizadas = turmas.filter(t => t.status === "completed").length;
-    
-    // Collect unique trained IDs
     const trainedIds = new Set<string>();
     turmas.forEach(t => {
       if (t.attendance) {
@@ -41,22 +43,18 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
         });
       }
     });
-
     const totalPresences = turmas.reduce((sum, t) => {
       if (!t.attendance) return sum;
       return sum + Object.values(t.attendance).filter(s => s === "present").length;
     }, 0);
-
-    return {
-      turmasTotal: turmas.length,
-      turmasRealizadas,
-      pessoasTreinadas: trainedIds.size,
-      totalPresences,
-    };
+    return { turmasTotal: turmas.length, turmasRealizadas, pessoasTreinadas: trainedIds.size, totalPresences };
   }, [refreshKey]);
 
   const activePopulation = popStats.total;
   const coveragePercent = activePopulation > 0 ? Math.round((trainingStats.pessoasTreinadas / activePopulation) * 100) : 0;
+
+  // Culture Score
+  const cultureScore = useMemo(() => calculateCultureScore(companyId), [companyId, refreshKey]);
 
   // Phase progress for timeline
   const timelinePhases = useMemo(() => {
@@ -65,13 +63,7 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
       const allClosed = cycles.every(c => c.status === "closed");
       const anyActive = cycles.some(c => c.status === "in_progress" || c.status === "ready_to_close");
       const avgProgress = cycles.reduce((s, c) => s + c.completionPercent, 0) / (cycles.length || 1);
-      return {
-        id,
-        name,
-        cycles: cycleIds,
-        status: allClosed ? "completed" as const : anyActive ? "in-progress" as const : "pending" as const,
-        progress: Math.round(avgProgress),
-      };
+      return { id, name, cycles: cycleIds, status: allClosed ? "completed" as const : anyActive ? "in-progress" as const : "pending" as const, progress: Math.round(avgProgress) };
     };
     return [
       buildPhase("M", "Monitorar", ["M1", "M2", "M3"]),
@@ -80,7 +72,7 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
     ];
   }, [cycleIndicators]);
 
-  // Maturity score: weighted
+  // Maturity score
   const maturityScore = useMemo(() => {
     const popScore = activePopulation > 0 ? 15 : 0;
     const nucleoScore = popStats.nucleoCount > 0 ? 10 : 0;
@@ -131,19 +123,9 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
         <MetricCard title="Taxa Decisão→Ação" value={`${globalIndicators.decisionConversionRate}%`} icon={TrendingUp} subtitle={`${globalIndicators.decisionsWithActions} decisões convertidas`} variant={globalIndicators.decisionConversionRate >= 50 ? "success" : "warning"} />
       </div>
 
-      {/* Row 3: Progress + Coverage + Maturity + Alerts */}
+      {/* Row 3: Culture Score + Coverage + Maturity + Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <ProgressCard
-          title="Progresso do Plano"
-          progress={progressData.completed}
-          total={progressData.total}
-          items={[
-            { label: "Concluídas", value: progressData.completed, color: "success" },
-            { label: "Em andamento", value: progressData.inProgress, color: "primary" },
-            { label: "Atrasadas", value: progressData.delayed, color: "danger" },
-            { label: "Pendentes", value: progressData.pending, color: "warning" },
-          ]}
-        />
+        <CultureScoreGauge score={cultureScore.score} />
         <CoverageDonut
           title="Cobertura do Programa"
           value={trainingStats.pessoasTreinadas}
@@ -155,10 +137,48 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
         <SmartAlerts onAlertDismissed={onAlertDismissed} maxAlerts={4} refreshTrigger={refreshKey} />
       </div>
 
-      {/* Row 4: Timeline */}
-      <ProgramTimeline phases={timelinePhases} />
+      {/* Row 4: Progress + Plan */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ProgressCard
+          title="Progresso do Plano"
+          progress={progressData.completed}
+          total={progressData.total}
+          items={[
+            { label: "Concluídas", value: progressData.completed, color: "success" },
+            { label: "Em andamento", value: progressData.inProgress, color: "primary" },
+            { label: "Atrasadas", value: progressData.delayed, color: "danger" },
+            { label: "Pendentes", value: progressData.pending, color: "warning" },
+          ]}
+        />
+        <SmartRecommendations
+          coveragePercent={coveragePercent}
+          completionPercent={globalIndicators.overallCompletionPercent}
+          delayedActions={globalIndicators.delayedActions}
+          facilitators={popStats.facilitators}
+          nucleoCount={popStats.nucleoCount}
+          turmasRealizadas={trainingStats.turmasRealizadas}
+          closedCycles={globalIndicators.closedCycles}
+          totalCycles={globalIndicators.totalCycles}
+        />
+      </div>
 
-      {/* Row 5: Program Insights */}
+      {/* Row 5: Evolution Chart + Radar */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ProgramEvolutionChart
+          coveragePercent={coveragePercent}
+          completionPercent={globalIndicators.overallCompletionPercent}
+          maturityScore={maturityScore}
+        />
+        <CulturalMaturityRadar companyId={companyId} refreshKey={refreshKey} />
+      </div>
+
+      {/* Row 6: Timelines */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ProgramTimeline phases={timelinePhases} />
+        <ImplementationTimeline refreshKey={refreshKey} />
+      </div>
+
+      {/* Row 7: Program Insights */}
       <InsightsPanel
         coveragePercent={coveragePercent}
         completionPercent={globalIndicators.overallCompletionPercent}
