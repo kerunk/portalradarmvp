@@ -1,4 +1,6 @@
 import { useState, useMemo } from "react";
+import { getCompanies } from "@/lib/storage";
+import { getCompanyRiskData } from "@/lib/adminNotifications";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
