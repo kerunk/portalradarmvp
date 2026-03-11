@@ -138,6 +138,9 @@ export default function MVPCycles() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
+  const highlightActionId = searchParams.get("highlight");
+  const fromAlert = searchParams.get("fromAlert") === "true";
+  
   const [selectedCycleId, setSelectedCycleId] = useState(() => {
     return searchParams.get("cycle") || "M1";
   });
@@ -147,6 +150,7 @@ export default function MVPCycles() {
   const [isClosureDialogOpen, setIsClosureDialogOpen] = useState(false);
   const [cycleGovernance, setCycleGovernance] = useState<CycleGovernance | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [highlightedId, setHighlightedId] = useState<string | null>(highlightActionId);
 
   // Load state from localStorage
   useEffect(() => {
