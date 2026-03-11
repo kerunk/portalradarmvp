@@ -21,6 +21,7 @@ export function MetricCard({
   value,
   subtitle,
   icon: Icon,
+  tooltip,
   trend,
   variant = "default",
 }: MetricCardProps) {
