@@ -1,12 +1,14 @@
 import { ReactNode } from "react";
 import { LucideIcon, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface MetricCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
   icon: LucideIcon;
+  tooltip?: string;
   trend?: {
     value: number;
     label: string;
