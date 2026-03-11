@@ -134,16 +134,24 @@ function initializeCycleState(cycle: MVPCycle): CycleState {
 }
 
 export default function MVPCycles() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   
   const highlightActionId = searchParams.get("highlight");
   const fromAlert = searchParams.get("fromAlert") === "true";
   
-  const [selectedCycleId, setSelectedCycleId] = useState(() => {
+  const [selectedCycleId, setSelectedCycleIdRaw] = useState(() => {
     return searchParams.get("cycle") || "M1";
   });
+  
+  // Update URL when switching cycles for smooth navigation
+  const setSelectedCycleId = useCallback((id: string) => {
+    setSelectedCycleIdRaw(id);
+    setSearchParams({ cycle: id }, { replace: true });
+    setHighlightedId(null);
+  }, [setSearchParams]);
+  
   const [cycleStates, setCycleStates] = useState<Record<string, CycleState>>({});
   const [turmas, setTurmasState] = useState<TurmaState[]>([]);
   const [openFactors, setOpenFactors] = useState<string[]>([]);
