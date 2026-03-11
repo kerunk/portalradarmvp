@@ -40,6 +40,7 @@ import {
   ShieldCheck,
   Star,
   Crown,
+  ExternalLink,
 } from "lucide-react";
 import {
   type PopulationMember,
@@ -107,30 +108,29 @@ export default function BasePopulacional() {
   const stats = useMemo(() => getPopulationStats(companyId), [companyId, refreshKey]);
   const orgStructure = useMemo(() => getOrgStructure(companyId), [companyId, refreshKey]);
 
-  // Dynamic filter options from data
-  const sectors = useMemo(() => {
-    const fromPop = population.map(m => m.sector).filter(Boolean);
-    const fromOrg = orgStructure.sectors.filter(s => !s.archived).map(s => s.name);
-    return Array.from(new Set([...fromPop, ...fromOrg])).sort();
-  }, [population, orgStructure]);
+  // Org structure options (source of truth for selects in form)
+  const orgSectors = useMemo(() => orgStructure.sectors.filter(s => !s.archived).map(s => s.name).sort(), [orgStructure]);
+  const orgUnits = useMemo(() => orgStructure.units.filter(u => !u.archived).map(u => u.name).sort(), [orgStructure]);
+  const orgShifts = useMemo(() => orgStructure.shifts.filter(s => !s.archived).map(s => s.name).sort(), [orgStructure]);
+  const orgPositions = useMemo(() => orgStructure.positions.filter(p => !p.archived).map(p => p.name).sort(), [orgStructure]);
 
-  const units = useMemo(() => {
-    const fromPop = population.map(m => m.unit).filter(Boolean);
-    const fromOrg = orgStructure.units.filter(u => !u.archived).map(u => u.name);
-    return Array.from(new Set([...fromPop, ...fromOrg])).sort();
-  }, [population, orgStructure]);
-
-  const shifts = useMemo(() => {
-    const fromPop = population.map(m => m.shift).filter(Boolean);
-    const fromOrg = orgStructure.shifts.filter(s => !s.archived).map(s => s.name);
-    return Array.from(new Set([...fromPop, ...fromOrg])).sort();
-  }, [population, orgStructure]);
-
-  const roles = useMemo(() => {
-    const fromPop = population.map(m => m.role).filter(Boolean);
-    const fromOrg = orgStructure.positions.filter(p => !p.archived).map(p => p.name);
-    return Array.from(new Set([...fromPop, ...fromOrg])).sort();
-  }, [population, orgStructure]);
+  // Filter options: combine org structure + existing population values for backwards compat
+  const filterSectors = useMemo(() => {
+    const all = new Set([...orgSectors, ...population.map(m => m.sector).filter(Boolean)]);
+    return Array.from(all).sort();
+  }, [orgSectors, population]);
+  const filterUnits = useMemo(() => {
+    const all = new Set([...orgUnits, ...population.map(m => m.unit).filter(Boolean)]);
+    return Array.from(all).sort();
+  }, [orgUnits, population]);
+  const filterShifts = useMemo(() => {
+    const all = new Set([...orgShifts, ...population.map(m => m.shift).filter(Boolean)]);
+    return Array.from(all).sort();
+  }, [orgShifts, population]);
+  const filterRoles = useMemo(() => {
+    const all = new Set([...orgPositions, ...population.map(m => m.role).filter(Boolean)]);
+    return Array.from(all).sort();
+  }, [orgPositions, population]);
 
   // Filtered list
   const filtered = useMemo(() => {
@@ -181,6 +181,10 @@ export default function BasePopulacional() {
   const handleSave = () => {
     if (!form.name.trim()) {
       toast({ title: "Nome é obrigatório", variant: "destructive" });
+      return;
+    }
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      toast({ title: "Email inválido", description: "Informe um email válido.", variant: "destructive" });
       return;
     }
     if (form.email && isEmailUsedInCompany(companyId, form.email, editingId || undefined)) {
@@ -266,6 +270,39 @@ export default function BasePopulacional() {
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
+  const renderOrgSelect = (label: string, field: keyof MemberForm, options: string[], orgCategory: string) => {
+    const currentValue = form[field] as string;
+    const hasOptions = options.length > 0;
+    // Include current value in options if it exists but isn't in org structure (legacy data)
+    const allOptions = currentValue && !options.includes(currentValue)
+      ? [currentValue, ...options]
+      : options;
+
+    return (
+      <div className="space-y-1">
+        <Label>{label}</Label>
+        {hasOptions || currentValue ? (
+          <Select
+            value={currentValue || "__empty__"}
+            onValueChange={v => setForm(f => ({ ...f, [field]: v === "__empty__" ? "" : v }))}
+          >
+            <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__empty__">— Nenhum —</SelectItem>
+              {allOptions.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-muted-foreground flex-1">Nenhum cadastrado</p>
+            <Button variant="link" size="sm" className="h-auto p-0" onClick={() => window.location.href = "/estrutura-organizacional"}>
+              <ExternalLink size={12} className="mr-1" /> Adicionar na Estrutura
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <AppLayout title="Base Populacional" subtitle={`Gestão de colaboradores — ${user?.companyName || "Empresa"}`}>
@@ -312,28 +349,28 @@ export default function BasePopulacional() {
             <SelectTrigger className="w-[140px]"><SelectValue placeholder="Setor" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos setores</SelectItem>
-              {sectors.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              {filterSectors.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterUnit} onValueChange={setFilterUnit}>
             <SelectTrigger className="w-[140px]"><SelectValue placeholder="Unidade" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas unidades</SelectItem>
-              {units.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+              {filterUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterShift} onValueChange={setFilterShift}>
             <SelectTrigger className="w-[120px]"><SelectValue placeholder="Turno" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos turnos</SelectItem>
-              {shifts.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              {filterShifts.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterRole} onValueChange={setFilterRole}>
             <SelectTrigger className="w-[120px]"><SelectValue placeholder="Cargo" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos cargos</SelectItem>
-              {roles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+              {filterRoles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterActive} onValueChange={setFilterActive}>
@@ -473,61 +510,11 @@ export default function BasePopulacional() {
               <Label>Email</Label>
               <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="email@empresa.com" />
             </div>
+            {renderOrgSelect("Cargo", "role", orgPositions, "positions")}
+            {renderOrgSelect("Setor", "sector", orgSectors, "sectors")}
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Cargo</Label>
-                {roles.length > 0 ? (
-                  <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>
-                      {roles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} placeholder="Ex: Técnico" />
-                )}
-              </div>
-              <div className="space-y-1">
-                <Label>Setor</Label>
-                {sectors.length > 0 ? (
-                  <Select value={form.sector} onValueChange={v => setForm(f => ({ ...f, sector: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>
-                      {sectors.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input value={form.sector} onChange={e => setForm(f => ({ ...f, sector: e.target.value }))} placeholder="Ex: Operações" />
-                )}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Unidade</Label>
-                {units.length > 0 ? (
-                  <Select value={form.unit} onValueChange={v => setForm(f => ({ ...f, unit: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>
-                      {units.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} placeholder="Ex: Planta Industrial" />
-                )}
-              </div>
-              <div className="space-y-1">
-                <Label>Turno</Label>
-                {shifts.length > 0 ? (
-                  <Select value={form.shift} onValueChange={v => setForm(f => ({ ...f, shift: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>
-                      {shifts.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input value={form.shift} onChange={e => setForm(f => ({ ...f, shift: e.target.value }))} placeholder="Ex: A" />
-                )}
-              </div>
+              {renderOrgSelect("Unidade", "unit", orgUnits, "units")}
+              {renderOrgSelect("Turno", "shift", orgShifts, "shifts")}
             </div>
             <div className="space-y-1">
               <Label>Data de Admissão</Label>
