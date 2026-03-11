@@ -23,6 +23,7 @@ import {
   UserCog,
   BookMarked,
   SlidersHorizontal,
+  HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -75,6 +76,7 @@ const adminSections: NavSection[] = [
       { name: "Prateleira Global", href: "/praticas", icon: BookOpen },
       { name: "Manual Global MVP", href: "/manual-editor", icon: BookMarked },
       { name: "Config. Indicadores", href: "/config-indicadores", icon: SlidersHorizontal },
+      { name: "Ajuda da Plataforma", href: "/admin-ajuda", icon: HelpCircle },
       { name: "Configurações", href: "/configuracoes", icon: Settings },
     ],
   },

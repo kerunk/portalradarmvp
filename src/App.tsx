@@ -31,6 +31,7 @@ import HelpCenter from "./pages/HelpCenter";
 import UserManagement from "./pages/UserManagement";
 import ManualEditor from "./pages/ManualEditor";
 import IndicatorSettings from "./pages/IndicatorSettings";
+import AdminHelp from "./pages/AdminHelp";
 
 import NotFound from "./pages/NotFound";
 
@@ -72,6 +73,7 @@ const App = () => (
             <Route path="/usuarios" element={<ProtectedRoute requireAdmin><UserManagement /></ProtectedRoute>} />
             <Route path="/manual-editor" element={<ProtectedRoute requireAdmin><ManualEditor /></ProtectedRoute>} />
             <Route path="/config-indicadores" element={<ProtectedRoute requireAdmin><IndicatorSettings /></ProtectedRoute>} />
+            <Route path="/admin-ajuda" element={<ProtectedRoute requireAdmin><AdminHelp /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>

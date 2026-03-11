@@ -134,19 +134,31 @@ function initializeCycleState(cycle: MVPCycle): CycleState {
 }
 
 export default function MVPCycles() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [selectedCycleId, setSelectedCycleId] = useState(() => {
+  const highlightActionId = searchParams.get("highlight");
+  const fromAlert = searchParams.get("fromAlert") === "true";
+  
+  const [selectedCycleId, setSelectedCycleIdRaw] = useState(() => {
     return searchParams.get("cycle") || "M1";
   });
+  
+  // Update URL when switching cycles for smooth navigation
+  const setSelectedCycleId = useCallback((id: string) => {
+    setSelectedCycleIdRaw(id);
+    setSearchParams({ cycle: id }, { replace: true });
+    setHighlightedId(null);
+  }, [setSearchParams]);
+  
   const [cycleStates, setCycleStates] = useState<Record<string, CycleState>>({});
   const [turmas, setTurmasState] = useState<TurmaState[]>([]);
   const [openFactors, setOpenFactors] = useState<string[]>([]);
   const [isClosureDialogOpen, setIsClosureDialogOpen] = useState(false);
   const [cycleGovernance, setCycleGovernance] = useState<CycleGovernance | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [highlightedId, setHighlightedId] = useState<string | null>(highlightActionId);
 
   // Load state from localStorage
   useEffect(() => {
@@ -180,6 +192,28 @@ export default function MVPCycles() {
   const currentCycle = mvpCycles.find(c => c.id === selectedCycleId)!;
   const currentCycleState = cycleStates[selectedCycleId];
   const isCycleLocked = cycleGovernance?.status === 'closed' || cycleGovernance?.isLocked;
+
+  // Auto-open factor and scroll to highlighted action from alert
+  useEffect(() => {
+    if (!highlightActionId || !currentCycleState) return;
+    
+    for (const factor of currentCycleState.factors) {
+      const hasAction = factor.actions.some(a => a.id === highlightActionId);
+      if (hasAction && !openFactors.includes(factor.id)) {
+        setOpenFactors(prev => [...prev, factor.id]);
+      }
+    }
+
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`action-${highlightActionId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 500);
+
+    const clearTimer = setTimeout(() => setHighlightedId(null), 5000);
+    return () => { clearTimeout(timer); clearTimeout(clearTimer); };
+  }, [highlightActionId, currentCycleState]);
 
   // Get active actions (enabled ones)
   const activeActions = useMemo(() => {
@@ -755,10 +789,16 @@ export default function MVPCycles() {
                         if (!actionState) return null;
 
                         return (
-                          <div key={actionDef.id} className={cn(
-                            "p-4 rounded-lg border transition-all",
-                            actionState.enabled ? "bg-success/5 border-success/20" : "bg-muted/30 border-muted"
+                          <div key={actionDef.id} id={`action-${actionDef.id}`} className={cn(
+                            "p-4 rounded-lg border transition-all duration-500",
+                            actionState.enabled ? "bg-success/5 border-success/20" : "bg-muted/30 border-muted",
+                            highlightedId === actionDef.id && "ring-2 ring-primary shadow-lg"
                           )}>
+                            {fromAlert && highlightedId === actionDef.id && (
+                              <Badge variant="secondary" className="text-[10px] mb-2">
+                                Item aberto a partir de alerta do sistema
+                              </Badge>
+                            )}
                             <div className="flex items-center gap-3 mb-3">
                               <Switch
                                 checked={actionState.enabled}
@@ -876,13 +916,19 @@ export default function MVPCycles() {
                 const StatusIcon = config.icon;
 
                 return (
-                  <div key={id} className={cn(
-                    "p-4 rounded-lg border-l-4 bg-card border",
+                  <div key={id} id={`action-${id}`} className={cn(
+                    "p-4 rounded-lg border-l-4 bg-card border transition-all duration-500",
                     displayStatus === "completed" && "border-l-success",
                     displayStatus === "in_progress" && "border-l-warning",
                     displayStatus === "pending" && "border-l-muted",
-                    displayStatus === "delayed" && "border-l-destructive"
+                    displayStatus === "delayed" && "border-l-destructive",
+                    highlightedId === id && "ring-2 ring-primary shadow-lg bg-primary/5"
                   )}>
+                    {fromAlert && highlightedId === id && (
+                      <Badge variant="secondary" className="text-[10px] mb-2">
+                        Item aberto a partir de alerta do sistema
+                      </Badge>
+                    )}
                     <div className="flex items-start justify-between gap-4 mb-2">
                       <div>
                         <span className="font-medium text-foreground">{title}</span>
