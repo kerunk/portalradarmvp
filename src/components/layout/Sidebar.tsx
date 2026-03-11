@@ -74,6 +74,7 @@ const adminSections: NavSection[] = [
     items: [
       { name: "Prateleira Global", href: "/praticas", icon: BookOpen },
       { name: "Manual Global MVP", href: "/manual-editor", icon: BookMarked },
+      { name: "Config. Indicadores", href: "/config-indicadores", icon: SlidersHorizontal },
       { name: "Configurações", href: "/configuracoes", icon: Settings },
     ],
   },
