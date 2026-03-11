@@ -63,7 +63,13 @@ export function SmartAlerts({ onAlertDismissed, maxAlerts = 5, refreshTrigger = 
   const displayedAlerts = alerts.filter(a => !dismissedIds.has(a.id)).slice(0, maxAlerts);
 
   const handleNavigate = (alert: EnhancedSmartAlert) => {
-    navigate(alert.navigateTo);
+    // Add highlight and fromAlert params for deep linking
+    const url = new URL(alert.navigateTo, window.location.origin);
+    if (alert.actionId) {
+      url.searchParams.set("highlight", alert.actionId);
+    }
+    url.searchParams.set("fromAlert", "true");
+    navigate(url.pathname + url.search);
   };
 
   const handleDismiss = (e: React.MouseEvent, alertId: string) => {

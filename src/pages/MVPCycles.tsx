@@ -781,10 +781,16 @@ export default function MVPCycles() {
                         if (!actionState) return null;
 
                         return (
-                          <div key={actionDef.id} className={cn(
-                            "p-4 rounded-lg border transition-all",
-                            actionState.enabled ? "bg-success/5 border-success/20" : "bg-muted/30 border-muted"
+                          <div key={actionDef.id} id={`action-${actionDef.id}`} className={cn(
+                            "p-4 rounded-lg border transition-all duration-500",
+                            actionState.enabled ? "bg-success/5 border-success/20" : "bg-muted/30 border-muted",
+                            highlightedId === actionDef.id && "ring-2 ring-primary shadow-lg"
                           )}>
+                            {fromAlert && highlightedId === actionDef.id && (
+                              <Badge variant="secondary" className="text-[10px] mb-2">
+                                Item aberto a partir de alerta do sistema
+                              </Badge>
+                            )}
                             <div className="flex items-center gap-3 mb-3">
                               <Switch
                                 checked={actionState.enabled}
