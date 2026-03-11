@@ -347,6 +347,7 @@ export default function MVPCycles() {
     const newActionId = `custom-action-${Date.now()}`;
     const newAction: CycleFactorAction = {
       id: newActionId,
+      title: actionData.title || actionData.description || "",
       enabled: true,
       disabledReason: "",
       responsible: actionData.responsible,
