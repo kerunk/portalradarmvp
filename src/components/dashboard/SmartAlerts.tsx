@@ -138,6 +138,12 @@ export function SmartAlerts({ onAlertDismissed, maxAlerts = 5, refreshTrigger = 
                         {alert.responsible}
                       </Badge>
                     )}
+                    {alert.dueDate && (
+                      <Badge variant="outline" className="text-xs gap-1">
+                        <Calendar size={10} />
+                        {new Date(alert.dueDate).toLocaleDateString('pt-BR')}
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 <ArrowRight size={14} className="text-muted-foreground flex-shrink-0" />
