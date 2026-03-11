@@ -31,6 +31,7 @@ import HelpCenter from "./pages/HelpCenter";
 import UserManagement from "./pages/UserManagement";
 import ManualEditor from "./pages/ManualEditor";
 import IndicatorSettings from "./pages/IndicatorSettings";
+import AdminHelp from "./pages/AdminHelp";
 
 import NotFound from "./pages/NotFound";
 
