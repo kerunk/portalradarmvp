@@ -5,14 +5,57 @@ import { SmartAlerts } from "./SmartAlerts";
 import { MaturityGaugePremium } from "./MaturityGaugePremium";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Users, Target, TrendingUp, CheckCircle, AlertTriangle, BarChart3 } from "lucide-react";
-import { getCompanies } from "@/lib/storage";
+import { Building2, Users, Target, TrendingUp, CheckCircle, AlertTriangle, BarChart3, Rocket, GraduationCap, Zap } from "lucide-react";
+import { getCompanies, setActiveCompany, getState } from "@/lib/storage";
 import { obterIndicadoresGlobais, obterIndicadoresTodosCiclos } from "@/lib/governance";
 import { cn } from "@/lib/utils";
 
 interface AdminDashboardProps {
   refreshKey: number;
   onAlertDismissed: () => void;
+}
+
+// Helper to get per-company consolidated data
+function getCompanyConsolidatedData(companyId: string) {
+  // Temporarily switch context to read company data
+  setActiveCompany(companyId);
+  const state = getState();
+  
+  const totalEmployees = state.employees.length;
+  const totalTurmas = state.turmas.length;
+  const activeTurmas = state.turmas.filter(t => t.status === "in_progress" || t.status === "planned").length;
+  
+  let totalActions = 0;
+  let completedActions = 0;
+  let cyclesInProgress = 0;
+  let cyclesClosed = 0;
+  
+  Object.entries(state.cycles).forEach(([_, cycleState]) => {
+    if (cycleState.closureStatus === "closed") cyclesClosed++;
+    else if (cycleState.factors.some(f => f.actions.some(a => a.enabled))) cyclesInProgress++;
+    
+    cycleState.factors.forEach(factor => {
+      factor.actions.forEach(action => {
+        if (action.enabled) {
+          totalActions++;
+          if (action.status === "completed") completedActions++;
+        }
+      });
+    });
+  });
+
+  // Calculate a simple maturity score
+  const maturityScore = Math.min(100, Math.round(
+    (totalEmployees > 0 ? 15 : 0) +
+    (cyclesClosed * 10) +
+    (totalActions > 0 ? (completedActions / totalActions) * 40 : 0) +
+    (totalTurmas > 0 ? Math.min(20, totalTurmas * 5) : 0)
+  ));
+  
+  // Reset active company
+  setActiveCompany(null);
+  
+  return { totalEmployees, totalTurmas, activeTurmas, totalActions, completedActions, cyclesInProgress, cyclesClosed, maturityScore };
 }
 
 export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardProps) {
@@ -25,14 +68,37 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
   const companiesCompleted = companies.filter(c => c.onboardingStatus === "completed").length;
   const companiesPending = companies.filter(c => c.onboardingStatus !== "completed").length;
 
-  // Determine current phase
-  const currentPhase = (() => {
-    const pCycles = cycleIndicators.filter(c => c.cycleId.startsWith("P"));
-    const vCycles = cycleIndicators.filter(c => c.cycleId.startsWith("V"));
-    if (pCycles.some(c => c.status === "in_progress" || c.status === "ready_to_close")) return "Perpetuar";
-    if (vCycles.some(c => c.status === "in_progress" || c.status === "ready_to_close")) return "Validar";
-    return "Monitorar";
-  })();
+  // Per-company data
+  const companyData = useMemo(() => {
+    return companies.map(c => ({
+      company: c,
+      data: getCompanyConsolidatedData(c.id),
+    }));
+  }, [companies, refreshKey]);
+
+  // Aggregated totals
+  const totalEmployeesAll = companyData.reduce((s, c) => s + c.data.totalEmployees, 0);
+  const totalTurmasAll = companyData.reduce((s, c) => s + c.data.totalTurmas, 0);
+  const activeTurmasAll = companyData.reduce((s, c) => s + c.data.activeTurmas, 0);
+  const totalActionsAll = companyData.reduce((s, c) => s + c.data.totalActions, 0);
+  const completedActionsAll = companyData.reduce((s, c) => s + c.data.completedActions, 0);
+  const avgMaturity = companyData.length > 0
+    ? Math.round(companyData.reduce((s, c) => s + c.data.maturityScore, 0) / companyData.length)
+    : 0;
+
+  const maturityLevels: Record<string, { label: string; color: string }> = {
+    "0": { label: "Inicial", color: "bg-muted text-muted-foreground" },
+    "1": { label: "Estruturando", color: "bg-amber-500/15 text-amber-400" },
+    "2": { label: "Evoluindo", color: "bg-primary/15 text-primary" },
+    "3": { label: "Consolidando", color: "bg-emerald-500/15 text-emerald-400" },
+  };
+
+  function getMaturityLevel(score: number) {
+    if (score >= 76) return maturityLevels["3"];
+    if (score >= 51) return maturityLevels["2"];
+    if (score >= 26) return maturityLevels["1"];
+    return maturityLevels["0"];
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -53,12 +119,14 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
         </div>
       </div>
 
-      {/* Company overview metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Top-level consolidated metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <MetricCard title="Empresas Ativas" value={companiesCompleted} icon={Building2} subtitle={`${companiesPending} pendentes`} variant="default" />
-        <MetricCard title="Total de Ciclos" value={`${globalIndicators.closedCycles}/${globalIndicators.totalCycles}`} icon={Target} subtitle={`${globalIndicators.cyclesReadyToClose} prontos para encerrar`} variant={globalIndicators.closedCycles > 0 ? "success" : "default"} />
-        <MetricCard title="Ações Globais" value={`${globalIndicators.completedActions}/${globalIndicators.totalActions}`} icon={CheckCircle} subtitle={`${globalIndicators.overallCompletionPercent}% concluído`} variant="success" />
-        <MetricCard title="Taxa Decisão→Ação" value={`${globalIndicators.decisionConversionRate}%`} icon={TrendingUp} subtitle={`${globalIndicators.decisionsWithActions} decisões convertidas`} variant={globalIndicators.decisionConversionRate >= 50 ? "success" : "warning"} />
+        <MetricCard title="Colaboradores" value={totalEmployeesAll} icon={Users} subtitle="cadastrados no total" variant="default" />
+        <MetricCard title="Ciclos MVP" value={`${globalIndicators.closedCycles}/${globalIndicators.totalCycles}`} icon={Rocket} subtitle={`${globalIndicators.cyclesInProgress} em andamento`} variant={globalIndicators.closedCycles > 0 ? "success" : "default"} />
+        <MetricCard title="Turmas" value={totalTurmasAll} icon={GraduationCap} subtitle={`${activeTurmasAll} em execução`} variant="default" />
+        <MetricCard title="Ações Globais" value={`${completedActionsAll}/${totalActionsAll}`} icon={CheckCircle} subtitle={`${totalActionsAll > 0 ? Math.round((completedActionsAll / totalActionsAll) * 100) : 0}% concluído`} variant="success" />
+        <MetricCard title="Taxa Decisão→Ação" value={`${globalIndicators.decisionConversionRate}%`} icon={Zap} subtitle={`${globalIndicators.decisionsWithActions} convertidas`} variant={globalIndicators.decisionConversionRate >= 50 ? "success" : "warning"} />
       </div>
 
       {/* Company list + alerts */}
@@ -71,32 +139,57 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
                 Ver todas →
               </button>
             </div>
-            <div className="space-y-3">
-              {companies.map(company => {
-                const statusColors = {
-                  completed: "bg-success/15 text-success",
-                  in_progress: "bg-warning/15 text-warning",
+            <div className="space-y-0">
+              {/* Table header */}
+              <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider border-b border-border/50">
+                <div className="col-span-3">Empresa</div>
+                <div className="col-span-2">Setor</div>
+                <div className="col-span-2 text-center">Colaboradores</div>
+                <div className="col-span-2 text-center">Status</div>
+                <div className="col-span-3 text-center">Maturidade</div>
+              </div>
+              {companyData.map(({ company, data }) => {
+                const statusColors: Record<string, string> = {
+                  completed: "bg-emerald-500/15 text-emerald-400",
+                  in_progress: "bg-amber-500/15 text-amber-400",
                   not_started: "bg-muted text-muted-foreground",
                 };
-                const statusLabels = {
+                const statusLabels: Record<string, string> = {
                   completed: "Ativa",
                   in_progress: "Onboarding",
                   not_started: "Pendente",
                 };
+                const matLevel = getMaturityLevel(data.maturityScore);
                 return (
-                  <div key={company.id} className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Building2 size={16} className="text-primary" />
+                  <div key={company.id} className="grid grid-cols-12 gap-2 items-center px-3 py-3 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
+                    <div className="col-span-3 flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Building2 size={14} className="text-primary" />
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{company.name}</p>
-                        <p className="text-xs text-muted-foreground">{company.sector} · {company.employees} colaboradores</p>
-                      </div>
+                      <p className="text-sm font-medium text-foreground truncate">{company.name}</p>
                     </div>
-                    <Badge className={cn("text-xs", statusColors[company.onboardingStatus])}>
-                      {statusLabels[company.onboardingStatus]}
-                    </Badge>
+                    <div className="col-span-2">
+                      <p className="text-xs text-muted-foreground">{company.sector}</p>
+                    </div>
+                    <div className="col-span-2 text-center">
+                      <p className="text-sm font-medium text-foreground">{data.totalEmployees || company.employees}</p>
+                    </div>
+                    <div className="col-span-2 text-center">
+                      <Badge className={cn("text-xs", statusColors[company.onboardingStatus])}>
+                        {statusLabels[company.onboardingStatus]}
+                      </Badge>
+                    </div>
+                    <div className="col-span-3 flex items-center justify-center gap-2">
+                      <div className="flex-1 max-w-[80px] h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${data.maturityScore}%` }}
+                        />
+                      </div>
+                      <Badge className={cn("text-[10px]", matLevel.color)}>
+                        {data.maturityScore}% — {matLevel.label}
+                      </Badge>
+                    </div>
                   </div>
                 );
               })}
@@ -109,7 +202,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
 
         <div className="space-y-6">
           <SmartAlerts onAlertDismissed={onAlertDismissed} maxAlerts={4} refreshTrigger={refreshKey} />
-          <MaturityGaugePremium score={globalIndicators.overallCompletionPercent} />
+          <MaturityGaugePremium score={avgMaturity} />
         </div>
       </div>
     </div>
