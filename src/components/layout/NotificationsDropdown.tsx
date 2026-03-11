@@ -77,7 +77,7 @@ function generateNotifications(): Notification[] {
   }
 
   // Insight de cobertura
-  const totalPop = state.population?.length || 0;
+  const totalPop = state.employees?.length || 0;
   const trainedIds = new Set<string>();
   turmas.forEach(t => {
     if (t.attendance) {
