@@ -25,11 +25,13 @@ import SuccessFactors from "./pages/SuccessFactors";
 import BestPracticesGlobal from "./pages/BestPracticesGlobal";
 import Settings from "./pages/Settings";
 import BasePopulacional from "./pages/BasePopulacional";
+import OrgStructure from "./pages/OrgStructure";
+import NucleoGovernance from "./pages/NucleoGovernance";
+import ExperiencesMVP from "./pages/ExperiencesMVP";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-// Main App component with AuthProvider wrapping all routes
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -44,73 +46,24 @@ const App = () => (
             <Route path="/onboarding" element={<Onboarding />} />
             
             {/* Protected Routes */}
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/plano" element={
-              <ProtectedRoute>
-                <ImplementationPlan />
-              </ProtectedRoute>
-            } />
-            <Route path="/ciclos" element={
-              <ProtectedRoute>
-                <MVPCycles />
-              </ProtectedRoute>
-            } />
-            <Route path="/turmas" element={
-              <ProtectedRoute>
-                <Turmas />
-              </ProtectedRoute>
-            } />
-            <Route path="/fatores" element={
-              <ProtectedRoute>
-                <SuccessFactors />
-              </ProtectedRoute>
-            } />
-            <Route path="/registros" element={
-              <ProtectedRoute>
-                <Records />
-              </ProtectedRoute>
-            } />
-            <Route path="/indicadores" element={
-              <ProtectedRoute>
-                <Indicators />
-              </ProtectedRoute>
-            } />
-            <Route path="/relatorios" element={
-              <ProtectedRoute>
-                <Reports />
-              </ProtectedRoute>
-            } />
-            <Route path="/maturidade" element={
-              <ProtectedRoute>
-                <Maturity />
-              </ProtectedRoute>
-            } />
+            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/plano" element={<ProtectedRoute><ImplementationPlan /></ProtectedRoute>} />
+            <Route path="/ciclos" element={<ProtectedRoute><MVPCycles /></ProtectedRoute>} />
+            <Route path="/turmas" element={<ProtectedRoute><Turmas /></ProtectedRoute>} />
+            <Route path="/fatores" element={<ProtectedRoute><SuccessFactors /></ProtectedRoute>} />
+            <Route path="/registros" element={<ProtectedRoute><Records /></ProtectedRoute>} />
+            <Route path="/indicadores" element={<ProtectedRoute><Indicators /></ProtectedRoute>} />
+            <Route path="/relatorios" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+            <Route path="/maturidade" element={<ProtectedRoute><Maturity /></ProtectedRoute>} />
+            <Route path="/estrutura" element={<ProtectedRoute><OrgStructure /></ProtectedRoute>} />
+            <Route path="/base-populacional" element={<ProtectedRoute><BasePopulacional /></ProtectedRoute>} />
+            <Route path="/nucleo" element={<ProtectedRoute><NucleoGovernance /></ProtectedRoute>} />
+            <Route path="/experiencias" element={<ProtectedRoute><ExperiencesMVP /></ProtectedRoute>} />
+            <Route path="/configuracoes" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             
             {/* Admin Only Routes */}
-            <Route path="/empresas" element={
-              <ProtectedRoute requireAdmin>
-                <Companies />
-              </ProtectedRoute>
-            } />
-            <Route path="/praticas" element={
-              <ProtectedRoute requireAdmin>
-                <BestPracticesGlobal />
-              </ProtectedRoute>
-            } />
-            <Route path="/configuracoes" element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            } />
-            <Route path="/base-populacional" element={
-              <ProtectedRoute>
-                <BasePopulacional />
-              </ProtectedRoute>
-            } />
+            <Route path="/empresas" element={<ProtectedRoute requireAdmin><Companies /></ProtectedRoute>} />
+            <Route path="/praticas" element={<ProtectedRoute requireAdmin><BestPracticesGlobal /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
