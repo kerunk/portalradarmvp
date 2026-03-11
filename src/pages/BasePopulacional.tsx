@@ -35,22 +35,22 @@ import {
   UserPlus,
   Search,
   Pencil,
-  Trash2,
   Download,
   Upload,
   ShieldCheck,
   Star,
+  Crown,
 } from "lucide-react";
 import {
   type PopulationMember,
   getPopulation,
   setPopulation,
-  getNucleo,
-  setNucleo,
+  getOrgStructure,
   isEmailUsedInCompany,
   getPopulationStats,
   generatePopulationTemplate,
   parsePopulationCSV,
+  exportPopulationCSV,
 } from "@/lib/companyStorage";
 
 interface MemberForm {
@@ -58,8 +58,12 @@ interface MemberForm {
   email: string;
   sector: string;
   role: string;
+  unit: string;
+  shift: string;
+  admissionDate: string;
   facilitator: boolean;
   nucleo: boolean;
+  leadership: boolean;
   active: boolean;
 }
 
@@ -68,8 +72,12 @@ const emptyForm: MemberForm = {
   email: "",
   sector: "",
   role: "",
+  unit: "",
+  shift: "",
+  admissionDate: "",
   facilitator: false,
   nucleo: false,
+  leadership: false,
   active: true,
 };
 
@@ -82,9 +90,13 @@ export default function BasePopulacional() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [search, setSearch] = useState("");
   const [filterSector, setFilterSector] = useState("all");
+  const [filterUnit, setFilterUnit] = useState("all");
+  const [filterShift, setFilterShift] = useState("all");
+  const [filterRole, setFilterRole] = useState("all");
   const [filterActive, setFilterActive] = useState("all");
   const [filterNucleo, setFilterNucleo] = useState("all");
   const [filterFacilitador, setFilterFacilitador] = useState("all");
+  const [filterLeadership, setFilterLeadership] = useState("all");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -92,42 +104,53 @@ export default function BasePopulacional() {
 
   // Load data
   const population = useMemo(() => getPopulation(companyId), [companyId, refreshKey]);
-  const nucleo = useMemo(() => getNucleo(companyId), [companyId, refreshKey]);
   const stats = useMemo(() => getPopulationStats(companyId), [companyId, refreshKey]);
+  const orgStructure = useMemo(() => getOrgStructure(companyId), [companyId, refreshKey]);
 
-  const nucleoIds = useMemo(() => {
-    const nucleoEmails = new Set(nucleo.map(n => n.email.toLowerCase()).filter(Boolean));
-    const nucleoNames = new Set(nucleo.map(n => n.name.toLowerCase()));
-    return new Set(
-      population
-        .filter(p =>
-          (p.email && nucleoEmails.has(p.email.toLowerCase())) ||
-          nucleoNames.has(p.name.toLowerCase())
-        )
-        .map(p => p.id)
-    );
-  }, [population, nucleo]);
-
-  // Sectors for filter
+  // Dynamic filter options from data
   const sectors = useMemo(() => {
-    const s = new Set(population.map(m => m.sector).filter(Boolean));
-    return Array.from(s).sort();
-  }, [population]);
+    const fromPop = population.map(m => m.sector).filter(Boolean);
+    const fromOrg = orgStructure.sectors.filter(s => !s.archived).map(s => s.name);
+    return Array.from(new Set([...fromPop, ...fromOrg])).sort();
+  }, [population, orgStructure]);
+
+  const units = useMemo(() => {
+    const fromPop = population.map(m => m.unit).filter(Boolean);
+    const fromOrg = orgStructure.units.filter(u => !u.archived).map(u => u.name);
+    return Array.from(new Set([...fromPop, ...fromOrg])).sort();
+  }, [population, orgStructure]);
+
+  const shifts = useMemo(() => {
+    const fromPop = population.map(m => m.shift).filter(Boolean);
+    const fromOrg = orgStructure.shifts.filter(s => !s.archived).map(s => s.name);
+    return Array.from(new Set([...fromPop, ...fromOrg])).sort();
+  }, [population, orgStructure]);
+
+  const roles = useMemo(() => {
+    const fromPop = population.map(m => m.role).filter(Boolean);
+    const fromOrg = orgStructure.positions.filter(p => !p.archived).map(p => p.name);
+    return Array.from(new Set([...fromPop, ...fromOrg])).sort();
+  }, [population, orgStructure]);
 
   // Filtered list
   const filtered = useMemo(() => {
     return population.filter(m => {
       if (search && !m.name.toLowerCase().includes(search.toLowerCase()) && !m.email.toLowerCase().includes(search.toLowerCase())) return false;
       if (filterSector !== "all" && m.sector !== filterSector) return false;
+      if (filterUnit !== "all" && m.unit !== filterUnit) return false;
+      if (filterShift !== "all" && m.shift !== filterShift) return false;
+      if (filterRole !== "all" && m.role !== filterRole) return false;
       if (filterActive === "active" && !m.active) return false;
       if (filterActive === "inactive" && m.active) return false;
-      if (filterNucleo === "yes" && !nucleoIds.has(m.id)) return false;
-      if (filterNucleo === "no" && nucleoIds.has(m.id)) return false;
+      if (filterNucleo === "yes" && !m.nucleo) return false;
+      if (filterNucleo === "no" && m.nucleo) return false;
       if (filterFacilitador === "yes" && !m.facilitator) return false;
       if (filterFacilitador === "no" && m.facilitator) return false;
+      if (filterLeadership === "yes" && !m.leadership) return false;
+      if (filterLeadership === "no" && m.leadership) return false;
       return true;
     });
-  }, [population, search, filterSector, filterActive, filterNucleo, filterFacilitador, nucleoIds]);
+  }, [population, search, filterSector, filterUnit, filterShift, filterRole, filterActive, filterNucleo, filterFacilitador, filterLeadership]);
 
   const refresh = () => setRefreshKey(k => k + 1);
 
@@ -143,8 +166,12 @@ export default function BasePopulacional() {
       email: member.email,
       sector: member.sector,
       role: member.role,
+      unit: member.unit,
+      shift: member.shift,
+      admissionDate: member.admissionDate,
       facilitator: member.facilitator,
-      nucleo: nucleoIds.has(member.id),
+      nucleo: member.nucleo,
+      leadership: member.leadership,
       active: member.active,
     });
     setEditingId(member.id);
@@ -152,8 +179,8 @@ export default function BasePopulacional() {
   };
 
   const handleSave = () => {
-    if (!form.name.trim() || !form.sector.trim()) {
-      toast({ title: "Campos obrigatórios", description: "Preencha nome e setor.", variant: "destructive" });
+    if (!form.name.trim()) {
+      toast({ title: "Nome é obrigatório", variant: "destructive" });
       return;
     }
     if (form.email && isEmailUsedInCompany(companyId, form.email, editingId || undefined)) {
@@ -165,41 +192,16 @@ export default function BasePopulacional() {
 
     if (editingId) {
       const updated = pop.map(m =>
-        m.id === editingId
-          ? { ...m, name: form.name, email: form.email, sector: form.sector, role: form.role, facilitator: form.facilitator, active: form.active }
-          : m
+        m.id === editingId ? { ...m, ...form } : m
       );
       setPopulation(companyId, updated);
-
-      // Sync nucleo
-      const nuc = getNucleo(companyId);
-      if (form.nucleo) {
-        if (!nuc.some(n => n.id === editingId || (n.email && n.email.toLowerCase() === form.email.toLowerCase()))) {
-          setNucleo(companyId, [...nuc, { id: editingId, name: form.name, email: form.email, sector: form.sector, role: form.role }]);
-        }
-      } else {
-        setNucleo(companyId, nuc.filter(n => n.id !== editingId && !(n.email && form.email && n.email.toLowerCase() === form.email.toLowerCase())));
-      }
-
       toast({ title: "Atualizado!", description: `${form.name} foi atualizado.` });
     } else {
-      const newId = `pop-${Date.now()}`;
       const newMember: PopulationMember = {
-        id: newId,
-        name: form.name,
-        email: form.email,
-        sector: form.sector,
-        role: form.role,
-        facilitator: form.facilitator,
-        active: form.active,
+        ...form,
+        id: `pop-${Date.now()}`,
       };
       setPopulation(companyId, [...pop, newMember]);
-
-      if (form.nucleo) {
-        const nuc = getNucleo(companyId);
-        setNucleo(companyId, [...nuc, { id: newId, name: form.name, email: form.email, sector: form.sector, role: form.role }]);
-      }
-
       toast({ title: "Adicionado!", description: `${form.name} foi incluído na base.` });
     }
 
@@ -207,26 +209,9 @@ export default function BasePopulacional() {
     refresh();
   };
 
-  const handleRemove = (member: PopulationMember) => {
+  const toggleField = (member: PopulationMember, field: "facilitator" | "nucleo" | "leadership" | "active") => {
     const pop = getPopulation(companyId);
-    setPopulation(companyId, pop.filter(m => m.id !== member.id));
-    // Also remove from nucleo if present
-    const nuc = getNucleo(companyId);
-    setNucleo(companyId, nuc.filter(n => n.id !== member.id && !(n.email && member.email && n.email.toLowerCase() === member.email.toLowerCase())));
-    toast({ title: "Removido", description: `${member.name} foi removido.` });
-    refresh();
-  };
-
-  const toggleFacilitator = (member: PopulationMember) => {
-    const pop = getPopulation(companyId);
-    setPopulation(companyId, pop.map(m => m.id === member.id ? { ...m, facilitator: !m.facilitator } : m));
-    toast({ title: member.facilitator ? "Facilitador removido" : "Facilitador habilitado", description: member.name });
-    refresh();
-  };
-
-  const toggleActive = (member: PopulationMember) => {
-    const pop = getPopulation(companyId);
-    setPopulation(companyId, pop.map(m => m.id === member.id ? { ...m, active: !m.active } : m));
+    setPopulation(companyId, pop.map(m => m.id === member.id ? { ...m, [field]: !m[field] } : m));
     refresh();
   };
 
@@ -237,6 +222,17 @@ export default function BasePopulacional() {
     const a = document.createElement("a");
     a.href = url;
     a.download = "modelo_base_populacional.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportCSV = () => {
+    const csv = exportPopulationCSV(companyId);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `base_populacional_${companyId}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -257,6 +253,9 @@ export default function BasePopulacional() {
         const newMembers: PopulationMember[] = members.map((m, i) => ({
           ...m,
           id: `pop-import-${Date.now()}-${i}`,
+          facilitator: false,
+          nucleo: false,
+          leadership: false,
           active: true,
         }));
         setPopulation(companyId, [...pop, ...newMembers]);
@@ -272,45 +271,73 @@ export default function BasePopulacional() {
     <AppLayout title="Base Populacional" subtitle={`Gestão de colaboradores — ${user?.companyName || "Empresa"}`}>
       <div className="space-y-6 animate-fade-in">
         {/* Stats cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
           <Card className="p-4">
             <p className="text-xs text-muted-foreground">Total Ativos</p>
             <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-xs text-muted-foreground">Inativos</p>
+            <p className="text-2xl font-bold text-foreground">{stats.inactive}</p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-xs text-muted-foreground">Núcleo</p>
+            <p className="text-2xl font-bold text-foreground">{stats.nucleoCount}</p>
           </Card>
           <Card className="p-4">
             <p className="text-xs text-muted-foreground">Facilitadores</p>
             <p className="text-2xl font-bold text-foreground">{stats.facilitators}</p>
           </Card>
           <Card className="p-4">
+            <p className="text-xs text-muted-foreground">Liderança</p>
+            <p className="text-2xl font-bold text-foreground">{stats.leaders}</p>
+          </Card>
+          <Card className="p-4">
             <p className="text-xs text-muted-foreground">Setores</p>
             <p className="text-2xl font-bold text-foreground">{stats.sectors}</p>
           </Card>
           <Card className="p-4">
-            <p className="text-xs text-muted-foreground">Núcleo</p>
-            <p className="text-2xl font-bold text-foreground">{nucleo.length}</p>
+            <p className="text-xs text-muted-foreground">Unidades</p>
+            <p className="text-2xl font-bold text-foreground">{stats.units}</p>
           </Card>
         </div>
 
-        {/* Actions bar */}
+        {/* Search and Filters */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome ou email..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-10"
-            />
+            <Input placeholder="Buscar por nome ou email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
           </div>
           <Select value={filterSector} onValueChange={setFilterSector}>
-            <SelectTrigger className="w-[150px]"><SelectValue placeholder="Setor" /></SelectTrigger>
+            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Setor" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os setores</SelectItem>
+              <SelectItem value="all">Todos setores</SelectItem>
               {sectors.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={filterUnit} onValueChange={setFilterUnit}>
+            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Unidade" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas unidades</SelectItem>
+              {units.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filterShift} onValueChange={setFilterShift}>
+            <SelectTrigger className="w-[120px]"><SelectValue placeholder="Turno" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos turnos</SelectItem>
+              {shifts.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filterRole} onValueChange={setFilterRole}>
+            <SelectTrigger className="w-[120px]"><SelectValue placeholder="Cargo" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos cargos</SelectItem>
+              {roles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Select value={filterActive} onValueChange={setFilterActive}>
-            <SelectTrigger className="w-[120px]"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="w-[110px]"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="active">Ativos</SelectItem>
@@ -318,7 +345,7 @@ export default function BasePopulacional() {
             </SelectContent>
           </Select>
           <Select value={filterNucleo} onValueChange={setFilterNucleo}>
-            <SelectTrigger className="w-[120px]"><SelectValue placeholder="Núcleo" /></SelectTrigger>
+            <SelectTrigger className="w-[110px]"><SelectValue placeholder="Núcleo" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="yes">Núcleo</SelectItem>
@@ -326,16 +353,25 @@ export default function BasePopulacional() {
             </SelectContent>
           </Select>
           <Select value={filterFacilitador} onValueChange={setFilterFacilitador}>
-            <SelectTrigger className="w-[130px]"><SelectValue placeholder="Facilitador" /></SelectTrigger>
+            <SelectTrigger className="w-[120px]"><SelectValue placeholder="Facilitador" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="yes">Facilitadores</SelectItem>
               <SelectItem value="no">Não-facilitadores</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={filterLeadership} onValueChange={setFilterLeadership}>
+            <SelectTrigger className="w-[120px]"><SelectValue placeholder="Liderança" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="yes">Liderança</SelectItem>
+              <SelectItem value="no">Não-liderança</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        <div className="flex gap-2">
+        {/* Action buttons */}
+        <div className="flex flex-wrap gap-2">
           <Button onClick={openAdd}>
             <UserPlus size={16} className="mr-2" /> Adicionar Colaborador
           </Button>
@@ -344,6 +380,9 @@ export default function BasePopulacional() {
           </Button>
           <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
             <Upload size={16} className="mr-2" /> Importar CSV
+          </Button>
+          <Button variant="outline" onClick={handleExportCSV}>
+            <Download size={16} className="mr-2" /> Exportar CSV
           </Button>
           <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
         </div>
@@ -354,12 +393,12 @@ export default function BasePopulacional() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
-                <TableHead>Setor</TableHead>
                 <TableHead>Cargo</TableHead>
-                <TableHead>Email</TableHead>
+                <TableHead>Setor</TableHead>
+                <TableHead>Turno</TableHead>
                 <TableHead className="text-center">Núcleo</TableHead>
                 <TableHead className="text-center">Facilitador</TableHead>
-                <TableHead className="text-center">Ativo</TableHead>
+                <TableHead className="text-center">Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -374,38 +413,39 @@ export default function BasePopulacional() {
                 </TableRow>
               )}
               {filtered.map(member => (
-                <TableRow key={member.id}>
-                  <TableCell className="font-medium">{member.name}</TableCell>
-                  <TableCell>{member.sector}</TableCell>
-                  <TableCell>{member.role}</TableCell>
-                  <TableCell className="text-muted-foreground">{member.email || "—"}</TableCell>
-                  <TableCell className="text-center">
-                    {nucleoIds.has(member.id) && (
-                      <Badge variant="outline" className="bg-purple-500/10 text-purple-400 border-purple-500/30">
-                        <ShieldCheck size={12} className="mr-1" /> Núcleo
-                      </Badge>
-                    )}
+                <TableRow key={member.id} className={!member.active ? "opacity-50" : ""}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-1.5">
+                      {member.leadership && <Crown size={14} className="text-amber-500" />}
+                      {member.name}
+                    </div>
                   </TableCell>
+                  <TableCell>{member.role || "—"}</TableCell>
+                  <TableCell>{member.sector || "—"}</TableCell>
+                  <TableCell>{member.shift || "—"}</TableCell>
                   <TableCell className="text-center">
-                    <button onClick={() => toggleFacilitator(member)} title="Alternar facilitador">
-                      <Star
+                    <button onClick={() => toggleField(member, "nucleo")} title="Alternar núcleo">
+                      <ShieldCheck
                         size={18}
-                        className={member.facilitator ? "text-amber-500 fill-amber-500" : "text-muted-foreground/40"}
+                        className={member.nucleo ? "text-primary fill-primary/20" : "text-muted-foreground/30"}
                       />
                     </button>
                   </TableCell>
                   <TableCell className="text-center">
-                    <Switch checked={member.active} onCheckedChange={() => toggleActive(member)} />
+                    <button onClick={() => toggleField(member, "facilitator")} title="Alternar facilitador">
+                      <Star
+                        size={18}
+                        className={member.facilitator ? "text-amber-500 fill-amber-500" : "text-muted-foreground/30"}
+                      />
+                    </button>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Switch checked={member.active} onCheckedChange={() => toggleField(member, "active")} />
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(member)}>
-                        <Pencil size={14} />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleRemove(member)} className="text-destructive hover:text-destructive">
-                        <Trash2 size={14} />
-                      </Button>
-                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(member)}>
+                      <Pencil size={14} />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -414,48 +454,102 @@ export default function BasePopulacional() {
         </Card>
 
         <p className="text-xs text-muted-foreground">
-          Mostrando {filtered.length} de {population.length} colaboradores · {stats.facilitators} facilitadores · {nucleo.length} no núcleo
+          Mostrando {filtered.length} de {population.length} colaboradores
         </p>
       </div>
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Colaborador" : "Adicionar Colaborador"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
             <div className="space-y-1">
               <Label>Nome *</Label>
               <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nome completo" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Setor *</Label>
-                <Input value={form.sector} onChange={e => setForm(f => ({ ...f, sector: e.target.value }))} placeholder="Ex: Operações" />
-              </div>
-              <div className="space-y-1">
-                <Label>Cargo/Função</Label>
-                <Input value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} placeholder="Ex: Técnico" />
-              </div>
             </div>
             <div className="space-y-1">
               <Label>Email</Label>
               <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="email@empresa.com" />
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Switch checked={form.facilitator} onCheckedChange={v => setForm(f => ({ ...f, facilitator: v }))} />
-                <Label>Facilitador habilitado</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Cargo</Label>
+                {roles.length > 0 ? (
+                  <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      {roles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} placeholder="Ex: Técnico" />
+                )}
               </div>
-              <div className="flex items-center gap-3">
-                <Switch checked={form.nucleo} onCheckedChange={v => setForm(f => ({ ...f, nucleo: v }))} />
-                <Label>Integrante do Núcleo</Label>
+              <div className="space-y-1">
+                <Label>Setor</Label>
+                {sectors.length > 0 ? (
+                  <Select value={form.sector} onValueChange={v => setForm(f => ({ ...f, sector: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      {sectors.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={form.sector} onChange={e => setForm(f => ({ ...f, sector: e.target.value }))} placeholder="Ex: Operações" />
+                )}
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Switch checked={form.active} onCheckedChange={v => setForm(f => ({ ...f, active: v }))} />
-              <Label>Ativo</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Unidade</Label>
+                {units.length > 0 ? (
+                  <Select value={form.unit} onValueChange={v => setForm(f => ({ ...f, unit: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      {units.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} placeholder="Ex: Planta Industrial" />
+                )}
+              </div>
+              <div className="space-y-1">
+                <Label>Turno</Label>
+                {shifts.length > 0 ? (
+                  <Select value={form.shift} onValueChange={v => setForm(f => ({ ...f, shift: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      {shifts.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={form.shift} onChange={e => setForm(f => ({ ...f, shift: e.target.value }))} placeholder="Ex: A" />
+                )}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Data de Admissão</Label>
+              <Input type="date" value={form.admissionDate} onChange={e => setForm(f => ({ ...f, admissionDate: e.target.value }))} />
+            </div>
+            <div className="space-y-3 pt-2 border-t border-border">
+              <div className="flex items-center justify-between">
+                <Label>Participa do Núcleo</Label>
+                <Switch checked={form.nucleo} onCheckedChange={v => setForm(f => ({ ...f, nucleo: v }))} />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label>Facilitador Habilitado</Label>
+                <Switch checked={form.facilitator} onCheckedChange={v => setForm(f => ({ ...f, facilitator: v }))} />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label>Liderança</Label>
+                <Switch checked={form.leadership} onCheckedChange={v => setForm(f => ({ ...f, leadership: v }))} />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label>Colaborador Ativo</Label>
+                <Switch checked={form.active} onCheckedChange={v => setForm(f => ({ ...f, active: v }))} />
+              </div>
             </div>
           </div>
           <DialogFooter>
