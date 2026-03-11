@@ -295,15 +295,17 @@ export default function BasePopulacional() {
     }
   };
 
+  // Renders an input with datalist for Select+Create behavior
+  // User can pick from existing org options OR type a new value freely
   const renderOrgSelect = (label: string, field: keyof MemberForm, options: string[], datalistId: string) => {
-    const currentValue = form[field] as string;
-    // Combine org options + legacy values from population
-    const allOptions = new Set([...options]);
-    if (currentValue && !allOptions.has(currentValue)) allOptions.add(currentValue);
-    // Also include values from existing population for this field
+    const currentValue = (form[field] as string) || "";
+
+    // Merge: org structure options + legacy population values + current value
+    const allOptions = new Set<string>(options);
+    if (currentValue.trim()) allOptions.add(currentValue);
     population.forEach(m => {
-      const val = m[field as keyof PopulationMember] as string;
-      if (val && typeof val === "string") allOptions.add(val);
+      const val = m[field as keyof PopulationMember];
+      if (typeof val === "string" && val.trim()) allOptions.add(val);
     });
     const sortedOptions = Array.from(allOptions).sort();
 
@@ -317,9 +319,13 @@ export default function BasePopulacional() {
           list={datalistId}
           autoComplete="off"
         />
-        <datalist id={datalistId}>
-          {sortedOptions.map(o => <option key={o} value={o} />)}
-        </datalist>
+        {sortedOptions.length > 0 && (
+          <datalist id={datalistId}>
+            {sortedOptions.map(o => (
+              <option key={o} value={o} />
+            ))}
+          </datalist>
+        )}
       </div>
     );
   };
