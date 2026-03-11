@@ -413,24 +413,30 @@ function ExecutivePreview({ data, companyId }: { data: ExecutiveReportData; comp
         </Card>
       )}
 
-      {/* Insights */}
+      {/* Insights do Programa MVP */}
       {data.insights.length > 0 && (
         <Card className="p-5">
-          <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Lightbulb size={18} className="text-warning" /> Insights e Recomendações
+          <h3 className="font-semibold text-lg text-foreground mb-2 flex items-center gap-2">
+            <Lightbulb size={20} className="text-warning" /> Insights do Programa MVP
           </h3>
+          <p className="text-xs text-muted-foreground mb-4">Análise automática baseada nos dados reais da implementação.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {data.insights.map((insight, i) => {
               const config = {
-                positive: { icon: CheckCircle2, bg: "bg-success/10 border-success/20", iconColor: "text-success" },
-                warning: { icon: AlertTriangle, bg: "bg-warning/10 border-warning/20", iconColor: "text-warning" },
-                reinforcement: { icon: Lightbulb, bg: "bg-primary/10 border-primary/20", iconColor: "text-primary" },
+                positive: { icon: CheckCircle2, bg: "bg-success/10 border-success/30", iconColor: "text-success", label: "Positivo", labelBg: "bg-success/20 text-success" },
+                warning: { icon: AlertTriangle, bg: "bg-warning/10 border-warning/30", iconColor: "text-warning", label: "Atenção", labelBg: "bg-warning/20 text-warning" },
+                reinforcement: { icon: Lightbulb, bg: "bg-primary/10 border-primary/30", iconColor: "text-primary", label: "Recomendação", labelBg: "bg-primary/20 text-primary" },
               }[insight.type];
               const Icon = config.icon;
               return (
-                <div key={i} className={cn("flex items-start gap-3 p-3 rounded-lg border", config.bg)}>
-                  <Icon size={18} className={cn("flex-shrink-0 mt-0.5", config.iconColor)} />
-                  <p className="text-sm text-foreground">{insight.message}</p>
+                <div key={i} className={cn("flex items-start gap-3 p-4 rounded-xl border", config.bg)}>
+                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0", config.labelBg)}>
+                    <Icon size={16} className={config.iconColor} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className={cn("text-[10px] font-bold uppercase tracking-wider", config.iconColor)}>{config.label}</span>
+                    <p className="text-sm text-foreground mt-0.5">{insight.message}</p>
+                  </div>
                 </div>
               );
             })}
