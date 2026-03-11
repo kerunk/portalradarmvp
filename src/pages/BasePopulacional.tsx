@@ -530,11 +530,11 @@ export default function BasePopulacional() {
               <Label>Email</Label>
               <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="email@empresa.com" />
             </div>
-            {renderOrgSelect("Cargo", "role", orgPositions)}
-            {renderOrgSelect("Setor", "sector", orgSectors)}
+            {renderOrgSelect("Cargo", "role", orgPositions, "dl-positions")}
+            {renderOrgSelect("Setor", "sector", orgSectors, "dl-sectors")}
             <div className="grid grid-cols-2 gap-3">
-              {renderOrgSelect("Unidade", "unit", orgUnits)}
-              {renderOrgSelect("Turno", "shift", orgShifts)}
+              {renderOrgSelect("Unidade", "unit", orgUnits, "dl-units")}
+              {renderOrgSelect("Turno", "shift", orgShifts, "dl-shifts")}
             </div>
             <div className="space-y-1">
               <Label>Data de Admissão</Label>
