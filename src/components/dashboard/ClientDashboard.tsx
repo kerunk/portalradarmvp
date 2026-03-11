@@ -94,6 +94,17 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* First Steps Guide */}
+      <FirstStepsGuide completedSteps={
+        [
+          ...(activePopulation > 0 ? [2] : []),
+          ...(popStats.nucleoCount > 0 ? [3] : []),
+          ...(trainingStats.turmasTotal > 0 ? [4] : []),
+          ...(globalIndicators.completedActions > 0 ? [5] : []),
+          ...(popStats.sectors > 0 ? [1] : []),
+        ]
+      } />
+
       {/* Executive Summary */}
       <ExecutiveSummary
         companyName={companyName}
