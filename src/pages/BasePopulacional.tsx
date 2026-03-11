@@ -477,61 +477,11 @@ export default function BasePopulacional() {
               <Label>Email</Label>
               <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="email@empresa.com" />
             </div>
+            {renderOrgSelect("Cargo", "role", orgPositions, "positions")}
+            {renderOrgSelect("Setor", "sector", orgSectors, "sectors")}
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Cargo</Label>
-                {roles.length > 0 ? (
-                  <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>
-                      {roles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} placeholder="Ex: Técnico" />
-                )}
-              </div>
-              <div className="space-y-1">
-                <Label>Setor</Label>
-                {sectors.length > 0 ? (
-                  <Select value={form.sector} onValueChange={v => setForm(f => ({ ...f, sector: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>
-                      {sectors.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input value={form.sector} onChange={e => setForm(f => ({ ...f, sector: e.target.value }))} placeholder="Ex: Operações" />
-                )}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Unidade</Label>
-                {units.length > 0 ? (
-                  <Select value={form.unit} onValueChange={v => setForm(f => ({ ...f, unit: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>
-                      {units.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} placeholder="Ex: Planta Industrial" />
-                )}
-              </div>
-              <div className="space-y-1">
-                <Label>Turno</Label>
-                {shifts.length > 0 ? (
-                  <Select value={form.shift} onValueChange={v => setForm(f => ({ ...f, shift: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>
-                      {shifts.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input value={form.shift} onChange={e => setForm(f => ({ ...f, shift: e.target.value }))} placeholder="Ex: A" />
-                )}
-              </div>
+              {renderOrgSelect("Unidade", "unit", orgUnits, "units")}
+              {renderOrgSelect("Turno", "shift", orgShifts, "shifts")}
             </div>
             <div className="space-y-1">
               <Label>Data de Admissão</Label>
