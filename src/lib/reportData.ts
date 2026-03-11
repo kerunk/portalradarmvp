@@ -169,7 +169,7 @@ function calculateMaturity(popStats: ReturnType<typeof getPopulationStats>, glob
   return { score, level };
 }
 
-function generateInsights(data: {
+export function generateInsights(data: {
   coveragePercent: number;
   completionPercent: number;
   delayedActions: number;

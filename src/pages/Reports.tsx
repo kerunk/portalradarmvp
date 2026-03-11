@@ -26,7 +26,9 @@ import {
   UserCheck,
   Building2,
   AlertCircle,
+  Search,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -411,24 +413,30 @@ function ExecutivePreview({ data, companyId }: { data: ExecutiveReportData; comp
         </Card>
       )}
 
-      {/* Insights */}
+      {/* Insights do Programa MVP */}
       {data.insights.length > 0 && (
         <Card className="p-5">
-          <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Lightbulb size={18} className="text-warning" /> Insights e Recomendações
+          <h3 className="font-semibold text-lg text-foreground mb-2 flex items-center gap-2">
+            <Lightbulb size={20} className="text-warning" /> Insights do Programa MVP
           </h3>
+          <p className="text-xs text-muted-foreground mb-4">Análise automática baseada nos dados reais da implementação.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {data.insights.map((insight, i) => {
               const config = {
-                positive: { icon: CheckCircle2, bg: "bg-success/10 border-success/20", iconColor: "text-success" },
-                warning: { icon: AlertTriangle, bg: "bg-warning/10 border-warning/20", iconColor: "text-warning" },
-                reinforcement: { icon: Lightbulb, bg: "bg-primary/10 border-primary/20", iconColor: "text-primary" },
+                positive: { icon: CheckCircle2, bg: "bg-success/10 border-success/30", iconColor: "text-success", label: "Positivo", labelBg: "bg-success/20 text-success" },
+                warning: { icon: AlertTriangle, bg: "bg-warning/10 border-warning/30", iconColor: "text-warning", label: "Atenção", labelBg: "bg-warning/20 text-warning" },
+                reinforcement: { icon: Lightbulb, bg: "bg-primary/10 border-primary/30", iconColor: "text-primary", label: "Recomendação", labelBg: "bg-primary/20 text-primary" },
               }[insight.type];
               const Icon = config.icon;
               return (
-                <div key={i} className={cn("flex items-start gap-3 p-3 rounded-lg border", config.bg)}>
-                  <Icon size={18} className={cn("flex-shrink-0 mt-0.5", config.iconColor)} />
-                  <p className="text-sm text-foreground">{insight.message}</p>
+                <div key={i} className={cn("flex items-start gap-3 p-4 rounded-xl border", config.bg)}>
+                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0", config.labelBg)}>
+                    <Icon size={16} className={config.iconColor} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className={cn("text-[10px] font-bold uppercase tracking-wider", config.iconColor)}>{config.label}</span>
+                    <p className="text-sm text-foreground mt-0.5">{insight.message}</p>
+                  </div>
                 </div>
               );
             })}
@@ -635,9 +643,33 @@ function CyclePreview({ filterCycle }: { filterCycle: string }) {
 
 // ============ COLLABORATOR PROGRESS PREVIEW ============
 function CollaboratorPreview({ companyId, filterSector }: { companyId: string; filterSector: string }) {
+  const [search, setSearch] = useState("");
+  const [filterRole, setFilterRole] = useState("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "completed" | "in_progress" | "not_started">("all");
+
   const data = useMemo(() => generateCollaboratorProgressReport(companyId, {
     sector: filterSector !== "all" ? filterSector : undefined,
   }), [companyId, filterSector]);
+
+  const availableRoles = useMemo(() => [...new Set(data.collaborators.map(c => c.role).filter(Boolean))].sort(), [data]);
+
+  const filtered = useMemo(() => {
+    let list = data.collaborators;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(c => c.name.toLowerCase().includes(q) || c.role.toLowerCase().includes(q) || c.sector.toLowerCase().includes(q));
+    }
+    if (filterRole !== "all") list = list.filter(c => c.role === filterRole);
+    if (filterStatus !== "all") {
+      list = list.filter(c => {
+        if (filterStatus === "completed") return c.completedModules === c.totalModules;
+        if (filterStatus === "not_started") return c.completedModules === 0;
+        // in_progress: started but not fully done
+        return c.completedModules > 0 && c.completedModules < c.totalModules;
+      });
+    }
+    return list;
+  }, [data, search, filterRole, filterStatus]);
 
   const moduleIds = CYCLE_IDS;
   const statusColor = (s: string) => s === 'completed' ? 'bg-success' : s === 'in_progress' ? 'bg-warning' : 'bg-muted';
@@ -651,7 +683,47 @@ function CollaboratorPreview({ companyId, filterSector }: { companyId: string; f
         <MetricCard label="Não iniciados" value={data.notStarted} icon={AlertTriangle} color="destructive" />
       </div>
 
-      {data.collaborators.length === 0 ? (
+      {/* Search and filters */}
+      <Card className="p-4">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar colaborador por nome, cargo ou setor..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          {availableRoles.length > 0 && (
+            <Select value={filterRole} onValueChange={setFilterRole}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Cargo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os cargos</SelectItem>
+                {availableRoles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as typeof filterStatus)}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os status</SelectItem>
+              <SelectItem value="completed">Concluído</SelectItem>
+              <SelectItem value="in_progress">Em andamento</SelectItem>
+              <SelectItem value="not_started">Não iniciado</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {search && (
+          <p className="text-xs text-muted-foreground mt-2">{filtered.length} resultado(s) para "{search}"</p>
+        )}
+      </Card>
+
+      {filtered.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">Nenhum colaborador encontrado.</Card>
       ) : (
         <Card className="p-4 overflow-x-auto">
@@ -668,7 +740,7 @@ function CollaboratorPreview({ companyId, filterSector }: { companyId: string; f
               </tr>
             </thead>
             <tbody>
-              {data.collaborators.map((c, i) => (
+              {filtered.map((c, i) => (
                 <tr key={c.id} className={cn("border-b border-border/50", i % 2 === 0 ? "bg-muted/30" : "")}>
                   <td className="py-2 px-2 font-medium text-foreground">{c.name}</td>
                   <td className="py-2 px-2 text-muted-foreground text-xs">{c.sector}</td>

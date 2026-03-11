@@ -200,10 +200,45 @@ export function exportExecutivePDF(data: ExecutiveReportData) {
   doc.text(`Total de turmas: ${data.turmasTotal} | Realizadas: ${data.turmasRealizadas} | Pessoas treinadas: ${data.pessoasTreinadas} | Presenças registradas: ${data.totalPresences}`, 20, y);
   y += 12;
 
-  // ---- PAGE 5: INSIGHTS E RECOMENDAÇÕES ----
+  // ---- PAGE 5: ANÁLISE AUTOMÁTICA + INSIGHTS ----
   doc.addPage();
-  addPageHeader(doc, 'Insights e Recomendações Estratégicas');
+  addPageHeader(doc, 'Análise Automática do Programa');
   y = 28;
+
+  // Automated analysis box
+  y = addSectionTitle(doc, 'Análise do Sistema', y);
+  doc.setFillColor(...LIGHT_BG);
+  doc.roundedRect(15, y, 180, 40, 2, 2, 'F');
+  doc.setTextColor(...TEXT);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`• Cobertura atual: ${data.coveragePercent}%`, 22, y + 8);
+  doc.text(`• Execução de práticas: ${data.completionPercent >= 70 ? 'boa' : data.completionPercent >= 40 ? 'moderada' : 'baixa'} (${data.completionPercent}%)`, 22, y + 15);
+  doc.text(`• Ciclos ativos: ${data.cyclesInProgress} | Encerrados: ${data.closedCycles}/${data.totalCycles}`, 22, y + 22);
+  doc.text(`• Ações atrasadas: ${data.delayedActions}`, 22, y + 29);
+  doc.text(`• Maturidade: ${data.maturityLevel} (${data.maturityScore} pontos)`, 22, y + 36);
+  y += 48;
+
+  // Recommendation
+  y = addSectionTitle(doc, 'Recomendação do Sistema', y);
+  const recommendation = data.coveragePercent < 30
+    ? 'Aumentar a frequência de treinamentos e ampliar turmas para atingir maior cobertura da base populacional.'
+    : data.delayedActions > 3
+    ? 'Priorizar a execução das ações atrasadas para manter a credibilidade e o engajamento no programa.'
+    : data.completionPercent < 50
+    ? 'Aumentar a frequência de práticas mensais para estimular repetição comportamental e consolidação de hábitos.'
+    : 'Manter a disciplina nos rituais e treinamentos. O programa está em boa evolução.';
+  doc.setFillColor(230, 245, 240);
+  doc.roundedRect(15, y, 180, 18, 2, 2, 'F');
+  doc.setTextColor(...TEAL);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'italic');
+  const recLines = doc.splitTextToSize(recommendation, 168);
+  doc.text(recLines, 22, y + 8);
+  y += 26;
+
+  // Insights
+  y = addSectionTitle(doc, 'Insights e Recomendações Estratégicas', y);
 
   data.insights.forEach(insight => {
     y = checkPage(doc, y, 18);
