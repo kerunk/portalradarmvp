@@ -176,6 +176,32 @@ export default function MVPCycles() {
     setCycleGovernance(governance);
   }, [selectedCycleId, cycleStates, refreshKey]);
 
+  // Auto-open factor and scroll to highlighted action from alert
+  useEffect(() => {
+    if (!highlightActionId || !currentCycleState) return;
+    
+    // Find which factor contains this action and auto-open it
+    for (const factor of currentCycleState.factors) {
+      const hasAction = factor.actions.some(a => a.id === highlightActionId);
+      if (hasAction && !openFactors.includes(factor.id)) {
+        setOpenFactors(prev => [...prev, factor.id]);
+      }
+    }
+
+    // Scroll to highlighted element after a short delay for render
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`action-${highlightActionId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 500);
+
+    // Clear highlight after 5 seconds
+    const clearTimer = setTimeout(() => setHighlightedId(null), 5000);
+
+    return () => { clearTimeout(timer); clearTimeout(clearTimer); };
+  }, [highlightActionId, currentCycleState]);
+
   // Save cycle state with debounce
   const saveCycleState = useCallback((cycleId: string, cycleState: CycleState) => {
     setCycleState(cycleId, cycleState);
