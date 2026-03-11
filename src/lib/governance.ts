@@ -280,6 +280,7 @@ export function criarAcoesDeDecisao(
     
     const newAction: CycleFactorAction = {
       id: newActionId,
+      title: actionData.title,
       enabled: true,
       disabledReason: '',
       responsible: actionData.responsible,
@@ -604,12 +605,22 @@ export function gerarAlertasInteligentes(): EnhancedSmartAlert[] {
             const factorDef = cycleDef?.successFactors.find(f => f.id === factor.id);
             const actionDef = factorDef?.actions.find(a => a.id === action.id);
             
+            // Build friendly action name - NEVER show technical IDs
+            const actionTitle = actionDef?.title 
+              || action.title 
+              || action.observation 
+              || factorDef?.name 
+              || `Ação do ciclo ${cycleId}`;
+            
+            const dueDateFormatted = new Date(action.dueDate).toLocaleDateString('pt-BR');
+            const statusLabel = action.status === 'delayed' ? 'Atrasada' : 'Pendente';
+            
             alerts.push({
               id: `delayed-${cycleId}-${action.id}`,
               type: 'delayed_action',
               severity: 'danger',
-              title: `Ação atrasada: ${actionDef?.title || action.id}`,
-              description: `Ciclo ${cycleId} - ${factorDef?.name || factor.id}`,
+              title: `Ação atrasada: ${actionTitle}`,
+              description: `Ciclo ${cycleId} · ${factorDef?.name || 'Fator de Sucesso'} · Prazo: ${dueDateFormatted} · Status: ${statusLabel}`,
               cycleId,
               actionId: action.id,
               navigateTo: `/ciclos?cycle=${cycleId}`,
@@ -752,6 +763,7 @@ export function gerarAlertasInteligentes(): EnhancedSmartAlert[] {
   Object.entries(state.cycles).forEach(([cycleId, cycleState]) => {
     if (cycleState.closureStatus === 'closed') return;
     
+    const cycleDef = mvpCycles.find(c => c.id === cycleId);
     let missingCount = 0;
     cycleState.factors.forEach(factor => {
       factor.actions.forEach(action => {
@@ -762,12 +774,13 @@ export function gerarAlertasInteligentes(): EnhancedSmartAlert[] {
     });
     
     if (missingCount > 0) {
+      const cycleTitle = cycleDef?.title || `Ciclo ${cycleId}`;
       alerts.push({
         id: `missing-info-${cycleId}`,
         type: 'action_missing_info',
         severity: 'warning',
-        title: `${missingCount} ações sem prazo/responsável`,
-        description: `Ciclo ${cycleId} - Complete as informações para melhor controle`,
+        title: `${missingCount} ações sem prazo ou responsável`,
+        description: `${cycleTitle} — Complete as informações para melhor controle do programa`,
         cycleId,
         navigateTo: `/ciclos?cycle=${cycleId}`,
         createdAt: now,

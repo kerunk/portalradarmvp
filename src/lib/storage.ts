@@ -35,6 +35,7 @@ export type OnboardingStatus = 'not_started' | 'in_progress' | 'completed';
 
 export interface CycleFactorAction {
   id: string;
+  title?: string; // Human-readable title for custom actions
   enabled: boolean;
   disabledReason: string;
   responsible: string;

@@ -15,6 +15,7 @@ import {
   X,
   CalendarCheck,
   User,
+  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -135,6 +136,12 @@ export function SmartAlerts({ onAlertDismissed, maxAlerts = 5, refreshTrigger = 
                       <Badge variant="outline" className="text-xs gap-1">
                         <User size={10} />
                         {alert.responsible}
+                      </Badge>
+                    )}
+                    {alert.dueDate && (
+                      <Badge variant="outline" className="text-xs gap-1">
+                        <Calendar size={10} />
+                        {new Date(alert.dueDate).toLocaleDateString('pt-BR')}
                       </Badge>
                     )}
                   </div>
