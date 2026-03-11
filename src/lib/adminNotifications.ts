@@ -57,7 +57,7 @@ interface CompanyRiskData {
   lastActivityDays: number | null;
 }
 
-function getCompanyRiskData(company: CompanyState): CompanyRiskData {
+export function getCompanyRiskData(company: CompanyState): CompanyRiskData {
   setActiveCompany(company.id);
   const state = getState();
 
