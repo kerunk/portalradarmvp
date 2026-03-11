@@ -42,7 +42,7 @@ export function dismissAllAdminNotifications(ids: string[]) {
   localStorage.setItem(DISMISSED_KEY, JSON.stringify(newDismissed));
 }
 
-interface CompanyRiskData {
+export interface CompanyRiskData {
   company: CompanyState;
   delayedActions: number;
   totalActions: number;
@@ -57,7 +57,7 @@ interface CompanyRiskData {
   lastActivityDays: number | null;
 }
 
-function getCompanyRiskData(company: CompanyState): CompanyRiskData {
+export function getCompanyRiskData(company: CompanyState): CompanyRiskData {
   setActiveCompany(company.id);
   const state = getState();
 
