@@ -11,6 +11,7 @@ import { ProgramEvolutionChart } from "./ProgramEvolutionChart";
 import { CulturalMaturityRadar } from "./CulturalMaturityRadar";
 import { ImplementationTimeline } from "./ImplementationTimeline";
 import { SmartRecommendations } from "./SmartRecommendations";
+import { FirstStepsGuide } from "./FirstStepsGuide";
 import { Card } from "@/components/ui/card";
 import { Users, Target, CheckCircle, TrendingUp, GraduationCap, Shield, UserCheck, AlertTriangle, CheckCircle2, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
