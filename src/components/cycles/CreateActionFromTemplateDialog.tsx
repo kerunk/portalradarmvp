@@ -104,10 +104,10 @@ export function CreateActionFromTemplateDialog({
     addDays(new Date(), defaultDaysToComplete)
   );
 
-  // Load employees
+  // Load nucleus members as responsible options
   useEffect(() => {
-    setEmployees(getEmployees());
-  }, []);
+    setNucleoMembers(getNucleoMembers(companyId));
+  }, [companyId]);
 
   // Reset form when dialog opens with new defaults
   useEffect(() => {
