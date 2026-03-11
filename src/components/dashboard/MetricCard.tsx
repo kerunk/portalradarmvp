@@ -1,12 +1,14 @@
 import { ReactNode } from "react";
 import { LucideIcon, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface MetricCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
   icon: LucideIcon;
+  tooltip?: string;
   trend?: {
     value: number;
     label: string;
@@ -19,6 +21,7 @@ export function MetricCard({
   value,
   subtitle,
   icon: Icon,
+  tooltip,
   trend,
   variant = "default",
 }: MetricCardProps) {
@@ -36,7 +39,7 @@ export function MetricCard({
       ? TrendingDown
       : Minus;
 
-  return (
+  const card = (
     <div className="metric-card group hover:shadow-elevated transition-all duration-200">
       <div className="flex items-start justify-between">
         <div className="flex-1">
@@ -77,4 +80,17 @@ export function MetricCard({
       </div>
     </div>
   );
+
+  if (tooltip) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{card}</TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-xs text-xs">
+          {tooltip}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return card;
 }

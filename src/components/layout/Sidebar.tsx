@@ -58,8 +58,8 @@ const clientNavigation = [
   { name: "Ciclos MVP", href: "/ciclos", icon: Rocket },
   { name: "Turmas", href: "/turmas", icon: Users },
   { name: "Ações & Alertas", href: "/indicadores", icon: Target },
-  
   { name: "Relatórios", href: "/relatorios", icon: FileText },
+  { name: "Manual MVP", href: "/ajuda", icon: BookOpen },
 ];
 
 interface SidebarProps {

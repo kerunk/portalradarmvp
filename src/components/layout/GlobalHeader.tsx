@@ -1,7 +1,7 @@
-import { Bell, HelpCircle, LogOut, User } from "lucide-react";
+import { HelpCircle, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NotificationsDropdown } from "./NotificationsDropdown";
 import logoMvp from "@/assets/logo-mvp.jpeg";
 
 interface GlobalHeaderProps {
@@ -54,15 +55,14 @@ export function GlobalHeader({ title, subtitle }: GlobalHeaderProps) {
       {/* Right: Actions + Company */}
       <div className="flex items-center gap-3">
         {/* Help */}
-        <Button variant="ghost" size="icon" className="text-muted-foreground">
-          <HelpCircle size={20} />
-        </Button>
+        <Link to="/ajuda">
+          <Button variant="ghost" size="icon" className="text-muted-foreground">
+            <HelpCircle size={20} />
+          </Button>
+        </Link>
 
         {/* Notifications */}
-        <Button variant="ghost" size="icon" className="text-muted-foreground relative">
-          <Bell size={20} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
-        </Button>
+        <NotificationsDropdown />
 
         {/* Company Logo (for clients) */}
         {!isAdminMVP && user?.companyName && (
