@@ -176,7 +176,6 @@ export default function Reports() {
   const companyId = user?.companyId || "company-1";
   const companyName = user?.companyName || "Empresa";
 
-  // Admin sees aggregated portfolio reports
   if (isAdminMVP) {
     return (
       <AppLayout title="Relatórios da Carteira" subtitle="Visão consolidada e agregada de todas as empresas">
@@ -185,6 +184,10 @@ export default function Reports() {
     );
   }
 
+  return <ClientReportsView companyId={companyId} companyName={companyName} />;
+}
+
+function ClientReportsView({ companyId, companyName }: { companyId: string; companyName: string }) {
   const [activeReport, setActiveReport] = useState<ReportType>("executive");
   const [filterCycle, setFilterCycle] = useState<string>("all");
   const [filterSector, setFilterSector] = useState<string>("all");
