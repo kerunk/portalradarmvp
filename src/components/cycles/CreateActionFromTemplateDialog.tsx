@@ -90,7 +90,9 @@ export function CreateActionFromTemplateDialog({
   dialogDescription = "Defina os detalhes da ação a ser criada",
 }: CreateActionFromTemplateDialogProps) {
   const { toast } = useToast();
-  const [employees, setEmployees] = useState<EmployeeState[]>([]);
+  const { user } = useAuth();
+  const companyId = user?.companyId || "";
+  const [nucleoMembers, setNucleoMembers] = useState<PopulationMember[]>([]);
   
   const [title, setTitle] = useState(defaultTitle);
   const [description, setDescription] = useState(defaultDescription);
