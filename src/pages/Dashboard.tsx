@@ -16,7 +16,7 @@ import {
   obterIndicadoresTodosCiclos,
 } from "@/lib/governance";
 import { recalculateActionStatuses } from "@/lib/storage";
-import { getPopulationStats, getNucleo } from "@/lib/companyStorage";
+import { getPopulationStats } from "@/lib/companyStorage";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -32,9 +32,7 @@ export default function Dashboard() {
   // Check if this is a new/empty company
   const companyStats = useMemo(() => {
     if (!companyId || isAdminMVP) return null;
-    const popStats = getPopulationStats(companyId);
-    const nucleo = getNucleo(companyId);
-    return { ...popStats, nucleoCount: nucleo.length };
+    return getPopulationStats(companyId);
   }, [companyId, isAdminMVP, refreshKey]);
 
   const { globalIndicators, phaseProgress } = useMemo(() => {

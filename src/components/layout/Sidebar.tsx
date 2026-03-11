@@ -2,7 +2,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import React from "react";
 import {
   LayoutDashboard,
-  ClipboardList,
   FileCheck,
   BarChart3,
   FileText,
@@ -20,6 +19,8 @@ import {
   FolderOpen,
   ShieldCheck,
   Database,
+  Layers,
+  BookMarked,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -51,11 +52,13 @@ const adminNavigation = [
 // Navigation for Client Portal
 const clientNavigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Planejamento", href: "/plano", icon: ClipboardList },
+  { name: "Estrutura Organizacional", href: "/estrutura", icon: Layers },
+  { name: "Base Populacional", href: "/base-populacional", icon: Database },
+  { name: "Governança do Núcleo", href: "/nucleo", icon: ShieldCheck },
   { name: "Ciclos MVP", href: "/ciclos", icon: Rocket },
   { name: "Turmas", href: "/turmas", icon: Users },
-  { name: "Base Populacional", href: "/base-populacional", icon: Database },
   { name: "Ações & Alertas", href: "/indicadores", icon: Target },
+  { name: "Experiências MVP", href: "/experiencias", icon: BookMarked },
   { name: "Relatórios", href: "/relatorios", icon: FileText },
 ];
 
@@ -69,7 +72,6 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
   const navigate = useNavigate();
   const { user, isAdminMVP, switchRole, logout } = useAuth();
   
-  // Use internal state if not controlled
   const [internalCollapsed, setInternalCollapsed] = React.useState(false);
   const collapsed = controlledCollapsed ?? internalCollapsed;
   const setCollapsed = onCollapsedChange ?? setInternalCollapsed;
@@ -92,23 +94,13 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
       <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border">
         {!collapsed && (
           <div className="flex items-center gap-2">
-            <img 
-              src={logoMvp} 
-              alt="MVP" 
-              className="h-8 w-auto object-contain"
-            />
-            <span className="text-sidebar-foreground font-display font-semibold text-lg">
-              Portal
-            </span>
+            <img src={logoMvp} alt="MVP" className="h-8 w-auto object-contain" />
+            <span className="text-sidebar-foreground font-display font-semibold text-lg">Portal</span>
           </div>
         )}
         {collapsed && (
           <div className="mx-auto">
-            <img 
-              src={logoMvp} 
-              alt="MVP" 
-              className="h-8 w-8 object-contain"
-            />
+            <img src={logoMvp} alt="MVP" className="h-8 w-8 object-contain" />
           </div>
         )}
         <button
@@ -132,15 +124,9 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
             )}
           >
             {isAdminMVP ? (
-              <>
-                <ShieldCheck size={12} className="mr-1" />
-                Admin MVP
-              </>
+              <><ShieldCheck size={12} className="mr-1" /> Admin MVP</>
             ) : (
-              <>
-                <Building2 size={12} className="mr-1" />
-                {user?.companyName || "Portal Cliente"}
-              </>
+              <><Building2 size={12} className="mr-1" /> {user?.companyName || "Portal Cliente"}</>
             )}
           </Badge>
         </div>
@@ -154,10 +140,7 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
             <Link
               key={item.name}
               to={item.href}
-              className={cn(
-                "sidebar-nav-item",
-                isActive && "active"
-              )}
+              className={cn("sidebar-nav-item", isActive && "active")}
               title={collapsed ? item.name : undefined}
             >
               <item.icon size={20} className="flex-shrink-0" />
@@ -169,7 +152,6 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
 
       {/* Footer */}
       <div className="px-3 py-4 border-t border-sidebar-border space-y-2">
-        {/* Role switcher (for demo) */}
         {!collapsed && (
           <Select 
             value={user?.role || "admin_mvp"} 
@@ -185,11 +167,7 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
           </Select>
         )}
 
-        <Link
-          to="/configuracoes"
-          className="sidebar-nav-item"
-          title={collapsed ? "Configurações" : undefined}
-        >
+        <Link to="/configuracoes" className="sidebar-nav-item" title={collapsed ? "Configurações" : undefined}>
           <Settings size={20} className="flex-shrink-0" />
           {!collapsed && <span>Configurações</span>}
         </Link>
@@ -200,12 +178,8 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-sidebar-foreground truncate">
-                {user?.name || "Usuário"}
-              </p>
-              <p className="text-xs text-sidebar-foreground/60 truncate">
-                {user?.email || "user@mvp.com"}
-              </p>
+              <p className="text-sm font-medium text-sidebar-foreground truncate">{user?.name || "Usuário"}</p>
+              <p className="text-xs text-sidebar-foreground/60 truncate">{user?.email || "user@mvp.com"}</p>
             </div>
           )}
           {!collapsed && (

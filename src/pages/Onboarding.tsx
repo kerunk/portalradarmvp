@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -46,7 +45,7 @@ export default function Onboarding() {
   const [editingNucleoId, setEditingNucleoId] = useState<string | null>(null);
   const [nucleoForm, setNucleoForm] = useState({ name: "", email: "", sector: "", role: "" });
 
-  // Population state
+  // Population state (simplified for onboarding - no facilitator/nucleo/leadership toggles)
   const [populationMembers, setPopulationMembers] = useState<PopulationMember[]>([]);
   const [editingPopId, setEditingPopId] = useState<string | null>(null);
   const [popForm, setPopForm] = useState({ name: "", email: "", sector: "", role: "" });
@@ -66,7 +65,6 @@ export default function Onboarding() {
   const companyId = user.companyId || "";
 
   // ========== NÚCLEO HANDLERS ==========
-
   const resetNucleoForm = () => {
     setNucleoForm({ name: "", email: "", sector: "", role: "" });
     setEditingNucleoId(null);
@@ -77,17 +75,11 @@ export default function Onboarding() {
       toast({ title: "Campos obrigatórios", description: "Preencha nome e setor.", variant: "destructive" });
       return;
     }
-    if (nucleoForm.email && isEmailUsedInCompany(companyId, nucleoForm.email)) {
-      toast({ title: "Email duplicado", description: "Este email já está cadastrado.", variant: "destructive" });
-      return;
-    }
 
     if (editingNucleoId) {
       setNucleoMembers(prev => prev.map(m => m.id === editingNucleoId ? { ...m, ...nucleoForm } : m));
-      toast({ title: "Atualizado!", description: `${nucleoForm.name} foi atualizado.` });
     } else {
       setNucleoMembers(prev => [...prev, { ...nucleoForm, id: `nuc-${Date.now()}` }]);
-      toast({ title: "Adicionado!", description: `${nucleoForm.name} foi incluído no núcleo.` });
     }
     resetNucleoForm();
   };
@@ -102,11 +94,24 @@ export default function Onboarding() {
   };
 
   // ========== POPULATION HANDLERS ==========
-
   const resetPopForm = () => {
     setPopForm({ name: "", email: "", sector: "", role: "" });
     setEditingPopId(null);
   };
+
+  const createEmptyPopMember = (overrides: Partial<PopulationMember> & { id: string; name: string }): PopulationMember => ({
+    email: "",
+    sector: "",
+    role: "",
+    unit: "",
+    shift: "",
+    admissionDate: "",
+    facilitator: false,
+    nucleo: false,
+    leadership: false,
+    active: true,
+    ...overrides,
+  });
 
   const handleAddPop = () => {
     if (!popForm.name.trim() || !popForm.sector.trim()) {
@@ -114,19 +119,14 @@ export default function Onboarding() {
       return;
     }
     if (popForm.email && isEmailUsedInCompany(companyId, popForm.email, editingPopId || undefined)) {
-      toast({ title: "Email duplicado", description: "Este email já está cadastrado.", variant: "destructive" });
+      toast({ title: "Email duplicado", variant: "destructive" });
       return;
     }
 
     if (editingPopId) {
-      setPopulationMembers(prev => prev.map(m => m.id === editingPopId
-        ? { ...m, ...popForm }
-        : m
-      ));
-      toast({ title: "Atualizado!", description: `${popForm.name} foi atualizado.` });
+      setPopulationMembers(prev => prev.map(m => m.id === editingPopId ? { ...m, ...popForm } : m));
     } else {
-      setPopulationMembers(prev => [...prev, { ...popForm, facilitator: false, id: `pop-${Date.now()}`, active: true }]);
-      toast({ title: "Adicionado!", description: `${popForm.name} foi incluído na base.` });
+      setPopulationMembers(prev => [...prev, createEmptyPopMember({ ...popForm, id: `pop-${Date.now()}` })]);
     }
     resetPopForm();
   };
@@ -154,78 +154,68 @@ export default function Onboarding() {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (e) => {
       const content = e.target?.result as string;
       if (!content) return;
       const { members, errors } = parsePopulationCSV(content);
-
       if (errors.length > 0) {
         toast({ title: "Erros na importação", description: errors.slice(0, 3).join("; "), variant: "destructive" });
       }
       if (members.length > 0) {
-        const newMembers: PopulationMember[] = members.map((m, i) => ({
+        const newMembers: PopulationMember[] = members.map((m, i) => createEmptyPopMember({
           ...m,
           id: `pop-import-${Date.now()}-${i}`,
-          active: true,
         }));
         setPopulationMembers(prev => [...prev, ...newMembers]);
-        toast({ title: "Importação concluída", description: `${newMembers.length} colaboradores importados.` });
+        toast({ title: `${newMembers.length} colaboradores importados.` });
       }
     };
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Merge núcleo into population (ensure they exist)
+  // Merge núcleo into population
   const mergeNucleoIntoPopulation = (): PopulationMember[] => {
     const merged = [...populationMembers];
     nucleoMembers.forEach(nuc => {
       const exists = merged.some(p =>
-        p.email && nuc.email && p.email.toLowerCase() === nuc.email.toLowerCase()
-      ) || merged.some(p => p.name.toLowerCase() === nuc.name.toLowerCase() && p.sector === nuc.sector);
-
+        (p.email && nuc.email && p.email.toLowerCase() === nuc.email.toLowerCase()) ||
+        (p.name.toLowerCase() === nuc.name.toLowerCase() && p.sector === nuc.sector)
+      );
       if (!exists) {
-        merged.push({
+        merged.push(createEmptyPopMember({
           id: `pop-from-nuc-${nuc.id}`,
           name: nuc.name,
           email: nuc.email,
           sector: nuc.sector,
           role: nuc.role,
-          facilitator: false,
-          active: true,
-        });
+          nucleo: true,
+        }));
       }
     });
-    return merged;
+    // Mark nucleo members
+    return merged.map(m => {
+      const isNuc = nucleoMembers.some(n =>
+        (n.email && m.email && n.email.toLowerCase() === m.email.toLowerCase()) ||
+        (n.name.toLowerCase() === m.name.toLowerCase() && n.sector === m.sector)
+      );
+      return isNuc ? { ...m, nucleo: true } : m;
+    });
   };
 
   const handleComplete = async () => {
     setIsLoading(true);
-
-    // Save núcleo
     setNucleo(companyId, nucleoMembers);
-
-    // Merge and save population
     const finalPopulation = mergeNucleoIntoPopulation();
     setPopulation(companyId, finalPopulation);
-
     await completeOnboarding();
-
-    toast({
-      title: "Configuração concluída!",
-      description: "Bem-vindo ao Portal MVP. Sua jornada começa agora.",
-    });
-
+    toast({ title: "Configuração concluída!", description: "Bem-vindo ao Portal MVP." });
     navigate("/");
     setIsLoading(false);
   };
 
-  
-
   // ========== RENDER STEPS ==========
-
   const renderStep1 = () => (
     <div className="text-center space-y-8">
       <div className="flex items-center justify-center gap-4">
@@ -257,8 +247,7 @@ export default function Onboarding() {
         ))}
       </div>
       <Button onClick={() => setStep(2)} size="lg" className="min-w-48">
-        Iniciar Configuração
-        <ArrowRight size={18} className="ml-2" />
+        Iniciar Configuração <ArrowRight size={18} className="ml-2" />
       </Button>
     </div>
   );
@@ -268,11 +257,8 @@ export default function Onboarding() {
       <div className="text-center space-y-2">
         <Users className="h-10 w-10 text-primary mx-auto" />
         <h2 className="text-2xl font-display font-bold text-foreground">Núcleo de Sustentação</h2>
-        <p className="text-sm text-muted-foreground">
-          Cadastre as pessoas que vão administrar e operar o portal MVP na sua empresa.
-        </p>
+        <p className="text-sm text-muted-foreground">Cadastre as pessoas que vão administrar e operar o portal.</p>
       </div>
-
       <Card className="p-4 space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2 space-y-1">
@@ -300,7 +286,6 @@ export default function Onboarding() {
           <Button type="button" variant="ghost" className="w-full" onClick={resetNucleoForm}>Cancelar Edição</Button>
         )}
       </Card>
-
       {nucleoMembers.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">Integrantes do Núcleo ({nucleoMembers.length})</p>
@@ -309,33 +294,20 @@ export default function Onboarding() {
               <div key={member.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div>
                   <p className="text-sm font-medium">{member.name}</p>
-                  <p className="text-xs text-muted-foreground">{member.sector}{member.role && ` • ${member.role}`}</p>
+                  <p className="text-xs text-muted-foreground">{member.sector}{member.role && ` · ${member.role}`}</p>
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => handleEditNucleo(member)}>
-                    <Pencil size={14} />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleRemoveNucleo(member.id)} className="text-destructive hover:text-destructive">
-                    <Trash2 size={14} />
-                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleEditNucleo(member)}><Pencil size={14} /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleRemoveNucleo(member.id)} className="text-destructive hover:text-destructive"><Trash2 size={14} /></Button>
                 </div>
               </div>
             ))}
           </div>
         </div>
       )}
-
-      <p className="text-xs text-muted-foreground text-center">
-        Essas pessoas serão responsáveis por ações, alertas, planejamento e montagem de turmas.
-      </p>
-
       <div className="flex gap-3">
-        <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
-          <ArrowLeft size={18} className="mr-2" /> Voltar
-        </Button>
-        <Button onClick={() => setStep(3)} className="flex-1">
-          Continuar <ArrowRight size={18} className="ml-2" />
-        </Button>
+        <Button variant="outline" onClick={() => setStep(1)} className="flex-1"><ArrowLeft size={18} className="mr-2" /> Voltar</Button>
+        <Button onClick={() => setStep(3)} className="flex-1">Continuar <ArrowRight size={18} className="ml-2" /></Button>
       </div>
     </div>
   );
@@ -345,12 +317,8 @@ export default function Onboarding() {
       <div className="text-center space-y-2">
         <Database className="h-10 w-10 text-primary mx-auto" />
         <h2 className="text-2xl font-display font-bold text-foreground">Base Populacional</h2>
-        <p className="text-sm text-muted-foreground">
-          Cadastre todos os colaboradores da empresa, incluindo os do núcleo.
-        </p>
+        <p className="text-sm text-muted-foreground">Cadastre todos os colaboradores da empresa.</p>
       </div>
-
-      {/* Upload / Template */}
       <div className="flex gap-2">
         <Button variant="outline" size="sm" className="flex-1" onClick={handleDownloadTemplate}>
           <Download size={14} className="mr-1" /> Baixar Modelo CSV
@@ -360,8 +328,6 @@ export default function Onboarding() {
         </Button>
         <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
       </div>
-
-      {/* Manual entry */}
       <Card className="p-4 space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2 space-y-1">
@@ -389,53 +355,33 @@ export default function Onboarding() {
           <Button type="button" variant="ghost" className="w-full" onClick={resetPopForm}>Cancelar Edição</Button>
         )}
       </Card>
-
-      {/* Population list */}
       {populationMembers.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-foreground">
-            Colaboradores cadastrados ({populationMembers.length})
-          </p>
+          <p className="text-sm font-medium text-foreground">Colaboradores ({populationMembers.length})</p>
           <div className="space-y-2 max-h-56 overflow-y-auto">
             {populationMembers.map(member => (
               <div key={member.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div>
-                  <p className="text-sm font-medium">
-                    {member.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{member.sector}{member.role && ` • ${member.role}`}</p>
+                  <p className="text-sm font-medium">{member.name}</p>
+                  <p className="text-xs text-muted-foreground">{member.sector}{member.role && ` · ${member.role}`}</p>
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => handleEditPop(member)}>
-                    <Pencil size={14} />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleRemovePop(member.id)} className="text-destructive hover:text-destructive">
-                    <Trash2 size={14} />
-                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleEditPop(member)}><Pencil size={14} /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleRemovePop(member.id)} className="text-destructive hover:text-destructive"><Trash2 size={14} /></Button>
                 </div>
               </div>
             ))}
           </div>
         </div>
       )}
-
-      <p className="text-xs text-muted-foreground text-center">
-        Os integrantes do núcleo serão adicionados automaticamente à base se não estiverem incluídos.
-      </p>
-
       <div className="flex gap-3">
-        <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
-          <ArrowLeft size={18} className="mr-2" /> Voltar
-        </Button>
-        <Button onClick={() => setStep(4)} className="flex-1">
-          Continuar <ArrowRight size={18} className="ml-2" />
-        </Button>
+        <Button variant="outline" onClick={() => setStep(2)} className="flex-1"><ArrowLeft size={18} className="mr-2" /> Voltar</Button>
+        <Button onClick={() => setStep(4)} className="flex-1">Continuar <ArrowRight size={18} className="ml-2" /></Button>
       </div>
     </div>
   );
 
   const finalPopulation = mergeNucleoIntoPopulation();
-  const finalFacilitators = finalPopulation.filter(m => m.facilitator).length; // Will be 0 since facilitators are set later
 
   const renderStep4 = () => (
     <div className="text-center space-y-6">
@@ -448,17 +394,12 @@ export default function Onboarding() {
           Sua configuração inicial está completa. Confira o resumo e entre no portal.
         </p>
       </div>
-
       <Card className="p-5 text-left space-y-4">
         <h3 className="font-semibold text-foreground">Resumo da Configuração</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between py-2 border-b border-border">
             <span className="text-muted-foreground">Empresa</span>
             <span className="font-medium">{user.companyName || "Configurada"}</span>
-          </div>
-          <div className="flex items-center justify-between py-2 border-b border-border">
-            <span className="text-muted-foreground">Administrador</span>
-            <span className="font-medium">{user.name}</span>
           </div>
           <div className="flex items-center justify-between py-2 border-b border-border">
             <span className="text-muted-foreground">Integrantes do Núcleo</span>
@@ -468,17 +409,10 @@ export default function Onboarding() {
             <span className="text-muted-foreground">Base Populacional</span>
             <span className="font-medium">{finalPopulation.length} colaboradores</span>
           </div>
-          <div className="flex items-center justify-between py-2">
-            <span className="text-muted-foreground">Facilitadores</span>
-            <span className="font-medium">{finalFacilitators}</span>
-          </div>
         </div>
       </Card>
-
       <div className="flex gap-3">
-        <Button variant="outline" onClick={() => setStep(3)} className="flex-1">
-          <ArrowLeft size={18} className="mr-2" /> Voltar
-        </Button>
+        <Button variant="outline" onClick={() => setStep(3)} className="flex-1"><ArrowLeft size={18} className="mr-2" /> Voltar</Button>
         <Button onClick={handleComplete} className="flex-1" disabled={isLoading}>
           {isLoading ? "Finalizando..." : "Entrar no Portal MVP"}
           <ArrowRight size={18} className="ml-2" />
@@ -510,11 +444,9 @@ export default function Onboarding() {
             />
           ))}
         </div>
-
         <Card className="p-8 shadow-elevated">
           {renderStep()}
         </Card>
-
         <p className="text-center text-xs text-muted-foreground mt-6">
           Etapa {step} de {totalSteps}
         </p>
