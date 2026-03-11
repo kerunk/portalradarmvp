@@ -32,9 +32,7 @@ export default function Dashboard() {
   // Check if this is a new/empty company
   const companyStats = useMemo(() => {
     if (!companyId || isAdminMVP) return null;
-    const popStats = getPopulationStats(companyId);
-    const nucleo = getNucleo(companyId);
-    return { ...popStats, nucleoCount: nucleo.length };
+    return getPopulationStats(companyId);
   }, [companyId, isAdminMVP, refreshKey]);
 
   const { globalIndicators, phaseProgress } = useMemo(() => {
