@@ -58,7 +58,7 @@ const App = () => (
             <Route path="/estrutura" element={<ProtectedRoute><OrgStructure /></ProtectedRoute>} />
             <Route path="/base-populacional" element={<ProtectedRoute><BasePopulacional /></ProtectedRoute>} />
             <Route path="/nucleo" element={<ProtectedRoute><NucleoGovernance /></ProtectedRoute>} />
-            <Route path="/experiencias" element={<ProtectedRoute><ExperiencesMVP /></ProtectedRoute>} />
+            
             <Route path="/configuracoes" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             
             {/* Admin Only Routes */}
