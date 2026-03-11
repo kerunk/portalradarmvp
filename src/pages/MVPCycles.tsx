@@ -902,13 +902,19 @@ export default function MVPCycles() {
                 const StatusIcon = config.icon;
 
                 return (
-                  <div key={id} className={cn(
-                    "p-4 rounded-lg border-l-4 bg-card border",
+                  <div key={id} id={`action-${id}`} className={cn(
+                    "p-4 rounded-lg border-l-4 bg-card border transition-all duration-500",
                     displayStatus === "completed" && "border-l-success",
                     displayStatus === "in_progress" && "border-l-warning",
                     displayStatus === "pending" && "border-l-muted",
-                    displayStatus === "delayed" && "border-l-destructive"
+                    displayStatus === "delayed" && "border-l-destructive",
+                    highlightedId === id && "ring-2 ring-primary shadow-lg bg-primary/5"
                   )}>
+                    {fromAlert && highlightedId === id && (
+                      <Badge variant="secondary" className="text-[10px] mb-2">
+                        Item aberto a partir de alerta do sistema
+                      </Badge>
+                    )}
                     <div className="flex items-start justify-between gap-4 mb-2">
                       <div>
                         <span className="font-medium text-foreground">{title}</span>
