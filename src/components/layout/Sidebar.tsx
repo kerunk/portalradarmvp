@@ -20,7 +20,7 @@ import {
   ShieldCheck,
   Database,
   Layers,
-  BookMarked,
+  
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -58,7 +58,7 @@ const clientNavigation = [
   { name: "Ciclos MVP", href: "/ciclos", icon: Rocket },
   { name: "Turmas", href: "/turmas", icon: Users },
   { name: "Ações & Alertas", href: "/indicadores", icon: Target },
-  { name: "Experiências MVP", href: "/experiencias", icon: BookMarked },
+  
   { name: "Relatórios", href: "/relatorios", icon: FileText },
 ];
 
