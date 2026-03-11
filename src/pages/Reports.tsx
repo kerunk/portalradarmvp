@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   FileText,
@@ -20,12 +19,13 @@ import {
   GraduationCap,
   BarChart3,
   TrendingUp,
-  TrendingDown,
   CheckCircle2,
   AlertTriangle,
   Lightbulb,
   FileSpreadsheet,
-  ArrowRight,
+  UserCheck,
+  Building2,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,6 +35,9 @@ import {
   generateNucleoReport,
   generateCoverageReport,
   generateCycleReport,
+  generateCollaboratorProgressReport,
+  generateSectorMaturityReport,
+  generateTrainingDelayAlerts,
   getAvailableFilters,
   type ExecutiveReportData,
 } from "@/lib/reportData";
@@ -44,15 +47,20 @@ import {
   exportCoveragePDF,
   exportNucleoPDF,
   exportCyclePDF,
+  exportCollaboratorProgressPDF,
+  exportSectorMaturityPDF,
   exportExecutiveExcel,
   exportTurmaExcel,
   exportCoverageExcel,
   exportNucleoExcel,
   exportCycleExcel,
+  exportCollaboratorProgressExcel,
+  exportSectorMaturityExcel,
 } from "@/lib/reportExport";
 import { toast } from "@/hooks/use-toast";
+import { CYCLE_IDS } from "@/lib/constants";
 
-type ReportType = "executive" | "turmas" | "nucleo" | "coverage" | "cycle";
+type ReportType = "executive" | "turmas" | "nucleo" | "coverage" | "cycle" | "collaborator" | "sector_maturity";
 
 const REPORT_TYPES: { id: ReportType; label: string; icon: typeof FileText; description: string }[] = [
   { id: "executive", label: "Executivo Geral", icon: BarChart3, description: "Visão completa da implementação" },
@@ -60,6 +68,8 @@ const REPORT_TYPES: { id: ReportType; label: string; icon: typeof FileText; desc
   { id: "nucleo", label: "Núcleo", icon: Shield, description: "Integrantes e ações atribuídas" },
   { id: "coverage", label: "Cobertura", icon: Users, description: "Colaboradores treinados vs base" },
   { id: "cycle", label: "Por Ciclo", icon: Target, description: "Detalhamento por ciclo MVP" },
+  { id: "collaborator", label: "Progresso por Colaborador", icon: UserCheck, description: "Estágio de cada colaborador" },
+  { id: "sector_maturity", label: "Maturidade por Setor", icon: Building2, description: "Cobertura comparativa entre setores" },
 ];
 
 export default function Reports() {
@@ -103,6 +113,12 @@ export default function Reports() {
             exportExecutivePDF(executiveData);
           }
           break;
+        case "collaborator":
+          exportCollaboratorProgressPDF(generateCollaboratorProgressReport(companyId, reportFilters), companyName);
+          break;
+        case "sector_maturity":
+          exportSectorMaturityPDF(generateSectorMaturityReport(companyId), companyName);
+          break;
       }
       toast({ title: "PDF exportado com sucesso!" });
     } catch (e) {
@@ -138,6 +154,12 @@ export default function Reports() {
             exportExecutiveExcel(executiveData);
           }
           break;
+        case "collaborator":
+          exportCollaboratorProgressExcel(generateCollaboratorProgressReport(companyId, reportFilters), companyName);
+          break;
+        case "sector_maturity":
+          exportSectorMaturityExcel(generateSectorMaturityReport(companyId), companyName);
+          break;
       }
       toast({ title: "Excel exportado com sucesso!" });
     } catch (e) {
@@ -145,11 +167,15 @@ export default function Reports() {
     }
   };
 
+  const showCycleFilter = ["turmas", "cycle", "executive"].includes(activeReport);
+  const showSectorFilter = ["turmas", "coverage", "collaborator"].includes(activeReport);
+  const showFacilitatorFilter = activeReport === "turmas";
+
   return (
-    <AppLayout title="Relatórios" subtitle="Relatórios executivos e acompanhamento">
+    <AppLayout title="Relatórios" subtitle="Relatórios executivos e acompanhamento estratégico">
       <div className="space-y-6 animate-fade-in">
         {/* Report type selector */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
           {REPORT_TYPES.map((rt) => {
             const Icon = rt.icon;
             const isActive = activeReport === rt.id;
@@ -158,15 +184,15 @@ export default function Reports() {
                 key={rt.id}
                 onClick={() => setActiveReport(rt.id)}
                 className={cn(
-                  "p-4 rounded-xl border text-left transition-all",
+                  "p-3 rounded-xl border text-left transition-all",
                   isActive
                     ? "bg-primary text-primary-foreground border-primary shadow-md"
                     : "bg-card border-border hover:border-primary/40 hover:shadow-sm"
                 )}
               >
-                <Icon size={20} className={cn("mb-2", isActive ? "text-primary-foreground" : "text-primary")} />
-                <p className={cn("text-sm font-semibold", isActive ? "text-primary-foreground" : "text-foreground")}>{rt.label}</p>
-                <p className={cn("text-xs mt-0.5", isActive ? "text-primary-foreground/80" : "text-muted-foreground")}>{rt.description}</p>
+                <Icon size={18} className={cn("mb-1.5", isActive ? "text-primary-foreground" : "text-primary")} />
+                <p className={cn("text-xs font-semibold leading-tight", isActive ? "text-primary-foreground" : "text-foreground")}>{rt.label}</p>
+                <p className={cn("text-[10px] mt-0.5 leading-tight", isActive ? "text-primary-foreground/80" : "text-muted-foreground")}>{rt.description}</p>
               </button>
             );
           })}
@@ -176,7 +202,7 @@ export default function Reports() {
         <Card className="p-4">
           <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
             <div className="flex flex-wrap gap-2">
-              {(activeReport === "turmas" || activeReport === "cycle" || activeReport === "executive") && (
+              {showCycleFilter && (
                 <Select value={filterCycle} onValueChange={setFilterCycle}>
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Ciclo" />
@@ -189,7 +215,7 @@ export default function Reports() {
                   </SelectContent>
                 </Select>
               )}
-              {(activeReport === "turmas" || activeReport === "coverage") && filters.sectors.length > 0 && (
+              {showSectorFilter && filters.sectors.length > 0 && (
                 <Select value={filterSector} onValueChange={setFilterSector}>
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Setor" />
@@ -202,7 +228,7 @@ export default function Reports() {
                   </SelectContent>
                 </Select>
               )}
-              {activeReport === "turmas" && filters.facilitators.length > 0 && (
+              {showFacilitatorFilter && filters.facilitators.length > 0 && (
                 <Select value={filterFacilitator} onValueChange={setFilterFacilitator}>
                   <SelectTrigger className="w-44">
                     <SelectValue placeholder="Facilitador" />
@@ -230,18 +256,22 @@ export default function Reports() {
         </Card>
 
         {/* Report content */}
-        {activeReport === "executive" && <ExecutivePreview data={executiveData} />}
+        {activeReport === "executive" && <ExecutivePreview data={executiveData} companyId={companyId} />}
         {activeReport === "turmas" && <TurmasPreview companyId={companyId} filterCycle={filterCycle} filterFacilitator={filterFacilitator} />}
         {activeReport === "nucleo" && <NucleoPreview companyId={companyId} />}
         {activeReport === "coverage" && <CoveragePreview companyId={companyId} />}
         {activeReport === "cycle" && <CyclePreview filterCycle={filterCycle} />}
+        {activeReport === "collaborator" && <CollaboratorPreview companyId={companyId} filterSector={filterSector} />}
+        {activeReport === "sector_maturity" && <SectorMaturityPreview companyId={companyId} />}
       </div>
     </AppLayout>
   );
 }
 
 // ============ EXECUTIVE PREVIEW ============
-function ExecutivePreview({ data }: { data: ExecutiveReportData }) {
+function ExecutivePreview({ data, companyId }: { data: ExecutiveReportData; companyId: string }) {
+  const trainingAlerts = useMemo(() => generateTrainingDelayAlerts(companyId), [companyId]);
+
   return (
     <div className="space-y-6">
       {/* Summary banner */}
@@ -258,12 +288,12 @@ function ExecutivePreview({ data }: { data: ExecutiveReportData }) {
 
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
           <MetricMini label="Colaboradores" value={data.activePop} />
-          <MetricMini label="Núcleo" value={data.nucleoCount} />
+          <MetricMini label="Núcleo ativo" value={data.nucleoCount} />
           <MetricMini label="Facilitadores" value={data.facilitators} />
           <MetricMini label="Cobertura" value={`${data.coveragePercent}%`} color={data.coveragePercent >= 60 ? "success" : "warning"} />
-          <MetricMini label="Ações" value={`${data.completedActions}/${data.totalActions}`} />
-          <MetricMini label="Atrasadas" value={data.delayedActions} color={data.delayedActions > 0 ? "destructive" : "success"} />
-          <MetricMini label="Ciclos" value={`${data.closedCycles}/${data.totalCycles}`} />
+          <MetricMini label="Ações concluídas" value={`${data.completedActions}/${data.totalActions}`} />
+          <MetricMini label="Ações atrasadas" value={data.delayedActions} color={data.delayedActions > 0 ? "destructive" : "success"} />
+          <MetricMini label="Ciclos encerrados" value={`${data.closedCycles}/${data.totalCycles}`} />
           <MetricMini label="Maturidade" value={data.maturityScore} subtitle={data.maturityLevel} />
         </div>
       </Card>
@@ -277,7 +307,7 @@ function ExecutivePreview({ data }: { data: ExecutiveReportData }) {
           <div className="grid grid-cols-3 gap-3">
             <MetricMini label="Turmas realizadas" value={`${data.turmasRealizadas}/${data.turmasTotal}`} />
             <MetricMini label="Pessoas treinadas" value={data.pessoasTreinadas} />
-            <MetricMini label="Presenças" value={data.totalPresences} />
+            <MetricMini label="Presenças registradas" value={data.totalPresences} />
           </div>
         </Card>
         <Card className="p-5">
@@ -351,11 +381,41 @@ function ExecutivePreview({ data }: { data: ExecutiveReportData }) {
         </div>
       </Card>
 
+      {/* Training delay alerts */}
+      {trainingAlerts.length > 0 && (
+        <Card className="p-5 border-warning/30">
+          <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+            <AlertCircle size={18} className="text-warning" /> Colaboradores com Treinamentos Pendentes
+          </h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            {trainingAlerts.length} colaborador(es) ainda não completaram módulos obrigatórios (M1, M2, M3).
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-60 overflow-y-auto">
+            {trainingAlerts.slice(0, 20).map((a, i) => (
+              <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-warning/5 border border-warning/10">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{a.name}</p>
+                  <p className="text-xs text-muted-foreground">{a.sector} · {a.role}</p>
+                </div>
+                <div className="flex gap-1">
+                  {a.pendingModules.map(m => (
+                    <Badge key={m} variant="outline" className="text-[10px] border-warning/40 text-warning">{m}</Badge>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          {trainingAlerts.length > 20 && (
+            <p className="text-xs text-muted-foreground mt-2">...e mais {trainingAlerts.length - 20} colaboradores.</p>
+          )}
+        </Card>
+      )}
+
       {/* Insights */}
       {data.insights.length > 0 && (
         <Card className="p-5">
           <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Lightbulb size={18} className="text-warning" /> Insights Inteligentes
+            <Lightbulb size={18} className="text-warning" /> Insights e Recomendações
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {data.insights.map((insight, i) => {
@@ -391,7 +451,7 @@ function TurmasPreview({ companyId, filterCycle, filterFacilitator }: { companyI
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <MetricCard label="Total de turmas" value={data.turmas.length} icon={GraduationCap} />
         <MetricCard label="Participantes" value={data.totalParticipants} icon={Users} />
-        <MetricCard label="Presenças" value={data.totalPresences} icon={CheckCircle2} color="success" />
+        <MetricCard label="Presenças registradas" value={data.totalPresences} icon={CheckCircle2} color="success" />
         <MetricCard label="Faltas" value={data.totalAbsences} icon={AlertTriangle} color="destructive" />
       </div>
       {data.turmas.length === 0 ? (
@@ -404,7 +464,7 @@ function TurmasPreview({ companyId, filterCycle, filterFacilitator }: { companyI
                 <h4 className="font-semibold text-foreground">{t.name}</h4>
                 <p className="text-xs text-muted-foreground">Ciclo {t.cycleId} · Facilitador: {t.facilitator} · {t.trainingDate ? new Date(t.trainingDate).toLocaleDateString('pt-BR') : 'Sem data'}</p>
               </div>
-              <Badge variant="outline">{t.presentCount}/{t.participantCount} presentes</Badge>
+              <Badge variant="outline">{t.presentCount}/{t.participantCount} presenças</Badge>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1">
               {t.participants.map((p, i) => (
@@ -434,7 +494,7 @@ function NucleoPreview({ companyId }: { companyId: string }) {
         <MetricCard label="Integrantes" value={data.totalMembers} icon={Shield} />
         <MetricCard label="Com ações" value={data.membersWithActions} icon={Target} />
         <MetricCard label="Ações atribuídas" value={data.totalActionsAssigned} icon={FileText} />
-        <MetricCard label="Concluídas" value={data.completedActions} icon={CheckCircle2} color="success" />
+        <MetricCard label="Ações concluídas" value={data.completedActions} icon={CheckCircle2} color="success" />
       </div>
       {data.members.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">Nenhum integrante do núcleo cadastrado.</Card>
@@ -529,8 +589,8 @@ function CyclePreview({ filterCycle }: { filterCycle: string }) {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <MetricMini label="Conclusão" value={`${data.completionPercent}%`} color={data.completionPercent >= 80 ? "success" : "warning"} />
-          <MetricMini label="Ações" value={`${data.completedActions}/${data.totalActions}`} />
-          <MetricMini label="Atrasadas" value={data.delayedActions} color={data.delayedActions > 0 ? "destructive" : "success"} />
+          <MetricMini label="Ações concluídas" value={`${data.completedActions}/${data.totalActions}`} />
+          <MetricMini label="Ações atrasadas" value={data.delayedActions} color={data.delayedActions > 0 ? "destructive" : "success"} />
           <MetricMini label="Turmas" value={`${data.turmasCompleted}/${data.turmasTotal}`} />
         </div>
       </Card>
@@ -564,6 +624,119 @@ function CyclePreview({ filterCycle }: { filterCycle: string }) {
               <div key={i} className="flex items-center justify-between p-2 rounded bg-muted/50 text-sm">
                 <span className="text-foreground">{d.title}</span>
                 <span className="text-muted-foreground">{new Date(d.date).toLocaleDateString('pt-BR')}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ============ COLLABORATOR PROGRESS PREVIEW ============
+function CollaboratorPreview({ companyId, filterSector }: { companyId: string; filterSector: string }) {
+  const data = useMemo(() => generateCollaboratorProgressReport(companyId, {
+    sector: filterSector !== "all" ? filterSector : undefined,
+  }), [companyId, filterSector]);
+
+  const moduleIds = CYCLE_IDS;
+  const statusColor = (s: string) => s === 'completed' ? 'bg-success' : s === 'in_progress' ? 'bg-warning' : 'bg-muted';
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <MetricCard label="Colaboradores" value={data.totalCollaborators} icon={Users} />
+        <MetricCard label="Progresso médio" value={`${data.averageProgress}%`} icon={TrendingUp} color={data.averageProgress >= 50 ? "success" : "warning"} />
+        <MetricCard label="Programa completo" value={data.fullyTrained} icon={CheckCircle2} color="success" />
+        <MetricCard label="Não iniciados" value={data.notStarted} icon={AlertTriangle} color="destructive" />
+      </div>
+
+      {data.collaborators.length === 0 ? (
+        <Card className="p-8 text-center text-muted-foreground">Nenhum colaborador encontrado.</Card>
+      ) : (
+        <Card className="p-4 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-2 px-2 text-muted-foreground font-medium">Colaborador</th>
+                <th className="text-left py-2 px-2 text-muted-foreground font-medium">Setor</th>
+                <th className="text-left py-2 px-2 text-muted-foreground font-medium">Cargo</th>
+                {moduleIds.map(m => (
+                  <th key={m} className="text-center py-2 px-1 text-muted-foreground font-medium text-xs">{m}</th>
+                ))}
+                <th className="text-right py-2 px-2 text-muted-foreground font-medium">Progresso</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.collaborators.map((c, i) => (
+                <tr key={c.id} className={cn("border-b border-border/50", i % 2 === 0 ? "bg-muted/30" : "")}>
+                  <td className="py-2 px-2 font-medium text-foreground">{c.name}</td>
+                  <td className="py-2 px-2 text-muted-foreground text-xs">{c.sector}</td>
+                  <td className="py-2 px-2 text-muted-foreground text-xs">{c.role}</td>
+                  {moduleIds.map(m => (
+                    <td key={m} className="py-2 px-1 text-center">
+                      <div className={cn("w-4 h-4 rounded-full mx-auto", statusColor(c.modules[m]))} title={c.modules[m] === 'completed' ? 'Concluído' : c.modules[m] === 'in_progress' ? 'Em andamento' : 'Não iniciado'} />
+                    </td>
+                  ))}
+                  <td className="py-2 px-2 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <div className="w-16 h-2 rounded-full bg-muted overflow-hidden">
+                        <div className={cn("h-full rounded-full", c.progressPercent >= 60 ? "bg-success" : c.progressPercent > 0 ? "bg-warning" : "bg-muted")} style={{ width: `${c.progressPercent}%` }} />
+                      </div>
+                      <span className="text-xs font-bold text-foreground w-8 text-right">{c.progressPercent}%</span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-success" /> Concluído</div>
+            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-warning" /> Em andamento</div>
+            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-muted" /> Não iniciado</div>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ============ SECTOR MATURITY PREVIEW ============
+function SectorMaturityPreview({ companyId }: { companyId: string }) {
+  const data = useMemo(() => generateSectorMaturityReport(companyId), [companyId]);
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-5 bg-primary/5 border-primary/20">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-lg text-foreground">Maturidade por Setor</h3>
+            <p className="text-sm text-muted-foreground">{data.sectors.length} setores analisados</p>
+          </div>
+          <div className="text-right">
+            <p className={cn("text-3xl font-bold", data.overallCoverage >= 60 ? "text-success" : data.overallCoverage >= 30 ? "text-warning" : "text-destructive")}>{data.overallCoverage}%</p>
+            <p className="text-xs text-muted-foreground">Cobertura geral</p>
+          </div>
+        </div>
+      </Card>
+
+      {data.sectors.length === 0 ? (
+        <Card className="p-8 text-center text-muted-foreground">Nenhum setor com dados disponíveis.</Card>
+      ) : (
+        <Card className="p-4">
+          <div className="space-y-3">
+            {data.sectors.map((s) => (
+              <div key={s.sector} className="p-3 rounded-lg bg-muted/30">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="font-semibold text-foreground">{s.sector}</p>
+                    <p className="text-xs text-muted-foreground">{s.total} colaboradores · {s.trained} treinados · {s.notTrained} não treinados</p>
+                  </div>
+                  <span className={cn("text-2xl font-bold", s.coveragePercent >= 60 ? "text-success" : s.coveragePercent >= 30 ? "text-warning" : "text-destructive")}>{s.coveragePercent}%</span>
+                </div>
+                <div className="w-full h-3 rounded-full bg-muted overflow-hidden">
+                  <div className={cn("h-full rounded-full transition-all", s.coveragePercent >= 60 ? "bg-success" : s.coveragePercent >= 30 ? "bg-warning" : "bg-destructive")} style={{ width: `${s.coveragePercent}%` }} />
+                </div>
               </div>
             ))}
           </div>

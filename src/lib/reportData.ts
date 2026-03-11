@@ -471,6 +471,163 @@ export function generateCycleReport(cycleId: string): CycleReportData {
   };
 }
 
+// ============ COLLABORATOR PROGRESS REPORT ============
+
+export interface CollaboratorProgressData {
+  collaborators: CollaboratorProgress[];
+  totalCollaborators: number;
+  averageProgress: number;
+  fullyTrained: number;
+  notStarted: number;
+}
+
+export interface CollaboratorProgress {
+  id: string;
+  name: string;
+  sector: string;
+  role: string;
+  shift: string;
+  modules: Record<string, 'completed' | 'in_progress' | 'not_started'>;
+  progressPercent: number;
+  completedModules: number;
+  totalModules: number;
+}
+
+export function generateCollaboratorProgressReport(companyId: string, filters?: ReportFilters): CollaboratorProgressData {
+  const population = getPopulation(companyId).filter(m => m.active);
+  const state = getState();
+  const totalModules = CYCLE_IDS.length;
+
+  // Build a map of collaborator ID -> set of cycle IDs they attended (present)
+  const attendedMap: Record<string, Set<string>> = {};
+  state.turmas.forEach(t => {
+    if (t.attendance) {
+      Object.entries(t.attendance).forEach(([id, status]) => {
+        if (status === 'present') {
+          if (!attendedMap[id]) attendedMap[id] = new Set();
+          attendedMap[id].add(t.cycleId);
+        }
+      });
+    }
+  });
+
+  let filtered = population;
+  if (filters?.sector) filtered = filtered.filter(m => m.sector === filters.sector);
+
+  const collaborators: CollaboratorProgress[] = filtered.map(m => {
+    const attended = attendedMap[m.id] || new Set<string>();
+    const modules: Record<string, 'completed' | 'in_progress' | 'not_started'> = {};
+
+    CYCLE_IDS.forEach(cycleId => {
+      if (attended.has(cycleId)) {
+        modules[cycleId] = 'completed';
+      } else {
+        // Check if they're assigned to a turma for this cycle but haven't completed
+        const assignedTurma = state.turmas.find(t => t.cycleId === cycleId && t.participants.some(p => p.id === m.id));
+        if (assignedTurma && !assignedTurma.attendance?.[m.id]) {
+          modules[cycleId] = 'in_progress';
+        } else {
+          modules[cycleId] = 'not_started';
+        }
+      }
+    });
+
+    const completedModules = Object.values(modules).filter(s => s === 'completed').length;
+    return {
+      id: m.id,
+      name: m.name,
+      sector: m.sector,
+      role: m.role,
+      shift: m.shift,
+      modules,
+      progressPercent: totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0,
+      completedModules,
+      totalModules,
+    };
+  });
+
+  const fullyTrained = collaborators.filter(c => c.completedModules === totalModules).length;
+  const notStarted = collaborators.filter(c => c.completedModules === 0).length;
+  const averageProgress = collaborators.length > 0
+    ? Math.round(collaborators.reduce((s, c) => s + c.progressPercent, 0) / collaborators.length)
+    : 0;
+
+  return { collaborators, totalCollaborators: collaborators.length, averageProgress, fullyTrained, notStarted };
+}
+
+// ============ SECTOR MATURITY REPORT ============
+
+export interface SectorMaturityData {
+  sectors: SectorMaturity[];
+  overallCoverage: number;
+}
+
+export interface SectorMaturity {
+  sector: string;
+  total: number;
+  trained: number;
+  notTrained: number;
+  coveragePercent: number;
+}
+
+export function generateSectorMaturityReport(companyId: string): SectorMaturityData {
+  const population = getPopulation(companyId).filter(m => m.active);
+  const { trainedIds } = getTrainedIds(companyId);
+
+  const sectorMap: Record<string, { total: number; trained: number }> = {};
+  population.forEach(m => {
+    const sector = m.sector || 'Sem setor';
+    if (!sectorMap[sector]) sectorMap[sector] = { total: 0, trained: 0 };
+    sectorMap[sector].total++;
+    if (trainedIds.has(m.id)) sectorMap[sector].trained++;
+  });
+
+  const sectors: SectorMaturity[] = Object.entries(sectorMap)
+    .map(([sector, d]) => ({
+      sector,
+      total: d.total,
+      trained: d.trained,
+      notTrained: d.total - d.trained,
+      coveragePercent: d.total > 0 ? Math.round((d.trained / d.total) * 100) : 0,
+    }))
+    .sort((a, b) => b.coveragePercent - a.coveragePercent);
+
+  const overallCoverage = population.length > 0
+    ? Math.round((trainedIds.size / population.length) * 100) : 0;
+
+  return { sectors, overallCoverage };
+}
+
+// ============ TRAINING DELAY ALERTS ============
+
+export interface TrainingDelayAlert {
+  name: string;
+  sector: string;
+  role: string;
+  pendingModules: string[];
+}
+
+export function generateTrainingDelayAlerts(companyId: string): TrainingDelayAlert[] {
+  const population = getPopulation(companyId).filter(m => m.active);
+  const { trainedIds, trainedByCycle } = getTrainedIds(companyId);
+
+  // Find collaborators missing mandatory modules (M1, M2, M3 are considered mandatory baseline)
+  const mandatoryModules = ['M1', 'M2', 'M3'];
+
+  const alerts: TrainingDelayAlert[] = [];
+  population.forEach(m => {
+    const pending = mandatoryModules.filter(moduleId => {
+      const cycleSet = trainedByCycle[moduleId];
+      return !cycleSet || !cycleSet.has(m.id);
+    });
+    if (pending.length > 0) {
+      alerts.push({ name: m.name, sector: m.sector, role: m.role, pendingModules: pending });
+    }
+  });
+
+  return alerts;
+}
+
 // ============ AVAILABLE FILTERS ============
 
 export function getAvailableFilters(companyId: string) {
