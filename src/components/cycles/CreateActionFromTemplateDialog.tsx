@@ -24,7 +24,8 @@ import { ptBR } from "date-fns/locale";
 import { CalendarIcon, User, Target, Zap, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CYCLE_IDS } from "@/lib/constants";
-import { getEmployees, type EmployeeState } from "@/lib/storage";
+import { getNucleoMembers, type PopulationMember } from "@/lib/companyStorage";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 export type ActionType = 
