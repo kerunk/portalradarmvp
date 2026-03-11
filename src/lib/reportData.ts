@@ -169,6 +169,49 @@ function calculateMaturity(popStats: ReturnType<typeof getPopulationStats>, glob
   return { score, level };
 }
 
+// ============ CULTURE SCORE ============
+
+export function calculateCultureScore(companyId: string): { score: number; level: string } {
+  const popStats = getPopulationStats(companyId);
+  const globalInd = obterIndicadoresGlobais();
+  const state = getState();
+  const population = getPopulation(companyId).filter(m => m.active);
+  const { trainedIds } = getTrainedIds(companyId);
+
+  const coveragePercent = population.length > 0 ? (trainedIds.size / population.length) * 100 : 0;
+
+  // Coverage weight: 25%
+  const coverageScore = Math.min(25, (coveragePercent / 100) * 25);
+
+  // Action execution weight: 25%
+  const executionScore = Math.min(25, (globalInd.overallCompletionPercent / 100) * 25);
+
+  // Turma participation weight: 20%
+  const turmasRealizadas = state.turmas.filter(t => t.status === 'completed').length;
+  const turmaScore = Math.min(20, state.turmas.length > 0 ? (turmasRealizadas / state.turmas.length) * 20 : 0);
+
+  // Cycle evolution weight: 20%
+  const cycleScore = Math.min(20, globalInd.totalCycles > 0 ? (globalInd.closedCycles / globalInd.totalCycles) * 20 : 0);
+
+  // Presence weight: 10%
+  const totalPresences = state.turmas.reduce((sum, t) => {
+    if (!t.attendance) return sum;
+    return sum + Object.values(t.attendance).filter(s => s === 'present').length;
+  }, 0);
+  const totalParticipants = state.turmas.reduce((sum, t) => sum + t.participants.length, 0);
+  const presenceScore = Math.min(10, totalParticipants > 0 ? (totalPresences / totalParticipants) * 10 : 0);
+
+  const score = Math.round(coverageScore + executionScore + turmaScore + cycleScore + presenceScore);
+
+  let level = 'Inicial';
+  if (score >= 91) level = 'Cultura Forte';
+  else if (score >= 76) level = 'Consolidando';
+  else if (score >= 51) level = 'Evoluindo';
+  else if (score >= 26) level = 'Estruturando';
+
+  return { score, level };
+}
+
 export function generateInsights(data: {
   coveragePercent: number;
   completionPercent: number;
