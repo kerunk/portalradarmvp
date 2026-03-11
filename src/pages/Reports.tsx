@@ -1,4 +1,6 @@
 import { useState, useMemo } from "react";
+import { getCompanies } from "@/lib/storage";
+import { getCompanyRiskData } from "@/lib/adminNotifications";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -74,11 +76,118 @@ const REPORT_TYPES: { id: ReportType; label: string; icon: typeof FileText; desc
   { id: "sector_maturity", label: "Maturidade por Setor", icon: Building2, description: "Cobertura comparativa entre setores" },
 ];
 
+// Admin sees only aggregated portfolio reports
+function AdminReportsView() {
+  const companies = getCompanies();
+  const companyDataList = companies.map(c => {
+    const data = getCompanyRiskData(c);
+    return { company: c, data };
+  });
+
+  const totalEmployees = companyDataList.reduce((s, c) => s + c.data.totalEmployees, 0);
+  const totalTrained = companyDataList.reduce((s, c) => s + c.data.trainedCount, 0);
+  const avgCoverage = totalEmployees > 0 ? Math.round((totalTrained / totalEmployees) * 100) : 0;
+  const avgMaturity = companyDataList.length > 0
+    ? Math.round(companyDataList.reduce((s, c) => s + c.data.maturityScore, 0) / companyDataList.length)
+    : 0;
+  const totalActions = companyDataList.reduce((s, c) => s + c.data.totalActions, 0);
+  const completedActions = companyDataList.reduce((s, c) => s + c.data.completedActions, 0);
+  const delayedActions = companyDataList.reduce((s, c) => s + c.data.delayedActions, 0);
+  const totalTurmas = companyDataList.reduce((s, c) => s + c.data.totalTurmas, 0);
+  const closedCycles = companyDataList.reduce((s, c) => s + c.data.closedCycles, 0);
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <Card className="p-6 bg-primary/5 border-primary/20">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <BarChart3 size={20} className="text-primary" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-lg text-foreground">Relatório Consolidado da Carteira</h2>
+            <p className="text-sm text-muted-foreground">{companies.length} empresas · Visão agregada</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+          <MetricMini label="Empresas" value={companies.length} />
+          <MetricMini label="Colaboradores" value={totalEmployees} />
+          <MetricMini label="Cobertura" value={`${avgCoverage}%`} color={avgCoverage >= 50 ? "success" : "warning"} />
+          <MetricMini label="Maturidade" value={`${avgMaturity}%`} />
+          <MetricMini label="Ações totais" value={totalActions} />
+          <MetricMini label="Concluídas" value={completedActions} color="success" />
+          <MetricMini label="Atrasadas" value={delayedActions} color={delayedActions > 0 ? "destructive" : "success"} />
+          <MetricMini label="Ciclos encerrados" value={closedCycles} />
+        </div>
+      </Card>
+
+      {/* Company-by-company summary */}
+      <Card className="p-5">
+        <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+          <Building2 size={18} className="text-primary" />
+          Resumo por Empresa
+        </h3>
+        <div className="space-y-0">
+          <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider border-b border-border/50">
+            <div className="col-span-3">Empresa</div>
+            <div className="col-span-2 text-center">Colaboradores</div>
+            <div className="col-span-2 text-center">Cobertura</div>
+            <div className="col-span-2 text-center">Maturidade</div>
+            <div className="col-span-1 text-center">Turmas</div>
+            <div className="col-span-2 text-center">Ações</div>
+          </div>
+          {companyDataList.map(({ company, data }) => {
+            const cov = data.totalEmployees > 0 ? Math.round((data.trainedCount / data.totalEmployees) * 100) : 0;
+            return (
+              <div key={company.id} className="grid grid-cols-12 gap-2 items-center px-3 py-3 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
+                <div className="col-span-3">
+                  <p className="text-sm font-medium text-foreground truncate">{company.name}</p>
+                </div>
+                <div className="col-span-2 text-center text-sm text-foreground">{data.totalEmployees}</div>
+                <div className="col-span-2 text-center">
+                  <Badge variant="outline" className={cn("text-xs", cov >= 50 ? "text-emerald-500" : cov >= 20 ? "text-amber-500" : "text-destructive")}>
+                    {cov}%
+                  </Badge>
+                </div>
+                <div className="col-span-2 text-center text-sm text-foreground">{data.maturityScore}%</div>
+                <div className="col-span-1 text-center text-sm text-foreground">{data.totalTurmas}</div>
+                <div className="col-span-2 text-center text-xs text-muted-foreground">
+                  {data.completedActions}/{data.totalActions}
+                  {data.delayedActions > 0 && (
+                    <span className="text-destructive ml-1">({data.delayedActions} atr.)</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      <div className="text-center py-4">
+        <p className="text-sm text-muted-foreground">
+          Relatórios operacionais detalhados estão disponíveis no portal de cada empresa.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function Reports() {
-  const { user } = useAuth();
+  const { user, isAdminMVP } = useAuth();
   const companyId = user?.companyId || "company-1";
   const companyName = user?.companyName || "Empresa";
 
+  if (isAdminMVP) {
+    return (
+      <AppLayout title="Relatórios da Carteira" subtitle="Visão consolidada e agregada de todas as empresas">
+        <AdminReportsView />
+      </AppLayout>
+    );
+  }
+
+  return <ClientReportsView companyId={companyId} companyName={companyName} />;
+}
+
+function ClientReportsView({ companyId, companyName }: { companyId: string; companyName: string }) {
   const [activeReport, setActiveReport] = useState<ReportType>("executive");
   const [filterCycle, setFilterCycle] = useState<string>("all");
   const [filterSector, setFilterSector] = useState<string>("all");

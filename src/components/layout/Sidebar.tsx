@@ -2,7 +2,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import React from "react";
 import {
   LayoutDashboard,
-  FileCheck,
   BarChart3,
   FileText,
   TrendingUp,
@@ -24,6 +23,7 @@ import {
   BookMarked,
   SlidersHorizontal,
   HelpCircle,
+  FileCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,7 +37,6 @@ import {
 } from "@/components/ui/select";
 import logoMvp from "@/assets/logo-mvp.jpeg";
 
-// Admin navigation organized in 4 blocks
 interface NavSection {
   label: string;
   items: { name: string; href: string; icon: React.ElementType }[];
@@ -47,7 +46,7 @@ const adminSections: NavSection[] = [
   {
     label: "CONTROLE DA PLATAFORMA",
     items: [
-      { name: "Dashboard Geral", href: "/", icon: LayoutDashboard },
+      { name: "Dashboard", href: "/", icon: LayoutDashboard },
       { name: "Empresas", href: "/empresas", icon: Building2 },
       { name: "Usuários", href: "/usuarios", icon: UserCog },
       { name: "Projetos", href: "/plano", icon: FolderOpen },
@@ -166,7 +165,6 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {isAdminMVP ? (
-          // Admin: sectioned navigation
           adminSections.map((section) => (
             <div key={section.label} className="mb-4">
               {!collapsed && (
@@ -192,7 +190,6 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
             </div>
           ))
         ) : (
-          // Client: flat navigation
           clientNavigation.map((item) => {
             const isActive = location.pathname === item.href;
             return (
