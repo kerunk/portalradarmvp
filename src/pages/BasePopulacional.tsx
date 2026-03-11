@@ -183,6 +183,10 @@ export default function BasePopulacional() {
       toast({ title: "Nome é obrigatório", variant: "destructive" });
       return;
     }
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      toast({ title: "Email inválido", description: "Informe um email válido.", variant: "destructive" });
+      return;
+    }
     if (form.email && isEmailUsedInCompany(companyId, form.email, editingId || undefined)) {
       toast({ title: "Email duplicado", description: "Este email já está cadastrado.", variant: "destructive" });
       return;
