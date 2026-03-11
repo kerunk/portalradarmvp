@@ -152,7 +152,7 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
 
       {/* Footer */}
       <div className="px-3 py-4 border-t border-sidebar-border space-y-2">
-        {!collapsed && (
+        {!collapsed && isAdminMVP && (
           <Select 
             value={user?.role || "admin_mvp"} 
             onValueChange={(value) => switchRole(value as "admin_mvp" | "cliente")}
