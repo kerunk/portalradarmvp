@@ -270,9 +270,8 @@ export default function BasePopulacional() {
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
-  const renderOrgSelect = (label: string, field: keyof MemberForm, options: string[], orgCategory: string) => {
+  const renderOrgSelect = (label: string, field: keyof MemberForm, options: string[]) => {
     const currentValue = form[field] as string;
-    const hasOptions = options.length > 0;
     // Include current value in options if it exists but isn't in org structure (legacy data)
     const allOptions = currentValue && !options.includes(currentValue)
       ? [currentValue, ...options]
@@ -281,24 +280,22 @@ export default function BasePopulacional() {
     return (
       <div className="space-y-1">
         <Label>{label}</Label>
-        {hasOptions || currentValue ? (
-          <Select
-            value={currentValue || "__empty__"}
-            onValueChange={v => setForm(f => ({ ...f, [field]: v === "__empty__" ? "" : v }))}
-          >
-            <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__empty__">— Nenhum —</SelectItem>
-              {allOptions.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        ) : (
-          <div className="flex items-center gap-2">
-            <p className="text-sm text-muted-foreground flex-1">Nenhum cadastrado</p>
-            <Button variant="link" size="sm" className="h-auto p-0" onClick={() => window.location.href = "/estrutura-organizacional"}>
-              <ExternalLink size={12} className="mr-1" /> Adicionar na Estrutura
-            </Button>
-          </div>
+        <Select
+          value={currentValue || "__empty__"}
+          onValueChange={v => setForm(f => ({ ...f, [field]: v === "__empty__" ? "" : v }))}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder={options.length === 0 ? "Nenhuma opção cadastrada" : "Selecione..."} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__empty__">— Nenhum —</SelectItem>
+            {allOptions.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {options.length === 0 && (
+          <a href="/estrutura-organizacional" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 mt-1">
+            <ExternalLink size={10} /> Cadastrar em Estrutura Organizacional
+          </a>
         )}
       </div>
     );
@@ -510,11 +507,11 @@ export default function BasePopulacional() {
               <Label>Email</Label>
               <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="email@empresa.com" />
             </div>
-            {renderOrgSelect("Cargo", "role", orgPositions, "positions")}
-            {renderOrgSelect("Setor", "sector", orgSectors, "sectors")}
+            {renderOrgSelect("Cargo", "role", orgPositions)}
+            {renderOrgSelect("Setor", "sector", orgSectors)}
             <div className="grid grid-cols-2 gap-3">
-              {renderOrgSelect("Unidade", "unit", orgUnits, "units")}
-              {renderOrgSelect("Turno", "shift", orgShifts, "shifts")}
+              {renderOrgSelect("Unidade", "unit", orgUnits)}
+              {renderOrgSelect("Turno", "shift", orgShifts)}
             </div>
             <div className="space-y-1">
               <Label>Data de Admissão</Label>
