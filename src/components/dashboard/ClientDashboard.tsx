@@ -6,10 +6,13 @@ import { ExecutiveSummary } from "./ExecutiveSummary";
 import { CoverageDonut } from "./CoverageDonut";
 import { MaturityGaugePremium } from "./MaturityGaugePremium";
 import { ProgramTimeline } from "./ProgramTimeline";
-import { Users, Target, CheckCircle, TrendingUp, GraduationCap, Shield, UserCheck, AlertTriangle } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Users, Target, CheckCircle, TrendingUp, GraduationCap, Shield, UserCheck, AlertTriangle, CheckCircle2, Lightbulb } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { getPopulationStats, getPopulation } from "@/lib/companyStorage";
 import { obterIndicadoresGlobais, obterIndicadoresTodosCiclos } from "@/lib/governance";
 import { getState } from "@/lib/storage";
+import { generateInsights } from "@/lib/reportData";
 
 interface ClientDashboardProps {
   companyId: string;
