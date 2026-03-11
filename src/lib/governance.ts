@@ -604,12 +604,22 @@ export function gerarAlertasInteligentes(): EnhancedSmartAlert[] {
             const factorDef = cycleDef?.successFactors.find(f => f.id === factor.id);
             const actionDef = factorDef?.actions.find(a => a.id === action.id);
             
+            // Build friendly action name - NEVER show technical IDs
+            const actionTitle = actionDef?.title 
+              || action.title 
+              || action.observation 
+              || factorDef?.name 
+              || `Ação do ciclo ${cycleId}`;
+            
+            const dueDateFormatted = new Date(action.dueDate).toLocaleDateString('pt-BR');
+            const statusLabel = action.status === 'delayed' ? 'Atrasada' : 'Pendente';
+            
             alerts.push({
               id: `delayed-${cycleId}-${action.id}`,
               type: 'delayed_action',
               severity: 'danger',
-              title: `Ação atrasada: ${actionDef?.title || action.id}`,
-              description: `Ciclo ${cycleId} - ${factorDef?.name || factor.id}`,
+              title: `Ação atrasada: ${actionTitle}`,
+              description: `Ciclo ${cycleId} · ${factorDef?.name || 'Fator de Sucesso'} · Prazo: ${dueDateFormatted} · Status: ${statusLabel}`,
               cycleId,
               actionId: action.id,
               navigateTo: `/ciclos?cycle=${cycleId}`,
