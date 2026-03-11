@@ -272,9 +272,14 @@ export function CreateActionFromTemplateDialog({
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  {employees.map(emp => (
-                    <SelectItem key={emp.id} value={emp.name}>
-                      {emp.name} - {emp.sector}
+                  {nucleoMembers.length === 0 && (
+                    <SelectItem value="_empty" disabled>
+                      Nenhum membro no Núcleo. Cadastre na Base Populacional.
+                    </SelectItem>
+                  )}
+                  {nucleoMembers.map(m => (
+                    <SelectItem key={m.id} value={m.name}>
+                      {m.name} — {m.role || m.sector || "Núcleo"}
                     </SelectItem>
                   ))}
                 </SelectContent>
