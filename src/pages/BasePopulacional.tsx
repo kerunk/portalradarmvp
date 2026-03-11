@@ -270,33 +270,49 @@ export default function BasePopulacional() {
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
-  const renderOrgSelect = (label: string, field: keyof MemberForm, options: string[]) => {
+  // Auto-save new org values when saving a collaborator
+  const ensureOrgValue = (category: "positions" | "sectors" | "units" | "shifts", value: string) => {
+    if (!value.trim()) return;
+    const structure = getOrgStructure(companyId);
+    const list = structure[category] || [];
+    const exists = list.some(item => item.name.toLowerCase() === value.trim().toLowerCase());
+    if (!exists) {
+      list.push({
+        id: `org-${category}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name: value.trim(),
+        archived: false,
+        order: list.length,
+      });
+      structure[category] = list;
+      setOrgStructure(companyId, structure);
+    }
+  };
+
+  const renderOrgSelect = (label: string, field: keyof MemberForm, options: string[], datalistId: string) => {
     const currentValue = form[field] as string;
-    // Include current value in options if it exists but isn't in org structure (legacy data)
-    const allOptions = currentValue && !options.includes(currentValue)
-      ? [currentValue, ...options]
-      : options;
+    // Combine org options + legacy values from population
+    const allOptions = new Set([...options]);
+    if (currentValue && !allOptions.has(currentValue)) allOptions.add(currentValue);
+    // Also include values from existing population for this field
+    population.forEach(m => {
+      const val = m[field as keyof PopulationMember] as string;
+      if (val && typeof val === "string") allOptions.add(val);
+    });
+    const sortedOptions = Array.from(allOptions).sort();
 
     return (
       <div className="space-y-1">
         <Label>{label}</Label>
-        <Select
-          value={currentValue || "__empty__"}
-          onValueChange={v => setForm(f => ({ ...f, [field]: v === "__empty__" ? "" : v }))}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder={options.length === 0 ? "Nenhuma opção cadastrada" : "Selecione..."} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__empty__">— Nenhum —</SelectItem>
-            {allOptions.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        {options.length === 0 && (
-          <a href="/estrutura-organizacional" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1 mt-1">
-            <ExternalLink size={10} /> Cadastrar em Estrutura Organizacional
-          </a>
-        )}
+        <Input
+          value={currentValue}
+          onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
+          placeholder="Selecione ou digite um novo"
+          list={datalistId}
+          autoComplete="off"
+        />
+        <datalist id={datalistId}>
+          {sortedOptions.map(o => <option key={o} value={o} />)}
+        </datalist>
       </div>
     );
   };
