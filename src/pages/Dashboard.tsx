@@ -16,7 +16,7 @@ import {
   obterIndicadoresTodosCiclos,
 } from "@/lib/governance";
 import { recalculateActionStatuses } from "@/lib/storage";
-import { getPopulationStats, getNucleo } from "@/lib/companyStorage";
+import { getPopulationStats } from "@/lib/companyStorage";
 
 export default function Dashboard() {
   const navigate = useNavigate();
