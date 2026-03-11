@@ -316,28 +316,28 @@ export default function BasePopulacional() {
             <SelectTrigger className="w-[140px]"><SelectValue placeholder="Setor" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos setores</SelectItem>
-              {sectors.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              {filterSectors.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterUnit} onValueChange={setFilterUnit}>
             <SelectTrigger className="w-[140px]"><SelectValue placeholder="Unidade" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas unidades</SelectItem>
-              {units.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+              {filterUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterShift} onValueChange={setFilterShift}>
             <SelectTrigger className="w-[120px]"><SelectValue placeholder="Turno" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos turnos</SelectItem>
-              {shifts.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              {filterShifts.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterRole} onValueChange={setFilterRole}>
             <SelectTrigger className="w-[120px]"><SelectValue placeholder="Cargo" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos cargos</SelectItem>
-              {roles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+              {filterRoles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterActive} onValueChange={setFilterActive}>
