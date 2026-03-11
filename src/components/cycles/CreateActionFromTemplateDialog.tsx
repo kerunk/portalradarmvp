@@ -24,7 +24,8 @@ import { ptBR } from "date-fns/locale";
 import { CalendarIcon, User, Target, Zap, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CYCLE_IDS } from "@/lib/constants";
-import { getEmployees, type EmployeeState } from "@/lib/storage";
+import { getNucleoMembers, type PopulationMember } from "@/lib/companyStorage";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 export type ActionType = 
@@ -89,7 +90,9 @@ export function CreateActionFromTemplateDialog({
   dialogDescription = "Defina os detalhes da ação a ser criada",
 }: CreateActionFromTemplateDialogProps) {
   const { toast } = useToast();
-  const [employees, setEmployees] = useState<EmployeeState[]>([]);
+  const { user } = useAuth();
+  const companyId = user?.companyId || "";
+  const [nucleoMembers, setNucleoMembers] = useState<PopulationMember[]>([]);
   
   const [title, setTitle] = useState(defaultTitle);
   const [description, setDescription] = useState(defaultDescription);
@@ -101,10 +104,10 @@ export function CreateActionFromTemplateDialog({
     addDays(new Date(), defaultDaysToComplete)
   );
 
-  // Load employees
+  // Load nucleus members as responsible options
   useEffect(() => {
-    setEmployees(getEmployees());
-  }, []);
+    setNucleoMembers(getNucleoMembers(companyId));
+  }, [companyId]);
 
   // Reset form when dialog opens with new defaults
   useEffect(() => {
@@ -269,9 +272,14 @@ export function CreateActionFromTemplateDialog({
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  {employees.map(emp => (
-                    <SelectItem key={emp.id} value={emp.name}>
-                      {emp.name} - {emp.sector}
+                  {nucleoMembers.length === 0 && (
+                    <SelectItem value="_empty" disabled>
+                      Nenhum membro no Núcleo. Cadastre na Base Populacional.
+                    </SelectItem>
+                  )}
+                  {nucleoMembers.map(m => (
+                    <SelectItem key={m.id} value={m.name}>
+                      {m.name} — {m.role || m.sector || "Núcleo"}
                     </SelectItem>
                   ))}
                 </SelectContent>

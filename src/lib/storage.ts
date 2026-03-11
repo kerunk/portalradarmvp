@@ -78,6 +78,8 @@ export interface TurmaState {
   endDate: string | null;
   status: "planned" | "in_progress" | "completed" | "delayed";
   notes?: string;
+  trainingDate?: string | null;
+  attendance?: Record<string, "present" | "absent" | "reschedule">;
 }
 
 export interface RecordState {
