@@ -762,6 +762,7 @@ export function gerarAlertasInteligentes(): EnhancedSmartAlert[] {
   Object.entries(state.cycles).forEach(([cycleId, cycleState]) => {
     if (cycleState.closureStatus === 'closed') return;
     
+    const cycleDef = mvpCycles.find(c => c.id === cycleId);
     let missingCount = 0;
     cycleState.factors.forEach(factor => {
       factor.actions.forEach(action => {
@@ -772,12 +773,13 @@ export function gerarAlertasInteligentes(): EnhancedSmartAlert[] {
     });
     
     if (missingCount > 0) {
+      const cycleTitle = cycleDef?.title || `Ciclo ${cycleId}`;
       alerts.push({
         id: `missing-info-${cycleId}`,
         type: 'action_missing_info',
         severity: 'warning',
-        title: `${missingCount} ações sem prazo/responsável`,
-        description: `Ciclo ${cycleId} - Complete as informações para melhor controle`,
+        title: `${missingCount} ações sem prazo ou responsável`,
+        description: `${cycleTitle} — Complete as informações para melhor controle do programa`,
         cycleId,
         navigateTo: `/ciclos?cycle=${cycleId}`,
         createdAt: now,
