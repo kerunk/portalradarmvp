@@ -26,7 +26,9 @@ import {
   UserCheck,
   Building2,
   AlertCircle,
+  Search,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import {
