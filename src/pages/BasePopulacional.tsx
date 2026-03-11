@@ -270,6 +270,39 @@ export default function BasePopulacional() {
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
+  const renderOrgSelect = (label: string, field: keyof MemberForm, options: string[], orgCategory: string) => {
+    const currentValue = form[field] as string;
+    const hasOptions = options.length > 0;
+    // Include current value in options if it exists but isn't in org structure (legacy data)
+    const allOptions = currentValue && !options.includes(currentValue)
+      ? [currentValue, ...options]
+      : options;
+
+    return (
+      <div className="space-y-1">
+        <Label>{label}</Label>
+        {hasOptions || currentValue ? (
+          <Select
+            value={currentValue || "__empty__"}
+            onValueChange={v => setForm(f => ({ ...f, [field]: v === "__empty__" ? "" : v }))}
+          >
+            <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__empty__">— Nenhum —</SelectItem>
+              {allOptions.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-muted-foreground flex-1">Nenhum cadastrado</p>
+            <Button variant="link" size="sm" className="h-auto p-0" onClick={() => window.location.href = "/estrutura-organizacional"}>
+              <ExternalLink size={12} className="mr-1" /> Adicionar na Estrutura
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <AppLayout title="Base Populacional" subtitle={`Gestão de colaboradores — ${user?.companyName || "Empresa"}`}>
