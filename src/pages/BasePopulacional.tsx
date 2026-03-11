@@ -40,6 +40,7 @@ import {
   ShieldCheck,
   Star,
   Crown,
+  ExternalLink,
 } from "lucide-react";
 import {
   type PopulationMember,
