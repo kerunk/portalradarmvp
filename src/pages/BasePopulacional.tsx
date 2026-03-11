@@ -47,6 +47,7 @@ import {
   getPopulation,
   setPopulation,
   getOrgStructure,
+  setOrgStructure,
   isEmailUsedInCompany,
   getPopulationStats,
   generatePopulationTemplate,
