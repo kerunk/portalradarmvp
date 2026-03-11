@@ -39,7 +39,7 @@ export function MetricCard({
       ? TrendingDown
       : Minus;
 
-  return (
+  const card = (
     <div className="metric-card group hover:shadow-elevated transition-all duration-200">
       <div className="flex items-start justify-between">
         <div className="flex-1">
