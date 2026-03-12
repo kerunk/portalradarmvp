@@ -1,6 +1,7 @@
 import { HelpCircle, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useReadOnly } from "@/contexts/ReadOnlyContext";
 import { useNavigate, Link } from "react-router-dom";
 import {
   DropdownMenu,
@@ -20,12 +21,17 @@ interface GlobalHeaderProps {
 
 export function GlobalHeader({ title, subtitle }: GlobalHeaderProps) {
   const { user, logout, isAdminMVP } = useAuth();
+  const { isReadOnly, mirrorCompanyName } = useReadOnly();
   const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
+
+  // In mirror mode, show company info like a client would see
+  const showCompanyBadge = !isAdminMVP || isReadOnly;
+  const displayCompanyName = isReadOnly ? mirrorCompanyName : user?.companyName;
 
   return (
     <header className="h-16 border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-30 flex items-center justify-between px-6">
@@ -64,24 +70,24 @@ export function GlobalHeader({ title, subtitle }: GlobalHeaderProps) {
         {/* Notifications */}
         <NotificationsDropdown />
 
-        {/* Company Logo (for clients) */}
-        {!isAdminMVP && user?.companyName && (
+        {/* Company Logo (for clients or mirror mode) */}
+        {showCompanyBadge && displayCompanyName && (
           <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary rounded-lg">
-            {user.companyLogo ? (
+            {!isReadOnly && user?.companyLogo ? (
               <img 
                 src={user.companyLogo} 
-                alt={user.companyName}
+                alt={displayCompanyName}
                 className="h-6 w-6 rounded object-contain"
               />
             ) : (
               <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
                 <span className="text-xs font-bold text-primary-foreground">
-                  {user.companyName.charAt(0)}
+                  {displayCompanyName.charAt(0)}
                 </span>
               </div>
             )}
             <span className="text-sm font-medium text-secondary-foreground">
-              {user.companyName}
+              {displayCompanyName}
             </span>
           </div>
         )}

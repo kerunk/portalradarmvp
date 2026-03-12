@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useReadOnly } from "@/contexts/ReadOnlyContext";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -92,10 +93,14 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAdminMVP, switchRole, logout } = useAuth();
+  const { isReadOnly, mirrorCompanyName } = useReadOnly();
   
   const [internalCollapsed, setInternalCollapsed] = React.useState(false);
   const collapsed = controlledCollapsed ?? internalCollapsed;
   const setCollapsed = onCollapsedChange ?? setInternalCollapsed;
+
+  // When in mirror mode, show client navigation regardless of role
+  const showClientNav = !isAdminMVP || isReadOnly;
 
   const handleLogout = () => {
     logout();
@@ -130,30 +135,55 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
         </button>
       </div>
 
-      {/* Role indicator */}
+      {/* Role / Mirror indicator */}
       {!collapsed && (
         <div className="px-3 py-2 border-b border-sidebar-border">
-          <Badge 
-            variant="outline" 
-            className={cn(
-              "w-full justify-center py-1",
-              isAdminMVP 
-                ? "bg-purple-500/10 text-purple-400 border-purple-500/30" 
-                : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-            )}
-          >
-            {isAdminMVP ? (
-              <><ShieldCheck size={12} className="mr-1" /> Admin MVP</>
-            ) : (
-              <><Building2 size={12} className="mr-1" /> {user?.companyName || "Portal Cliente"}</>
-            )}
-          </Badge>
+          {isReadOnly ? (
+            <Badge 
+              variant="outline" 
+              className="w-full justify-center py-1 bg-amber-500/10 text-amber-400 border-amber-500/30"
+            >
+              <Building2 size={12} className="mr-1" />
+              {mirrorCompanyName || "Empresa"}
+            </Badge>
+          ) : (
+            <Badge 
+              variant="outline" 
+              className={cn(
+                "w-full justify-center py-1",
+                isAdminMVP 
+                  ? "bg-purple-500/10 text-purple-400 border-purple-500/30" 
+                  : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+              )}
+            >
+              {isAdminMVP ? (
+                <><ShieldCheck size={12} className="mr-1" /> Admin MVP</>
+              ) : (
+                <><Building2 size={12} className="mr-1" /> {user?.companyName || "Portal Cliente"}</>
+              )}
+            </Badge>
+          )}
         </div>
       )}
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {isAdminMVP ? (
+        {showClientNav ? (
+          clientNavigation.map((item) => {
+            const isActive = location.pathname === item.href;
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={cn("sidebar-nav-item", isActive && "active")}
+                title={collapsed ? item.name : undefined}
+              >
+                <item.icon size={20} className="flex-shrink-0" />
+                {!collapsed && <span>{item.name}</span>}
+              </Link>
+            );
+          })
+        ) : (
           adminSections.map((section) => (
             <div key={section.label} className="mb-4">
               {!collapsed && (
@@ -178,27 +208,12 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
               })}
             </div>
           ))
-        ) : (
-          clientNavigation.map((item) => {
-            const isActive = location.pathname === item.href;
-            return (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={cn("sidebar-nav-item", isActive && "active")}
-                title={collapsed ? item.name : undefined}
-              >
-                <item.icon size={20} className="flex-shrink-0" />
-                {!collapsed && <span>{item.name}</span>}
-              </Link>
-            );
-          })
         )}
       </nav>
 
       {/* Footer */}
       <div className="px-3 py-4 border-t border-sidebar-border space-y-2">
-        {!collapsed && isAdminMVP && (
+        {!collapsed && isAdminMVP && !isReadOnly && (
           <Select 
             value={user?.role || "admin_mvp"} 
             onValueChange={(value) => switchRole(value as "admin_mvp" | "cliente")}
