@@ -2,6 +2,7 @@ import { useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { MetricCard } from "./MetricCard";
 import { MaturityGaugePremium } from "./MaturityGaugePremium";
+import { ImplementationPipeline } from "./ImplementationPipeline";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
