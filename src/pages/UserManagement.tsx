@@ -199,10 +199,9 @@ export default function UserManagement() {
       admin_master: 0,
       admin_mvp: 0,
       gerente_conta: 0,
-      visualizador: 0,
     };
     users.forEach(u => {
-      if (u.active) counts[u.adminRole]++;
+      if (u.active && counts[u.adminRole] !== undefined) counts[u.adminRole]++;
     });
     return counts;
   }, [users]);
