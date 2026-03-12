@@ -14,6 +14,7 @@ interface MetricCardProps {
     label: string;
   };
   variant?: "default" | "success" | "warning" | "danger";
+  onClick?: () => void;
 }
 
 export function MetricCard({
