@@ -54,6 +54,7 @@ function generateTempPassword(): string {
 
 export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [step, setStep] = useState<"form" | "confirmation">("form");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
