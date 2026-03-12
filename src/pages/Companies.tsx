@@ -144,6 +144,7 @@ export default function Companies() {
             <Card
               key={company.id}
               className="p-5 hover:shadow-elevated transition-all cursor-pointer group"
+              onClick={() => navigate(`/empresas/${company.id}`)}
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
