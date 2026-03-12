@@ -28,11 +28,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Search, ShieldCheck, Eye, Crown, Briefcase } from "lucide-react";
+import { Plus, Pencil, Search, ShieldCheck, Eye, Crown, Briefcase, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { getCompanies } from "@/lib/storage";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { getCompanyCountForManager } from "@/lib/portfolioUtils";
 import {
   type AdminRole,
   ADMIN_ROLE_LABELS,
