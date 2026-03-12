@@ -319,6 +319,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
           subtitle="na carteira"
           tooltip="Total de ciclos em progresso"
           variant="default"
+          onClick={() => navigate("/ciclos-ativos")}
         />
       </div>
 
