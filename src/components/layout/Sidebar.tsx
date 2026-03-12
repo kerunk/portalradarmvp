@@ -114,6 +114,9 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
 
   // When in mirror mode, show client navigation regardless of role
   const showClientNav = !isAdminMVP || isReadOnly;
+  
+  const adminRole: AdminRole = isAdminMVP ? getAdminRoleForUser(user?.email || "") : "admin_master";
+  const adminSections = getAdminSections(adminRole);
 
   const handleLogout = () => {
     logout();
