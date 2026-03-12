@@ -84,11 +84,16 @@ export function NotificationsDropdown() {
       <DropdownMenuContent align="end" className="w-96">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Alertas Estratégicos</span>
-          {unreadCount > 0 && (
-            <button onClick={handleDismissAll} className="text-xs text-primary hover:underline font-normal">
-              Marcar todas como lidas
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <button onClick={handleDismissAll} className="text-xs text-primary hover:underline font-normal">
+                Limpar
+              </button>
+            )}
+            <button onClick={() => navigate("/notificacoes")} className="text-xs text-primary hover:underline font-normal">
+              Ver todas →
             </button>
-          )}
+          </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
