@@ -28,7 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Search, ShieldCheck, Eye, Crown, Briefcase, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Search, ShieldCheck, Crown, Briefcase, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { getCompanies } from "@/lib/storage";
@@ -62,7 +62,6 @@ const adminRoleIcons: Record<AdminRole, React.ElementType> = {
   admin_master: Crown,
   admin_mvp: ShieldCheck,
   gerente_conta: Briefcase,
-  visualizador: Eye,
 };
 
 function loadUsers(): ManagedUser[] {
@@ -200,10 +199,9 @@ export default function UserManagement() {
       admin_master: 0,
       admin_mvp: 0,
       gerente_conta: 0,
-      visualizador: 0,
     };
     users.forEach(u => {
-      if (u.active) counts[u.adminRole]++;
+      if (u.active && counts[u.adminRole] !== undefined) counts[u.adminRole]++;
     });
     return counts;
   }, [users]);
@@ -334,7 +332,7 @@ export default function UserManagement() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {u.adminRole === "admin_master" || u.adminRole === "admin_mvp" ? (
+                      {(u.adminRole === "admin_master" || u.adminRole === "admin_mvp") ? (
                         <span className="text-xs text-muted-foreground">Toda a carteira</span>
                       ) : u.adminRole === "gerente_conta" ? (
                         <button
@@ -344,9 +342,7 @@ export default function UserManagement() {
                           {getCompanyCountForManager(u.email)} empresa{getCompanyCountForManager(u.email) !== 1 ? "s" : ""}
                           <ChevronRight size={12} />
                         </button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

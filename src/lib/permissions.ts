@@ -2,7 +2,7 @@
 // Admin Role-Based Access Control (RBAC) System
 // ============================================================
 
-export type AdminRole = "admin_master" | "admin_mvp" | "gerente_conta" | "visualizador";
+export type AdminRole = "admin_master" | "admin_mvp" | "gerente_conta";
 
 export interface AdminPermissions {
   // Companies
@@ -85,45 +85,24 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermissions> = {
     viewDashboard: true,
     viewAlerts: true,
   },
-  visualizador: {
-    viewAllCompanies: false,
-    viewAssignedCompanies: false,
-    createCompanies: false,
-    editCompanies: false,
-    deleteCompanies: false,
-    accessCompanyMirror: false,
-    manageAdminUsers: false,
-    editGlobalShelf: false,
-    editGlobalManual: false,
-    editIndicatorSettings: false,
-    editPlatformSettings: false,
-    editAdminHelp: false,
-    viewIndicators: true,
-    viewReports: true,
-    viewDashboard: true,
-    viewAlerts: false,
-  },
 };
 
 export const ADMIN_ROLE_LABELS: Record<AdminRole, string> = {
-  admin_master: "Admin Master MVP",
-  admin_mvp: "Admin MVP",
+  admin_master: "Administrador MVP Master",
+  admin_mvp: "Administrador MVP",
   gerente_conta: "Gerente de Conta",
-  visualizador: "Visualizador",
 };
 
 export const ADMIN_ROLE_DESCRIPTIONS: Record<AdminRole, string> = {
   admin_master: "Controle total da plataforma, incluindo gestão de administradores",
   admin_mvp: "Equipe interna MVP — cria empresas e acompanha a carteira",
   gerente_conta: "Responsável por empresas que criou",
-  visualizador: "Visualização de dashboards e relatórios apenas",
 };
 
 export const ADMIN_ROLE_COLORS: Record<AdminRole, string> = {
   admin_master: "bg-purple-500/15 text-purple-400 border-purple-500/30",
   admin_mvp: "bg-blue-500/15 text-blue-400 border-blue-500/30",
   gerente_conta: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  visualizador: "bg-muted text-muted-foreground border-border",
 };
 
 export function getPermissions(role: AdminRole): AdminPermissions {

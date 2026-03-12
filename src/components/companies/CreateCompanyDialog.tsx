@@ -100,10 +100,10 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!companyName.trim() || !adminName.trim() || !adminEmail.trim()) {
+    if (!companyName.trim() || !adminName.trim() || !adminEmail.trim() || !employees.trim()) {
       toast({
         title: "Campos obrigatórios",
-        description: "Preencha o nome da empresa, nome e email do administrador.",
+        description: "Preencha o nome da empresa, número de colaboradores, nome e email do administrador.",
         variant: "destructive",
       });
       return;
@@ -254,7 +254,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="employees">Nº de Colaboradores</Label>
+                    <Label htmlFor="employees">Nº de Colaboradores *</Label>
                     <Input
                       id="employees"
                       type="number"
@@ -262,6 +262,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
                       value={employees}
                       onChange={(e) => setEmployees(e.target.value)}
                       min={1}
+                      required
                     />
                   </div>
                 </div>
