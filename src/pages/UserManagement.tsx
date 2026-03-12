@@ -106,6 +106,7 @@ export default function UserManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
 
   const currentAdminRole = useMemo(() => {
     const assignments = getAdminRoleAssignments();
