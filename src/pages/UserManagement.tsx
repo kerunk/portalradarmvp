@@ -332,7 +332,7 @@ export default function UserManagement() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {u.adminRole === "admin_master" || u.adminRole === "admin_mvp" ? (
+                      {(u.adminRole === "admin_master" || u.adminRole === "admin_mvp") ? (
                         <span className="text-xs text-muted-foreground">Toda a carteira</span>
                       ) : u.adminRole === "gerente_conta" ? (
                         <button
