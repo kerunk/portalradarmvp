@@ -95,6 +95,7 @@ const clientNavigation = [
   { name: "Turmas", href: "/turmas", icon: Users },
   { name: "Ações & Alertas", href: "/indicadores", icon: Target },
   { name: "Relatórios", href: "/relatorios", icon: FileText },
+  { name: "Configurações", href: "/configuracoes", icon: Settings },
   { name: "Manual MVP", href: "/ajuda", icon: BookOpen },
 ];
 
