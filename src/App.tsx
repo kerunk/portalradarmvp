@@ -83,6 +83,7 @@ const App = () => (
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
+      </ReadOnlyProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
