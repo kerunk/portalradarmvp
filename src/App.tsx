@@ -33,6 +33,7 @@ import ManualEditor from "./pages/ManualEditor";
 import IndicatorSettings from "./pages/IndicatorSettings";
 import AdminHelp from "./pages/AdminHelp";
 
+import CompanyMirror from "./pages/CompanyMirror";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
