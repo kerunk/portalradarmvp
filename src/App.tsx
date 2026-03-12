@@ -72,6 +72,7 @@ const App = () => (
             
             {/* Admin Only Routes */}
             <Route path="/empresas" element={<ProtectedRoute requireAdmin><Companies /></ProtectedRoute>} />
+            <Route path="/empresas/:companyId" element={<ProtectedRoute requireAdmin><CompanyMirror /></ProtectedRoute>} />
             <Route path="/praticas" element={<ProtectedRoute requireAdmin><BestPracticesGlobal /></ProtectedRoute>} />
             <Route path="/usuarios" element={<ProtectedRoute requireAdmin><UserManagement /></ProtectedRoute>} />
             <Route path="/manual-editor" element={<ProtectedRoute requireAdmin><ManualEditor /></ProtectedRoute>} />
