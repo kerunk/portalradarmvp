@@ -172,8 +172,8 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
                   : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
               )}
             >
-              {isAdminMVP ? (
-                <><ShieldCheck size={12} className="mr-1" /> Admin MVP</>
+          {isAdminMVP ? (
+                <><ShieldCheck size={12} className="mr-1" /> {ADMIN_ROLE_LABELS[adminRole]}</>
               ) : (
                 <><Building2 size={12} className="mr-1" /> {user?.companyName || "Portal Cliente"}</>
               )}
