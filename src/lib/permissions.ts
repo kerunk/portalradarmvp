@@ -85,24 +85,6 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermissions> = {
     viewDashboard: true,
     viewAlerts: true,
   },
-  visualizador: {
-    viewAllCompanies: false,
-    viewAssignedCompanies: false,
-    createCompanies: false,
-    editCompanies: false,
-    deleteCompanies: false,
-    accessCompanyMirror: false,
-    manageAdminUsers: false,
-    editGlobalShelf: false,
-    editGlobalManual: false,
-    editIndicatorSettings: false,
-    editPlatformSettings: false,
-    editAdminHelp: false,
-    viewIndicators: true,
-    viewReports: true,
-    viewDashboard: true,
-    viewAlerts: false,
-  },
 };
 
 export const ADMIN_ROLE_LABELS: Record<AdminRole, string> = {
