@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { getCompanies } from "@/lib/storage";
 import { getCompanyRiskData } from "@/lib/adminNotifications";
+import { getEnrichedCompanies, RISK_LABELS } from "@/lib/portfolioUtils";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
