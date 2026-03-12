@@ -67,6 +67,11 @@ export default function Settings() {
           </Card>
         )}
 
+        {/* Implementation Contacts */}
+        {companyId && (
+          <CompanyContacts companyId={companyId} readOnly={isReadOnly} />
+        )}
+
         {/* Security */}
         <Card className="p-6">
           <div className="flex items-center gap-3 mb-4">
