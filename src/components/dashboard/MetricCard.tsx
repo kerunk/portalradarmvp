@@ -42,7 +42,10 @@ export function MetricCard({
       : Minus;
 
   const card = (
-    <div className="metric-card group hover:shadow-elevated transition-all duration-200">
+    <div
+      className={cn("metric-card group hover:shadow-elevated transition-all duration-200", onClick && "cursor-pointer hover:ring-2 hover:ring-primary/20")}
+      onClick={onClick}
+    >
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
