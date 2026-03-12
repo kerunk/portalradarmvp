@@ -62,7 +62,6 @@ const adminRoleIcons: Record<AdminRole, React.ElementType> = {
   admin_master: Crown,
   admin_mvp: ShieldCheck,
   gerente_conta: Briefcase,
-  visualizador: Eye,
 };
 
 function loadUsers(): ManagedUser[] {
