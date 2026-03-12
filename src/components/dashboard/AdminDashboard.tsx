@@ -8,6 +8,7 @@ import { ManagerRanking } from "./ManagerRanking";
 import { LoadDistribution } from "./LoadDistribution";
 import { StalledCompanies } from "./StalledCompanies";
 import { StrategicOverview } from "./StrategicOverview";
+import { CompaniesNeedingAction } from "./CompaniesNeedingAction";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
