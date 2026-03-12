@@ -565,7 +565,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
                 <div
                   key={c.company.id}
                   className="flex items-center gap-3 p-2.5 rounded-lg bg-destructive/5 border border-destructive/10 cursor-pointer hover:bg-destructive/8 transition-colors"
-                  onClick={() => drillDown(c.company.id, "/ciclos")}
+                  onClick={() => drillDown(c.company.id, `/empresas/${c.company.id}?tab=registros`)}
                 >
                   <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
                     <AlertTriangle size={14} className="text-destructive" />
