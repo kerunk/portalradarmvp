@@ -122,7 +122,6 @@ function AdminReportsView() {
 
   const handleExportPortfolioPDF = () => {
     try {
-      const jsPDF = require("jspdf").default || require("jspdf");
       const doc = new jsPDF();
 
       // Header
