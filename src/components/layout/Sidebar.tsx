@@ -52,15 +52,6 @@ const adminSections: NavSection[] = [
     ],
   },
   {
-    label: "OPERAÇÃO DO PROGRAMA",
-    items: [
-      { name: "Ciclos MVP", href: "/ciclos", icon: Rocket },
-      { name: "Turmas", href: "/turmas", icon: Users },
-      { name: "Fatores de Sucesso", href: "/fatores", icon: Target },
-      { name: "Registros", href: "/registros", icon: FileCheck },
-    ],
-  },
-  {
     label: "INTELIGÊNCIA",
     items: [
       { name: "Indicadores", href: "/indicadores", icon: BarChart3 },

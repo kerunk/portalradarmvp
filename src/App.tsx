@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ReadOnlyProvider } from "@/contexts/ReadOnlyContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 // Public pages
@@ -33,6 +34,7 @@ import ManualEditor from "./pages/ManualEditor";
 import IndicatorSettings from "./pages/IndicatorSettings";
 import AdminHelp from "./pages/AdminHelp";
 
+import CompanyMirror from "./pages/CompanyMirror";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +42,7 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <ReadOnlyProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -69,6 +72,7 @@ const App = () => (
             
             {/* Admin Only Routes */}
             <Route path="/empresas" element={<ProtectedRoute requireAdmin><Companies /></ProtectedRoute>} />
+            <Route path="/empresas/:companyId" element={<ProtectedRoute requireAdmin><CompanyMirror /></ProtectedRoute>} />
             <Route path="/praticas" element={<ProtectedRoute requireAdmin><BestPracticesGlobal /></ProtectedRoute>} />
             <Route path="/usuarios" element={<ProtectedRoute requireAdmin><UserManagement /></ProtectedRoute>} />
             <Route path="/manual-editor" element={<ProtectedRoute requireAdmin><ManualEditor /></ProtectedRoute>} />
@@ -79,6 +83,7 @@ const App = () => (
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
+      </ReadOnlyProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

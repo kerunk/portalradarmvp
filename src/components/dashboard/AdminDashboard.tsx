@@ -66,7 +66,7 @@ function getCompanyAlerts(data: CompanyRiskData, health: HealthStatus): CompanyA
       health,
       alertType: "delayed",
       message: `${data.delayedActions} ${data.delayedActions === 1 ? "ação atrasada" : "ações atrasadas"}`,
-      navigateTo: "/ciclos",
+      navigateTo: `/empresas/${company.id}?tab=registros`,
     });
   }
   if (coverage < 15 && data.totalEmployees > 0) {
@@ -75,7 +75,7 @@ function getCompanyAlerts(data: CompanyRiskData, health: HealthStatus): CompanyA
       health,
       alertType: "low-coverage",
       message: `Cobertura de treinamento em ${coverage}%`,
-      navigateTo: "/turmas",
+      navigateTo: `/empresas/${company.id}?tab=turmas`,
     });
   }
   if (data.maturityScore < 20 && data.company.onboardingStatus === "completed") {
@@ -84,7 +84,7 @@ function getCompanyAlerts(data: CompanyRiskData, health: HealthStatus): CompanyA
       health,
       alertType: "low-maturity",
       message: `Maturidade em ${data.maturityScore}%`,
-      navigateTo: "/indicadores?tab=overview",
+      navigateTo: `/empresas/${company.id}?tab=indicadores`,
     });
   }
   if (data.cyclesInProgress === 0 && data.closedCycles === 0 && data.company.onboardingStatus === "completed") {
@@ -93,7 +93,7 @@ function getCompanyAlerts(data: CompanyRiskData, health: HealthStatus): CompanyA
       health,
       alertType: "stalled-cycle",
       message: "Nenhum ciclo iniciado",
-      navigateTo: "/ciclos",
+      navigateTo: `/empresas/${company.id}?tab=ciclos`,
     });
   }
   return alerts;
@@ -212,9 +212,6 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
 
   // Drill-down: set company context then navigate
   const drillDown = useCallback((companyId: string, path: string) => {
-    // The admin uses setActiveCompany temporarily for reading.
-    // For drill-down, we navigate to the page; the client portal
-    // will use its own company context. For admin, we pass company info.
     navigate(path);
   }, [navigate]);
 
@@ -370,7 +367,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
                   <div
                     key={company.id}
                     className="grid grid-cols-12 gap-2 items-center px-3 py-3 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
-                    onClick={() => mainAlert ? drillDown(company.id, mainAlert.navigateTo) : navigate("/empresas")}
+                    onClick={() => mainAlert ? drillDown(company.id, mainAlert.navigateTo) : navigate(`/empresas/${company.id}`)}
                   >
                     <div className="col-span-3 flex items-center gap-2">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -568,7 +565,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
                 <div
                   key={c.company.id}
                   className="flex items-center gap-3 p-2.5 rounded-lg bg-destructive/5 border border-destructive/10 cursor-pointer hover:bg-destructive/8 transition-colors"
-                  onClick={() => drillDown(c.company.id, "/ciclos")}
+                  onClick={() => drillDown(c.company.id, `/empresas/${c.company.id}?tab=registros`)}
                 >
                   <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
                     <AlertTriangle size={14} className="text-destructive" />

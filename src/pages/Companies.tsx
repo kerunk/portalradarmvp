@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -28,6 +29,7 @@ import { getCompanies, type CompanyState } from "@/lib/storage";
 import { Badge } from "@/components/ui/badge";
 
 export default function Companies() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -142,6 +144,7 @@ export default function Companies() {
             <Card
               key={company.id}
               className="p-5 hover:shadow-elevated transition-all cursor-pointer group"
+              onClick={() => navigate(`/empresas/${company.id}`)}
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -203,8 +206,12 @@ export default function Companies() {
                   variant="ghost"
                   size="sm"
                   className="text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/empresas/${company.id}`);
+                  }}
                 >
-                  Ver detalhes
+                  Ver portal
                   <ChevronRight size={14} className="ml-1" />
                 </Button>
               </div>
