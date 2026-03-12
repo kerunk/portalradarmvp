@@ -183,20 +183,8 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
         <ImplementationChecklist companyId={companyId} refreshKey={refreshKey} />
       </div>
 
-      {/* Row 6: Client Suggestions + Smart Recommendations */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ClientSuggestions companyId={companyId} refreshKey={refreshKey} />
-        <SmartRecommendations
-          coveragePercent={coveragePercent}
-          completionPercent={globalIndicators.overallCompletionPercent}
-          delayedActions={globalIndicators.delayedActions}
-          facilitators={popStats.facilitators}
-          nucleoCount={popStats.nucleoCount}
-          turmasRealizadas={trainingStats.turmasRealizadas}
-          closedCycles={globalIndicators.closedCycles}
-          totalCycles={globalIndicators.totalCycles}
-        />
-      </div>
+      {/* Row 6: Client Suggestions */}
+      <ClientSuggestions companyId={companyId} refreshKey={refreshKey} />
 
       {/* Row 7: Evolution Chart + Radar */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

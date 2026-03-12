@@ -254,7 +254,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="employees">Nº de Colaboradores</Label>
+                    <Label htmlFor="employees">Nº de Colaboradores *</Label>
                     <Input
                       id="employees"
                       type="number"
@@ -262,6 +262,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
                       value={employees}
                       onChange={(e) => setEmployees(e.target.value)}
                       min={1}
+                      required
                     />
                   </div>
                 </div>

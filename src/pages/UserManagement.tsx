@@ -342,9 +342,7 @@ export default function UserManagement() {
                           {getCompanyCountForManager(u.email)} empresa{getCompanyCountForManager(u.email) !== 1 ? "s" : ""}
                           <ChevronRight size={12} />
                         </button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
