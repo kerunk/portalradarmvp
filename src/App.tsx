@@ -36,6 +36,8 @@ import AdminHelp from "./pages/AdminHelp";
 
 import CompanyMirror from "./pages/CompanyMirror";
 import ManagerPortfolio from "./pages/ManagerPortfolio";
+import DelayedActions from "./pages/DelayedActions";
+import ActiveCycles from "./pages/ActiveCycles";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
