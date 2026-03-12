@@ -248,7 +248,6 @@ function AdminReportsView() {
 
   const handleExportExecutivePDF = () => {
     try {
-      const jsPDF = require("jspdf").default || require("jspdf");
       const doc = new jsPDF();
 
       doc.setFillColor(20, 90, 90);
