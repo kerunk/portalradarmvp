@@ -2,7 +2,7 @@
 // Admin Role-Based Access Control (RBAC) System
 // ============================================================
 
-export type AdminRole = "admin_master" | "admin_mvp" | "gerente_conta" | "visualizador";
+export type AdminRole = "admin_master" | "admin_mvp" | "gerente_conta";
 
 export interface AdminPermissions {
   // Companies
