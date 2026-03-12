@@ -2,6 +2,7 @@ import { useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { MetricCard } from "./MetricCard";
 import { MaturityGaugePremium } from "./MaturityGaugePremium";
+import { ImplementationPipeline } from "./ImplementationPipeline";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -312,6 +313,9 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
           variant="default"
         />
       </div>
+
+      {/* Pipeline de Implementação */}
+      <ImplementationPipeline refreshKey={refreshKey} />
 
       {/* BLOCO 2 — Saúde da Carteira de Implementação */}
       <Card className="p-5">

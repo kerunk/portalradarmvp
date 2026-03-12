@@ -28,11 +28,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Search, ShieldCheck, Eye, Crown, Briefcase } from "lucide-react";
+import { Plus, Pencil, Search, ShieldCheck, Eye, Crown, Briefcase, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { getCompanies } from "@/lib/storage";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { getCompanyCountForManager } from "@/lib/portfolioUtils";
 import {
   type AdminRole,
   ADMIN_ROLE_LABELS,
@@ -104,6 +106,7 @@ export default function UserManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
 
   const currentAdminRole = useMemo(() => {
     const assignments = getAdminRoleAssignments();
@@ -331,19 +334,16 @@ export default function UserManagement() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {u.adminRole === "gerente_conta" && u.assignedCompanyIds?.length ? (
-                        <div className="flex flex-wrap gap-1">
-                          {u.assignedCompanyIds.map(cId => {
-                            const comp = companies.find(c => c.id === cId);
-                            return comp ? (
-                              <Badge key={cId} variant="outline" className="text-[10px] py-0">
-                                {comp.name}
-                              </Badge>
-                            ) : null;
-                          })}
-                        </div>
-                      ) : u.adminRole === "admin_master" || u.adminRole === "admin_mvp" ? (
+                      {u.adminRole === "admin_master" || u.adminRole === "admin_mvp" ? (
                         <span className="text-xs text-muted-foreground">Toda a carteira</span>
+                      ) : u.adminRole === "gerente_conta" ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); navigate(`/carteira/${u.id}`); }}
+                          className="flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          {getCompanyCountForManager(u.email)} empresa{getCompanyCountForManager(u.email) !== 1 ? "s" : ""}
+                          <ChevronRight size={12} />
+                        </button>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
