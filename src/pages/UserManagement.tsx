@@ -334,19 +334,16 @@ export default function UserManagement() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {u.adminRole === "gerente_conta" && u.assignedCompanyIds?.length ? (
-                        <div className="flex flex-wrap gap-1">
-                          {u.assignedCompanyIds.map(cId => {
-                            const comp = companies.find(c => c.id === cId);
-                            return comp ? (
-                              <Badge key={cId} variant="outline" className="text-[10px] py-0">
-                                {comp.name}
-                              </Badge>
-                            ) : null;
-                          })}
-                        </div>
-                      ) : u.adminRole === "admin_master" || u.adminRole === "admin_mvp" ? (
+                      {u.adminRole === "admin_master" || u.adminRole === "admin_mvp" ? (
                         <span className="text-xs text-muted-foreground">Toda a carteira</span>
+                      ) : u.adminRole === "gerente_conta" ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); navigate(`/carteira/${u.id}`); }}
+                          className="flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          {getCompanyCountForManager(u.email)} empresa{getCompanyCountForManager(u.email) !== 1 ? "s" : ""}
+                          <ChevronRight size={12} />
+                        </button>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
