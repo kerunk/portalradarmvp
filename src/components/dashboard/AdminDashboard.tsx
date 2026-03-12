@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { MetricCard } from "./MetricCard";
 import { MaturityGaugePremium } from "./MaturityGaugePremium";
 import { ImplementationPipeline } from "./ImplementationPipeline";
+import { EvolutionRanking } from "./EvolutionRanking";
+import { ManagerRanking } from "./ManagerRanking";
+import { LoadDistribution } from "./LoadDistribution";
+import { StalledCompanies } from "./StalledCompanies";
+import { StrategicOverview } from "./StrategicOverview";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -598,6 +603,21 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
             </div>
           </div>
         </Card>
+      </div>
+
+      {/* BLOCO 6 — Visão Estratégica */}
+      <StrategicOverview refreshKey={refreshKey} />
+
+      {/* BLOCO 7 — Ranking + Empresas Paradas */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <EvolutionRanking refreshKey={refreshKey} />
+        <StalledCompanies refreshKey={refreshKey} />
+      </div>
+
+      {/* BLOCO 8 — Gerentes + Distribuição de Carga */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ManagerRanking refreshKey={refreshKey} />
+        <LoadDistribution refreshKey={refreshKey} />
       </div>
     </div>
   );
