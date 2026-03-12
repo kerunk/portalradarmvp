@@ -2,7 +2,7 @@
 // Admin Role-Based Access Control (RBAC) System
 // ============================================================
 
-export type AdminRole = "admin_master" | "admin_operacional" | "gerente_conta" | "observador";
+export type AdminRole = "admin_master" | "admin_mvp" | "gerente_conta" | "visualizador";
 
 export interface AdminPermissions {
   // Companies
@@ -49,10 +49,10 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermissions> = {
     viewDashboard: true,
     viewAlerts: true,
   },
-  admin_operacional: {
+  admin_mvp: {
     viewAllCompanies: true,
     viewAssignedCompanies: true,
-    createCompanies: false,
+    createCompanies: true,
     editCompanies: false,
     deleteCompanies: false,
     accessCompanyMirror: true,
@@ -70,7 +70,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermissions> = {
   gerente_conta: {
     viewAllCompanies: false,
     viewAssignedCompanies: true,
-    createCompanies: false,
+    createCompanies: true,
     editCompanies: false,
     deleteCompanies: false,
     accessCompanyMirror: true,
@@ -85,7 +85,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermissions> = {
     viewDashboard: true,
     viewAlerts: true,
   },
-  observador: {
+  visualizador: {
     viewAllCompanies: false,
     viewAssignedCompanies: false,
     createCompanies: false,
@@ -106,24 +106,24 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermissions> = {
 };
 
 export const ADMIN_ROLE_LABELS: Record<AdminRole, string> = {
-  admin_master: "Admin Master",
-  admin_operacional: "Admin Operacional",
+  admin_master: "Admin Master MVP",
+  admin_mvp: "Admin MVP",
   gerente_conta: "Gerente de Conta",
-  observador: "Observador",
+  visualizador: "Visualizador",
 };
 
 export const ADMIN_ROLE_DESCRIPTIONS: Record<AdminRole, string> = {
-  admin_master: "Controle total da plataforma",
-  admin_operacional: "Acompanha a carteira em modo leitura",
-  gerente_conta: "Responsável por empresas específicas",
-  observador: "Visualização de dashboards e relatórios",
+  admin_master: "Controle total da plataforma, incluindo gestão de administradores",
+  admin_mvp: "Equipe interna MVP — cria empresas e acompanha a carteira",
+  gerente_conta: "Responsável por empresas que criou",
+  visualizador: "Visualização de dashboards e relatórios apenas",
 };
 
 export const ADMIN_ROLE_COLORS: Record<AdminRole, string> = {
   admin_master: "bg-purple-500/15 text-purple-400 border-purple-500/30",
-  admin_operacional: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  admin_mvp: "bg-blue-500/15 text-blue-400 border-blue-500/30",
   gerente_conta: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  observador: "bg-muted text-muted-foreground border-border",
+  visualizador: "bg-muted text-muted-foreground border-border",
 };
 
 export function getPermissions(role: AdminRole): AdminPermissions {
@@ -141,7 +141,7 @@ export interface AdminRoleAssignment {
   userId: string;
   email: string;
   adminRole: AdminRole;
-  assignedCompanyIds?: string[]; // Only for gerente_conta
+  assignedCompanyIds?: string[]; // Auto-populated when gerente_conta creates companies
 }
 
 export function getAdminRoleAssignments(): AdminRoleAssignment[] {
@@ -172,4 +172,17 @@ export function getAssignedCompanies(email: string): string[] | undefined {
   const assignments = getAdminRoleAssignments();
   const found = assignments.find(a => a.email.toLowerCase() === email.toLowerCase());
   return found?.assignedCompanyIds;
+}
+
+// Add a company to a gerente_conta's assigned companies
+export function addCompanyToManager(managerEmail: string, companyId: string): void {
+  const assignments = getAdminRoleAssignments();
+  const idx = assignments.findIndex(a => a.email.toLowerCase() === managerEmail.toLowerCase());
+  if (idx >= 0 && assignments[idx].adminRole === "gerente_conta") {
+    const current = assignments[idx].assignedCompanyIds || [];
+    if (!current.includes(companyId)) {
+      assignments[idx].assignedCompanyIds = [...current, companyId];
+      saveAdminRoleAssignments(assignments);
+    }
+  }
 }
