@@ -314,6 +314,9 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
         />
       </div>
 
+      {/* Pipeline de Implementação */}
+      <ImplementationPipeline refreshKey={refreshKey} />
+
       {/* BLOCO 2 — Saúde da Carteira de Implementação */}
       <Card className="p-5">
         <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
