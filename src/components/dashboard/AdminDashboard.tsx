@@ -257,6 +257,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
           subtitle={`${companiesPending} em onboarding`}
           tooltip="Empresas com onboarding concluído"
           variant="default"
+          onClick={() => navigate("/empresas")}
         />
         <MetricCard
           title="Colaboradores"
@@ -309,6 +310,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
           subtitle="na carteira"
           tooltip="Total de ações atrasadas em todas as empresas"
           variant={totalActionsDelayed > 0 ? "danger" : "default"}
+          onClick={totalActionsDelayed > 0 ? () => navigate("/acoes-atrasadas") : undefined}
         />
         <MetricCard
           title="Ciclos em Andamento"
@@ -317,6 +319,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
           subtitle="na carteira"
           tooltip="Total de ciclos em progresso"
           variant="default"
+          onClick={() => navigate("/ciclos-ativos")}
         />
       </div>
 

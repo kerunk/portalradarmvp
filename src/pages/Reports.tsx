@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
+import jsPDF from "jspdf";
 import { getCompanies } from "@/lib/storage";
 import { getCompanyRiskData } from "@/lib/adminNotifications";
+import { getEnrichedCompanies, RISK_LABELS } from "@/lib/portfolioUtils";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -76,9 +78,25 @@ const REPORT_TYPES: { id: ReportType; label: string; icon: typeof FileText; desc
   { id: "sector_maturity", label: "Maturidade por Setor", icon: Building2, description: "Cobertura comparativa entre setores" },
 ];
 
-// Admin sees only aggregated portfolio reports
+// Report history storage
+function getReportHistory(): { date: string; type: string; name: string }[] {
+  try {
+    return JSON.parse(localStorage.getItem("mvp_report_history") || "[]");
+  } catch { return []; }
+}
+
+function addReportToHistory(type: string, name: string) {
+  const history = getReportHistory();
+  history.unshift({ date: new Date().toISOString(), type, name });
+  localStorage.setItem("mvp_report_history", JSON.stringify(history.slice(0, 50)));
+}
+
+// Admin sees aggregated portfolio reports with PDF export
 function AdminReportsView() {
   const companies = getCompanies();
+  const enriched = useMemo(() => getEnrichedCompanies(), []);
+  const [reportHistory, setReportHistory] = useState(getReportHistory);
+
   const companyDataList = companies.map(c => {
     const data = getCompanyRiskData(c);
     return { company: c, data };
@@ -96,8 +114,233 @@ function AdminReportsView() {
   const totalTurmas = companyDataList.reduce((s, c) => s + c.data.totalTurmas, 0);
   const closedCycles = companyDataList.reduce((s, c) => s + c.data.closedCycles, 0);
 
+  const riskCounts = useMemo(() => {
+    const counts = { healthy: 0, warning: 0, risk: 0 };
+    enriched.forEach(e => counts[e.riskLevel]++);
+    return counts;
+  }, [enriched]);
+
+  const handleExportPortfolioPDF = () => {
+    try {
+      const doc = new jsPDF();
+
+      // Header
+      doc.setFillColor(20, 90, 90);
+      doc.rect(0, 0, 210, 38, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
+      doc.text("Relatório da Carteira MVP", 20, 18);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.text(`${companies.length} empresas · Gerado em ${new Date().toLocaleDateString("pt-BR")}`, 20, 28);
+      doc.setFontSize(8);
+      doc.text(`Hora: ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`, 20, 35);
+
+      let y = 48;
+
+      // KPIs
+      doc.setFillColor(245, 248, 250);
+      doc.roundedRect(15, y, 42, 28, 2, 2, "F");
+      doc.roundedRect(60, y, 42, 28, 2, 2, "F");
+      doc.roundedRect(105, y, 42, 28, 2, 2, "F");
+      doc.roundedRect(150, y, 45, 28, 2, 2, "F");
+
+      const addMetric = (x: number, w: number, val: string, label: string) => {
+        doc.setTextColor(30, 30, 30);
+        doc.setFontSize(18);
+        doc.setFont("helvetica", "bold");
+        doc.text(val, x + w / 2, y + 13, { align: "center" });
+        doc.setTextColor(120, 120, 120);
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.text(label, x + w / 2, y + 22, { align: "center" });
+      };
+
+      addMetric(15, 42, `${companies.length}`, "Empresas");
+      addMetric(60, 42, `${totalEmployees}`, "Colaboradores");
+      addMetric(105, 42, `${avgCoverage}%`, "Cobertura");
+      addMetric(150, 45, `${avgMaturity}%`, "Maturidade");
+      y += 36;
+
+      // Health distribution
+      doc.setFillColor(20, 90, 90);
+      doc.rect(15, y, 4, 12, "F");
+      doc.setTextColor(30, 30, 30);
+      doc.setFontSize(13);
+      doc.setFont("helvetica", "bold");
+      doc.text("Saúde da Carteira", 23, y + 9);
+      y += 18;
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(34, 160, 80);
+      doc.text(`🟢 Saudáveis: ${riskCounts.healthy}`, 20, y);
+      doc.setTextColor(220, 150, 30);
+      doc.text(`🟡 Atenção: ${riskCounts.warning}`, 80, y);
+      doc.setTextColor(200, 60, 60);
+      doc.text(`🔴 Risco: ${riskCounts.risk}`, 140, y);
+      y += 14;
+
+      // Company table
+      doc.setFillColor(20, 90, 90);
+      doc.rect(15, y, 4, 12, "F");
+      doc.setTextColor(30, 30, 30);
+      doc.setFontSize(13);
+      doc.setFont("helvetica", "bold");
+      doc.text("Resumo por Empresa", 23, y + 9);
+      y += 18;
+
+      // Table header
+      doc.setFillColor(20, 90, 90);
+      doc.rect(15, y, 180, 8, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.text("Empresa", 20, y + 6);
+      doc.text("Colab.", 85, y + 6);
+      doc.text("Cobert.", 105, y + 6);
+      doc.text("Maturid.", 125, y + 6);
+      doc.text("Ações", 150, y + 6);
+      doc.text("Status", 175, y + 6);
+      y += 12;
+
+      companyDataList.forEach((cd, i) => {
+        if (y > 270) { doc.addPage(); y = 20; }
+        const bgColor: [number, number, number] = i % 2 === 0 ? [245, 248, 250] : [255, 255, 255];
+        doc.setFillColor(...bgColor);
+        doc.rect(15, y - 3, 180, 10, "F");
+        doc.setTextColor(30, 30, 30);
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.text(cd.company.name.substring(0, 25), 20, y + 3);
+        doc.text(`${cd.data.totalEmployees}`, 90, y + 3);
+        const cov = cd.data.totalEmployees > 0 ? Math.round((cd.data.trainedCount / cd.data.totalEmployees) * 100) : 0;
+        doc.text(`${cov}%`, 110, y + 3);
+        doc.text(`${cd.data.maturityScore}%`, 130, y + 3);
+        doc.text(`${cd.data.completedActions}/${cd.data.totalActions}`, 152, y + 3);
+        const enrichedItem = enriched.find(e => e.company.id === cd.company.id);
+        const risk = enrichedItem ? RISK_LABELS[enrichedItem.riskLevel] : "—";
+        doc.text(risk, 177, y + 3);
+        y += 11;
+      });
+
+      // Footer
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFillColor(20, 90, 90);
+        doc.rect(0, 280, 210, 17, "F");
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(8);
+        doc.text("MVP Portal — Relatório da Carteira", 20, 289);
+        doc.text(`Página ${i} de ${totalPages}`, 170, 289);
+      }
+
+      doc.save("relatorio-carteira-mvp.pdf");
+      addReportToHistory("Carteira MVP", "Relatório Consolidado da Carteira");
+      setReportHistory(getReportHistory());
+      toast({ title: "PDF da carteira exportado com sucesso!" });
+    } catch (e) {
+      toast({ title: "Erro ao exportar PDF", variant: "destructive" });
+    }
+  };
+
+  const handleExportExecutivePDF = () => {
+    try {
+      const doc = new jsPDF();
+
+      doc.setFillColor(20, 90, 90);
+      doc.rect(0, 0, 210, 38, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
+      doc.text("Relatório Executivo — Diretoria", 20, 18);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Programa MVP · ${new Date().toLocaleDateString("pt-BR")}`, 20, 28);
+
+      let y = 48;
+
+      // Status
+      doc.setFillColor(20, 90, 90);
+      doc.rect(15, y, 4, 12, "F");
+      doc.setTextColor(30, 30, 30);
+      doc.setFontSize(13);
+      doc.setFont("helvetica", "bold");
+      doc.text("Status da Implementação", 23, y + 9);
+      y += 20;
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(30, 30, 30);
+      doc.text(`• ${companies.length} empresas na carteira`, 20, y); y += 7;
+      doc.text(`• ${riskCounts.healthy} saudáveis · ${riskCounts.warning} em atenção · ${riskCounts.risk} em risco`, 20, y); y += 7;
+      doc.text(`• Maturidade média: ${avgMaturity}%`, 20, y); y += 7;
+      doc.text(`• Cobertura de treinamento: ${avgCoverage}%`, 20, y); y += 14;
+
+      // Progress
+      doc.setFillColor(20, 90, 90);
+      doc.rect(15, y, 4, 12, "F");
+      doc.setTextColor(30, 30, 30);
+      doc.setFontSize(13);
+      doc.setFont("helvetica", "bold");
+      doc.text("Progresso da Metodologia", 23, y + 9);
+      y += 20;
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`• Ações concluídas: ${completedActions}/${totalActions}`, 20, y); y += 7;
+      doc.text(`• Ações atrasadas: ${delayedActions}`, 20, y); y += 7;
+      doc.text(`• Turmas realizadas: ${totalTurmas}`, 20, y); y += 7;
+      doc.text(`• Ciclos encerrados: ${closedCycles}`, 20, y); y += 14;
+
+      // Next steps
+      doc.setFillColor(20, 90, 90);
+      doc.rect(15, y, 4, 12, "F");
+      doc.setTextColor(30, 30, 30);
+      doc.setFontSize(13);
+      doc.setFont("helvetica", "bold");
+      doc.text("Próximos Passos", 23, y + 9);
+      y += 20;
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      const steps: string[] = [];
+      if (delayedActions > 0) steps.push(`Resolver ${delayedActions} ações atrasadas na carteira`);
+      if (riskCounts.risk > 0) steps.push(`Acompanhar ${riskCounts.risk} empresa(s) em risco`);
+      if (avgCoverage < 50) steps.push("Ampliar cobertura de treinamento");
+      if (steps.length === 0) steps.push("Manter ritmo de implementação da metodologia");
+      steps.forEach(s => { doc.text(`• ${s}`, 20, y); y += 7; });
+
+      // Footer
+      doc.setFillColor(20, 90, 90);
+      doc.rect(0, 280, 210, 17, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(8);
+      doc.text("MVP Portal — Relatório Executivo para Diretoria", 20, 289);
+
+      doc.save("relatorio-executivo-diretoria.pdf");
+      addReportToHistory("Executivo Diretoria", "Relatório para reunião executiva");
+      setReportHistory(getReportHistory());
+      toast({ title: "PDF executivo exportado com sucesso!" });
+    } catch (e) {
+      toast({ title: "Erro ao exportar PDF", variant: "destructive" });
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Export actions */}
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={handleExportPortfolioPDF} className="gap-2">
+          <Download size={16} /> Exportar Relatório da Carteira (PDF)
+        </Button>
+        <Button onClick={handleExportExecutivePDF} variant="outline" className="gap-2">
+          <FileText size={16} /> Relatório Executivo para Diretoria (PDF)
+        </Button>
+      </div>
+
       <Card className="p-6 bg-primary/5 border-primary/20">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -161,6 +404,32 @@ function AdminReportsView() {
           })}
         </div>
       </Card>
+
+      {/* Report History */}
+      {reportHistory.length > 0 && (
+        <Card className="p-5">
+          <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+            <FileText size={18} className="text-primary" />
+            Histórico de Relatórios
+          </h3>
+          <div className="space-y-2">
+            {reportHistory.slice(0, 10).map((r, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/30">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <FileText size={14} className="text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">{r.name}</p>
+                  <p className="text-xs text-muted-foreground">{r.type}</p>
+                </div>
+                <p className="text-xs text-muted-foreground shrink-0">
+                  {new Date(r.date).toLocaleDateString("pt-BR")} às {new Date(r.date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="text-center py-4">
         <p className="text-sm text-muted-foreground">
