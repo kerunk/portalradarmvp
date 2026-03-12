@@ -212,9 +212,6 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
 
   // Drill-down: set company context then navigate
   const drillDown = useCallback((companyId: string, path: string) => {
-    // The admin uses setActiveCompany temporarily for reading.
-    // For drill-down, we navigate to the page; the client portal
-    // will use its own company context. For admin, we pass company info.
     navigate(path);
   }, [navigate]);
 
