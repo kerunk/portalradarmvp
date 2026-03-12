@@ -6,6 +6,7 @@ import { Settings as SettingsIcon, User, Building2, Lock } from "lucide-react";
 import { CompanyContacts } from "@/components/companies/CompanyContacts";
 
 export default function Settings() {
+  const { user, isAdminMVP } = useAuth();
   const { isReadOnly, mirrorCompanyId } = useReadOnly();
   const companyId = isReadOnly ? mirrorCompanyId : user?.companyId;
 
