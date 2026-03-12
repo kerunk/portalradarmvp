@@ -367,7 +367,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
                   <div
                     key={company.id}
                     className="grid grid-cols-12 gap-2 items-center px-3 py-3 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
-                    onClick={() => mainAlert ? drillDown(company.id, mainAlert.navigateTo) : navigate("/empresas")}
+                    onClick={() => mainAlert ? drillDown(company.id, mainAlert.navigateTo) : navigate(`/empresas/${company.id}`)}
                   >
                     <div className="col-span-3 flex items-center gap-2">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
