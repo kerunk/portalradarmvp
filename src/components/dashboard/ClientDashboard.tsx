@@ -177,7 +177,28 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
         />
       </div>
 
-      {/* Row 5: Evolution Chart + Radar */}
+      {/* Row 5: Implementation Journey + Checklist */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ImplementationJourney companyId={companyId} refreshKey={refreshKey} />
+        <ImplementationChecklist companyId={companyId} refreshKey={refreshKey} />
+      </div>
+
+      {/* Row 6: Client Suggestions + Smart Recommendations */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ClientSuggestions companyId={companyId} refreshKey={refreshKey} />
+        <SmartRecommendations
+          coveragePercent={coveragePercent}
+          completionPercent={globalIndicators.overallCompletionPercent}
+          delayedActions={globalIndicators.delayedActions}
+          facilitators={popStats.facilitators}
+          nucleoCount={popStats.nucleoCount}
+          turmasRealizadas={trainingStats.turmasRealizadas}
+          closedCycles={globalIndicators.closedCycles}
+          totalCycles={globalIndicators.totalCycles}
+        />
+      </div>
+
+      {/* Row 7: Evolution Chart + Radar */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ProgramEvolutionChart
           coveragePercent={coveragePercent}
@@ -187,13 +208,13 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
         <CulturalMaturityRadar companyId={companyId} refreshKey={refreshKey} />
       </div>
 
-      {/* Row 6: Timelines */}
+      {/* Row 8: Timelines */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ProgramTimeline phases={timelinePhases} />
         <ImplementationTimeline refreshKey={refreshKey} />
       </div>
 
-      {/* Row 7: Program Insights */}
+      {/* Row 9: Program Insights */}
       <InsightsPanel
         coveragePercent={coveragePercent}
         completionPercent={globalIndicators.overallCompletionPercent}
