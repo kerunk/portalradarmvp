@@ -35,6 +35,7 @@ import IndicatorSettings from "./pages/IndicatorSettings";
 import AdminHelp from "./pages/AdminHelp";
 
 import CompanyMirror from "./pages/CompanyMirror";
+import ManagerPortfolio from "./pages/ManagerPortfolio";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
