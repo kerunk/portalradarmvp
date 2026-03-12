@@ -58,6 +58,7 @@ function getAdminSections(adminRole: AdminRole): NavSection[] {
   if (perms.manageAdminUsers) {
     controlItems.push({ name: "Usuários", href: "/usuarios", icon: UserCog });
   }
+  controlItems.push({ name: "Notificações", href: "/notificacoes", icon: FileCheck });
   sections.push({ label: "CONTROLE DA PLATAFORMA", items: controlItems });
 
   // Intelligence section
