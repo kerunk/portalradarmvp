@@ -25,6 +25,7 @@ export function MetricCard({
   tooltip,
   trend,
   variant = "default",
+  onClick,
 }: MetricCardProps) {
   const variantStyles = {
     default: "from-primary/10 to-primary/5 text-primary",
