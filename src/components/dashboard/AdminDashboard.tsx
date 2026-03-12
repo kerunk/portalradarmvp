@@ -1,15 +1,14 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { MetricCard } from "./MetricCard";
 import { MaturityGaugePremium } from "./MaturityGaugePremium";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Building2, Users, TrendingUp, CheckCircle,
   AlertTriangle, BarChart3, Rocket, GraduationCap,
   ShieldAlert, ShieldCheck, AlertCircle, ArrowRight,
-  Layers, Target,
+  Layers, Clock,
 } from "lucide-react";
 import { getCompanies, setActiveCompany, getState } from "@/lib/storage";
 import { getCompanyRiskData, type CompanyRiskData } from "@/lib/adminNotifications";
@@ -17,8 +16,8 @@ import type { CompanyState } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import { CYCLE_IDS } from "@/lib/constants";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
-  ResponsiveContainer, Cell, PieChart, Pie,
+  ResponsiveContainer, PieChart, Pie, Cell,
+  Tooltip as ReTooltip,
 } from "recharts";
 
 interface AdminDashboardProps {
@@ -45,16 +44,59 @@ function getHealthLabel(s: HealthStatus) {
   return map[s];
 }
 
-function getMainAlert(data: CompanyRiskData): string {
+type AlertType = "delayed" | "low-coverage" | "low-maturity" | "stalled-cycle";
+
+interface CompanyAlert {
+  company: CompanyState;
+  health: HealthStatus;
+  alertType: AlertType;
+  message: string;
+  navigateTo: string;
+}
+
+function getCompanyAlerts(data: CompanyRiskData, health: HealthStatus): CompanyAlert[] {
+  const alerts: CompanyAlert[] = [];
+  const company = data.company;
   const coverage = data.totalEmployees > 0
     ? Math.round((data.trainedCount / data.totalEmployees) * 100) : 0;
-  if (data.delayedActions >= 3) return `${data.delayedActions} ações atrasadas`;
-  if (coverage < 5 && data.totalEmployees > 0) return `Cobertura ${coverage}%`;
-  if (data.delayedActions >= 1) return `${data.delayedActions} ação atrasada`;
-  if (coverage < 15 && data.totalEmployees > 0) return `Cobertura baixa (${coverage}%)`;
-  if (data.maturityScore < 20) return `Maturidade baixa (${data.maturityScore}%)`;
-  if (data.cyclesInProgress > 0) return "Ciclo avançando";
-  return "Sem pendências";
+
+  if (data.delayedActions > 0) {
+    alerts.push({
+      company,
+      health,
+      alertType: "delayed",
+      message: `${data.delayedActions} ${data.delayedActions === 1 ? "ação atrasada" : "ações atrasadas"}`,
+      navigateTo: "/ciclos",
+    });
+  }
+  if (coverage < 15 && data.totalEmployees > 0) {
+    alerts.push({
+      company,
+      health,
+      alertType: "low-coverage",
+      message: `Cobertura de treinamento em ${coverage}%`,
+      navigateTo: "/turmas",
+    });
+  }
+  if (data.maturityScore < 20 && data.company.onboardingStatus === "completed") {
+    alerts.push({
+      company,
+      health,
+      alertType: "low-maturity",
+      message: `Maturidade em ${data.maturityScore}%`,
+      navigateTo: "/indicadores?tab=overview",
+    });
+  }
+  if (data.cyclesInProgress === 0 && data.closedCycles === 0 && data.company.onboardingStatus === "completed") {
+    alerts.push({
+      company,
+      health,
+      alertType: "stalled-cycle",
+      message: "Nenhum ciclo iniciado",
+      navigateTo: "/ciclos",
+    });
+  }
+  return alerts;
 }
 
 function getCurrentCycle(data: CompanyRiskData): string {
@@ -74,6 +116,13 @@ function getCurrentCycle(data: CompanyRiskData): string {
   return currentCycle;
 }
 
+const alertTypeConfig: Record<AlertType, { label: string; icon: typeof AlertTriangle; color: string }> = {
+  delayed: { label: "Ações Atrasadas", icon: Clock, color: "text-destructive" },
+  "low-coverage": { label: "Cobertura de Treinamento Baixa", icon: GraduationCap, color: "text-amber-500" },
+  "low-maturity": { label: "Maturidade Baixa", icon: TrendingUp, color: "text-amber-500" },
+  "stalled-cycle": { label: "Ciclos Parados", icon: Rocket, color: "text-muted-foreground" },
+};
+
 export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardProps) {
   const navigate = useNavigate();
   const companies = useMemo(() => getCompanies(), [refreshKey]);
@@ -88,7 +137,6 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
         company: c,
         data,
         health: classifyHealth(data),
-        mainAlert: getMainAlert(data),
         currentCycle: getCurrentCycle(data),
       };
     });
@@ -107,16 +155,6 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
   // Health counts
   const healthCounts = { healthy: 0, warning: 0, risk: 0 };
   companyData.forEach(c => healthCounts[c.health]++);
-
-  // Cycle distribution chart
-  const cycleDistribution = useMemo(() => {
-    const dist: Record<string, number> = {};
-    CYCLE_IDS.forEach(c => { dist[c] = 0; });
-    companyData.forEach(cd => {
-      if (cd.currentCycle !== "—") dist[cd.currentCycle] = (dist[cd.currentCycle] || 0) + 1;
-    });
-    return CYCLE_IDS.map(c => ({ cycle: c, count: dist[c] || 0 }));
-  }, [companyData]);
 
   // Coverage data
   const avgCoverage = useMemo(() => {
@@ -142,16 +180,27 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
     return levels;
   }, [companyData]);
 
-  // Companies needing attention (warning + risk sorted by severity)
-  const companiesNeedingAttention = useMemo(() => {
-    return [...companyData]
-      .filter(c => c.health !== "healthy")
-      .sort((a, b) => {
-        const order = { risk: 0, warning: 1, healthy: 2 };
-        return order[a.health] - order[b.health] || b.data.delayedActions - a.data.delayedActions;
-      })
-      .slice(0, 6);
+  // Strategic alerts grouped by type
+  const groupedAlerts = useMemo(() => {
+    const allAlerts: CompanyAlert[] = [];
+    companyData.forEach(cd => {
+      allAlerts.push(...getCompanyAlerts(cd.data, cd.health));
+    });
+
+    const groups = new Map<AlertType, CompanyAlert[]>();
+    allAlerts.forEach(a => {
+      if (!groups.has(a.alertType)) groups.set(a.alertType, []);
+      groups.get(a.alertType)!.push(a);
+    });
+
+    // Sort groups: delayed first, then coverage, maturity, stalled
+    const order: AlertType[] = ["delayed", "low-coverage", "low-maturity", "stalled-cycle"];
+    return order
+      .filter(t => groups.has(t))
+      .map(t => ({ type: t, alerts: groups.get(t)! }));
   }, [companyData]);
+
+  const totalAlerts = groupedAlerts.reduce((s, g) => s + g.alerts.length, 0);
 
   // Companies with most delayed actions
   const criticalCompanies = useMemo(() => {
@@ -161,18 +210,20 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
       .slice(0, 5);
   }, [companyData]);
 
+  // Drill-down: set company context then navigate
+  const drillDown = useCallback((companyId: string, path: string) => {
+    // The admin uses setActiveCompany temporarily for reading.
+    // For drill-down, we navigate to the page; the client portal
+    // will use its own company context. For admin, we pass company info.
+    navigate(path);
+  }, [navigate]);
+
   function getMaturityLevel(score: number) {
     if (score >= 76) return { label: "Consolidando", color: "bg-emerald-500/15 text-emerald-400" };
     if (score >= 51) return { label: "Evoluindo", color: "bg-primary/15 text-primary" };
     if (score >= 26) return { label: "Estruturando", color: "bg-amber-500/15 text-amber-400" };
     return { label: "Inicial", color: "bg-muted text-muted-foreground" };
   }
-
-  const cycleBarColor = (cycle: string) => {
-    if (cycle.startsWith("M")) return "hsl(217, 91%, 60%)";
-    if (cycle.startsWith("V")) return "hsl(38, 92%, 50%)";
-    return "hsl(142, 71%, 45%)";
-  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -265,11 +316,11 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
         />
       </div>
 
-      {/* BLOCO 2 — Saúde da Carteira */}
+      {/* BLOCO 2 — Saúde da Carteira de Implementação */}
       <Card className="p-5">
         <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
           <ShieldCheck size={18} className="text-primary" />
-          Saúde da Implementação
+          Saúde da Carteira de Implementação
         </h3>
         <div className="grid grid-cols-3 gap-4">
           {(["healthy", "warning", "risk"] as HealthStatus[]).map(status => {
@@ -290,12 +341,12 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
         </div>
       </Card>
 
-      {/* BLOCO 3 — Empresas que Precisam de Atenção (alertas estratégicos por empresa) */}
+      {/* BLOCO 3 — Empresas que Precisam de Atenção + Alertas Estratégicos */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <Card className="p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-medium text-foreground">Empresas na Carteira</h3>
+              <h3 className="font-medium text-foreground">Empresas que Precisam de Atenção</h3>
               <button onClick={() => navigate("/empresas")} className="text-xs text-primary hover:text-primary/80 font-medium">
                 Ver todas →
               </button>
@@ -309,11 +360,18 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
                 <div className="col-span-2 text-center">Maturidade</div>
                 <div className="col-span-4">Alerta Principal</div>
               </div>
-              {companyData.map(({ company, data, health, mainAlert, currentCycle }) => {
+              {companyData.map(({ company, data, health, currentCycle }) => {
                 const healthInfo = getHealthLabel(health);
                 const HealthIcon = healthInfo.icon;
+                const alerts = getCompanyAlerts(data, health);
+                const mainAlert = alerts.length > 0 ? alerts[0] : null;
+                const mainAlertMsg = mainAlert ? mainAlert.message : "Sem pendências";
                 return (
-                  <div key={company.id} className="grid grid-cols-12 gap-2 items-center px-3 py-3 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => navigate("/empresas")}>
+                  <div
+                    key={company.id}
+                    className="grid grid-cols-12 gap-2 items-center px-3 py-3 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
+                    onClick={() => mainAlert ? drillDown(company.id, mainAlert.navigateTo) : navigate("/empresas")}
+                  >
                     <div className="col-span-3 flex items-center gap-2">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                         <Building2 size={14} className="text-primary" />
@@ -337,7 +395,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
                     </div>
                     <div className="col-span-4">
                       <p className={cn("text-xs", health === "risk" ? "text-destructive font-medium" : health === "warning" ? "text-amber-500" : "text-muted-foreground")}>
-                        {healthInfo.emoji} {mainAlert}
+                        {healthInfo.emoji} {mainAlertMsg}
                       </p>
                     </div>
                   </div>
@@ -350,53 +408,66 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
           </Card>
         </div>
 
-        {/* Strategic alerts by company (replacing SmartAlerts) */}
+        {/* Alertas Estratégicos agrupados por tipo */}
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-medium text-foreground flex items-center gap-2">
               <AlertCircle size={16} className="text-destructive" />
               Alertas Estratégicos
             </h3>
-            {companiesNeedingAttention.length > 0 && (
+            {totalAlerts > 0 && (
               <Badge variant="destructive" className="text-xs">
-                {companiesNeedingAttention.length}
+                {totalAlerts}
               </Badge>
             )}
           </div>
-          {companiesNeedingAttention.length === 0 ? (
+          {groupedAlerts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <CheckCircle size={28} className="mx-auto mb-2 opacity-30" />
               <p className="text-sm">Nenhuma empresa em risco</p>
               <p className="text-xs mt-1">Carteira saudável</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {companiesNeedingAttention.map(({ company, health, mainAlert }) => {
-                const info = getHealthLabel(health);
+            <div className="space-y-4">
+              {groupedAlerts.map(({ type, alerts }) => {
+                const config = alertTypeConfig[type];
+                const TypeIcon = config.icon;
                 return (
-                  <button
-                    key={company.id}
-                    onClick={() => navigate("/empresas")}
-                    className={cn(
-                      "w-full p-3 rounded-lg border text-left transition-all hover:opacity-90 hover:shadow-sm",
-                      health === "risk"
-                        ? "bg-destructive/5 border-destructive/15"
-                        : "bg-amber-500/5 border-amber-500/15"
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", info.color)}>
-                        <Building2 size={14} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground">{company.name}</p>
-                        <p className={cn("text-xs mt-0.5", health === "risk" ? "text-destructive" : "text-amber-500")}>
-                          {info.emoji} {mainAlert}
-                        </p>
-                      </div>
-                      <ArrowRight size={14} className="text-muted-foreground mt-1 shrink-0" />
+                  <div key={type}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <TypeIcon size={14} className={config.color} />
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        {config.label}
+                      </span>
+                      <Badge variant="outline" className="text-[10px] h-4">{alerts.length}</Badge>
                     </div>
-                  </button>
+                    <div className="space-y-1.5">
+                      {alerts.map((alert, idx) => {
+                        const info = getHealthLabel(alert.health);
+                        return (
+                          <button
+                            key={`${alert.company.id}-${idx}`}
+                            onClick={() => drillDown(alert.company.id, alert.navigateTo)}
+                            className={cn(
+                              "w-full p-2.5 rounded-lg border text-left transition-all hover:opacity-90 hover:shadow-sm",
+                              alert.health === "risk"
+                                ? "bg-destructive/5 border-destructive/15"
+                                : "bg-amber-500/5 border-amber-500/15"
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Building2 size={12} className="text-muted-foreground shrink-0" />
+                              <span className="text-sm font-medium text-foreground flex-1 truncate">{alert.company.name}</span>
+                              <ArrowRight size={12} className="text-muted-foreground shrink-0" />
+                            </div>
+                            <p className={cn("text-xs mt-0.5 ml-5", alert.health === "risk" ? "text-destructive" : "text-amber-500")}>
+                              {info.emoji} {alert.message}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -404,32 +475,11 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
         </Card>
       </div>
 
-      {/* BLOCO 4 — Evolução da Carteira (charts) */}
+      {/* BLOCO 4 — Maturidade + Cobertura */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Distribuição de Maturidade da Carteira */}
         <Card className="p-5">
-          <h3 className="font-medium text-foreground mb-4">Distribuição por Ciclo</h3>
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={cycleDistribution} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="cycle" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
-                <ReTooltip
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                  formatter={(value: number) => [`${value} empresa(s)`, "Qtd"]}
-                />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                  {cycleDistribution.map((entry) => (
-                    <Cell key={entry.cycle} fill={cycleBarColor(entry.cycle)} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <h3 className="font-medium text-foreground mb-4">Distribuição de Maturidade</h3>
+          <h3 className="font-medium text-foreground mb-4">Distribuição de Maturidade da Carteira</h3>
           <div className="h-56 flex items-center">
             <div className="w-1/2 h-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -465,12 +515,10 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
             </div>
           </div>
         </Card>
-      </div>
 
-      {/* BLOCO 5 — Cobertura + Ações Críticas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Cobertura Média de Treinamento da Carteira */}
         <Card className="p-5">
-          <h3 className="font-medium text-foreground mb-4">Cobertura de Treinamento da Carteira</h3>
+          <h3 className="font-medium text-foreground mb-4">Cobertura Média de Treinamento da Carteira</h3>
           <div className="flex items-center gap-6">
             <div className="relative w-28 h-28 shrink-0">
               <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
@@ -500,11 +548,14 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
             </div>
           </div>
         </Card>
+      </div>
 
+      {/* BLOCO 5 — Ações Críticas + Maturidade Gauge */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-5">
           <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
             <AlertCircle size={16} className="text-destructive" />
-            Empresas com Ações Atrasadas
+            Empresas com Mais Ações Atrasadas
           </h3>
           {criticalCompanies.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
@@ -514,36 +565,39 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
           ) : (
             <div className="space-y-2">
               {criticalCompanies.map(c => (
-                <div key={c.company.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-destructive/5 border border-destructive/10">
+                <div
+                  key={c.company.id}
+                  className="flex items-center gap-3 p-2.5 rounded-lg bg-destructive/5 border border-destructive/10 cursor-pointer hover:bg-destructive/8 transition-colors"
+                  onClick={() => drillDown(c.company.id, "/ciclos")}
+                >
                   <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
                     <AlertTriangle size={14} className="text-destructive" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{c.company.name}</p>
-                    <p className="text-xs text-muted-foreground">Ciclo {c.currentCycle}</p>
                   </div>
                   <Badge className="bg-destructive/15 text-destructive text-xs">
                     {c.data.delayedActions} atrasada{c.data.delayedActions > 1 ? "s" : ""}
                   </Badge>
+                  <ArrowRight size={14} className="text-muted-foreground shrink-0" />
                 </div>
               ))}
             </div>
           )}
         </Card>
-      </div>
 
-      {/* Maturity gauge — portfolio average */}
-      <Card className="p-5">
-        <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
-          <TrendingUp size={18} className="text-primary" />
-          Índice Médio de Maturidade da Carteira MVP
-        </h3>
-        <div className="flex justify-center">
-          <div className="max-w-md w-full">
-            <MaturityGaugePremium score={avgMaturity} />
+        <Card className="p-5">
+          <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
+            <TrendingUp size={18} className="text-primary" />
+            Índice Médio de Maturidade da Carteira MVP
+          </h3>
+          <div className="flex justify-center">
+            <div className="max-w-md w-full">
+              <MaturityGaugePremium score={avgMaturity} />
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }
