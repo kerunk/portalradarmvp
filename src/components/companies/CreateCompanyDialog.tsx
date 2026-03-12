@@ -20,6 +20,8 @@ import { Building2, User, Mail, Lock, FileDown, CheckCircle2, Upload, Image } fr
 import { useToast } from "@/hooks/use-toast";
 import { addCompany, type CompanyState } from "@/lib/storage";
 import { generateAccessPDF } from "@/lib/pdfGenerator";
+import { useAuth } from "@/contexts/AuthContext";
+import { getAdminRoleForUser, addCompanyToManager } from "@/lib/permissions";
 
 interface CreateCompanyDialogProps {
   open: boolean;
@@ -52,6 +54,7 @@ function generateTempPassword(): string {
 
 export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [step, setStep] = useState<"form" | "confirmation">("form");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -121,9 +124,19 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
       createdAt: new Date().toISOString().split('T')[0],
       logo: companyLogo || undefined,
       onboardingStatus: 'not_started',
+      ownerEmail: user?.email,
+      ownerName: user?.name,
     };
     
     addCompany(company);
+    
+    // Auto-assign to gerente_conta if applicable
+    if (user?.email) {
+      const role = getAdminRoleForUser(user.email);
+      if (role === "gerente_conta") {
+        addCompanyToManager(user.email, company.id);
+      }
+    }
     setSavedCompany(company);
     
     setCreatedData({

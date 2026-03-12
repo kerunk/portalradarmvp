@@ -139,6 +139,8 @@ export interface CompanyState {
   createdAt: string;
   logo?: string;
   onboardingStatus: OnboardingStatus;
+  ownerEmail?: string; // Admin who created this company (gerente_conta auto-assignment)
+  ownerName?: string;
 }
 
 // Smart Alert Interface
