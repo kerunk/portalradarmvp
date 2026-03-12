@@ -93,7 +93,7 @@ function getCompanyAlerts(data: CompanyRiskData, health: HealthStatus): CompanyA
       health,
       alertType: "stalled-cycle",
       message: "Nenhum ciclo iniciado",
-      navigateTo: "/ciclos",
+      navigateTo: `/empresas/${company.id}?tab=ciclos`,
     });
   }
   return alerts;
