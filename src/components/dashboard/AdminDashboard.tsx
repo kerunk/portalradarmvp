@@ -75,7 +75,7 @@ function getCompanyAlerts(data: CompanyRiskData, health: HealthStatus): CompanyA
       health,
       alertType: "low-coverage",
       message: `Cobertura de treinamento em ${coverage}%`,
-      navigateTo: "/turmas",
+      navigateTo: `/empresas/${company.id}?tab=turmas`,
     });
   }
   if (data.maturityScore < 20 && data.company.onboardingStatus === "completed") {
