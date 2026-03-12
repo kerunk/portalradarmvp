@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { MetricCard } from "./MetricCard";
 import { MaturityGaugePremium } from "./MaturityGaugePremium";
 import { ImplementationPipeline } from "./ImplementationPipeline";
+import { EvolutionRanking } from "./EvolutionRanking";
+import { ManagerRanking } from "./ManagerRanking";
+import { LoadDistribution } from "./LoadDistribution";
+import { StalledCompanies } from "./StalledCompanies";
+import { StrategicOverview } from "./StrategicOverview";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
