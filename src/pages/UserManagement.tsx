@@ -28,7 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Search, ShieldCheck, Eye, Crown, Briefcase, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Search, ShieldCheck, Crown, Briefcase, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { getCompanies } from "@/lib/storage";
