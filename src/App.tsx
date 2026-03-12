@@ -38,6 +38,7 @@ import CompanyMirror from "./pages/CompanyMirror";
 import ManagerPortfolio from "./pages/ManagerPortfolio";
 import DelayedActions from "./pages/DelayedActions";
 import ActiveCycles from "./pages/ActiveCycles";
+import NotificationCenter from "./pages/NotificationCenter";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -84,6 +85,7 @@ const App = () => (
             <Route path="/carteira/:userId" element={<ProtectedRoute requireAdmin><ManagerPortfolio /></ProtectedRoute>} />
             <Route path="/acoes-atrasadas" element={<ProtectedRoute requireAdmin><DelayedActions /></ProtectedRoute>} />
             <Route path="/ciclos-ativos" element={<ProtectedRoute requireAdmin><ActiveCycles /></ProtectedRoute>} />
+            <Route path="/notificacoes" element={<ProtectedRoute><NotificationCenter /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>

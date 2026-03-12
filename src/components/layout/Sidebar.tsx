@@ -58,6 +58,7 @@ function getAdminSections(adminRole: AdminRole): NavSection[] {
   if (perms.manageAdminUsers) {
     controlItems.push({ name: "Usuários", href: "/usuarios", icon: UserCog });
   }
+  controlItems.push({ name: "Notificações", href: "/notificacoes", icon: FileCheck });
   sections.push({ label: "CONTROLE DA PLATAFORMA", items: controlItems });
 
   // Intelligence section
@@ -94,6 +95,7 @@ const clientNavigation = [
   { name: "Turmas", href: "/turmas", icon: Users },
   { name: "Ações & Alertas", href: "/indicadores", icon: Target },
   { name: "Relatórios", href: "/relatorios", icon: FileText },
+  { name: "Configurações", href: "/configuracoes", icon: Settings },
   { name: "Manual MVP", href: "/ajuda", icon: BookOpen },
 ];
 

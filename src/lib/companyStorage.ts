@@ -73,6 +73,47 @@ export interface ExperienceMVP {
   updatedAt: string;
 }
 
+// ============ IMPLEMENTATION CONTACTS ============
+
+export interface ImplementationContact {
+  id: string;
+  name: string;
+  role: string;
+  email: string;
+  phone?: string;
+  fromNucleo: boolean; // if selected from núcleo
+  createdAt: string;
+}
+
+function contactsKey(companyId: string): string {
+  return `mvp_company_${companyId}_contacts`;
+}
+
+export function getImplementationContacts(companyId: string): ImplementationContact[] {
+  try {
+    return JSON.parse(localStorage.getItem(contactsKey(companyId)) || "[]");
+  } catch { return []; }
+}
+
+export function setImplementationContacts(companyId: string, contacts: ImplementationContact[]): void {
+  localStorage.setItem(contactsKey(companyId), JSON.stringify(contacts));
+}
+
+export function addImplementationContact(companyId: string, contact: ImplementationContact): void {
+  const current = getImplementationContacts(companyId);
+  setImplementationContacts(companyId, [...current, contact]);
+}
+
+export function removeImplementationContact(companyId: string, contactId: string): void {
+  const current = getImplementationContacts(companyId);
+  setImplementationContacts(companyId, current.filter(c => c.id !== contactId));
+}
+
+export function updateImplementationContact(companyId: string, contactId: string, updates: Partial<ImplementationContact>): void {
+  const current = getImplementationContacts(companyId);
+  setImplementationContacts(companyId, current.map(c => c.id === contactId ? { ...c, ...updates } : c));
+}
+
 // ============ KEYS ============
 
 function nucleoKey(companyId: string): string {

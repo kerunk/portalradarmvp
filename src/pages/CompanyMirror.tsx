@@ -25,6 +25,7 @@ const tabToRoute: Record<string, string> = {
   estrutura: "/estrutura",
   "base-populacional": "/base-populacional",
   nucleo: "/nucleo",
+  configuracoes: "/configuracoes",
 };
 
 export default function CompanyMirror() {

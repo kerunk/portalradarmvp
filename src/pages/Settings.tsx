@@ -1,10 +1,14 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
+import { useReadOnly } from "@/contexts/ReadOnlyContext";
 import { Settings as SettingsIcon, User, Building2, Lock } from "lucide-react";
+import { CompanyContacts } from "@/components/companies/CompanyContacts";
 
 export default function Settings() {
   const { user, isAdminMVP } = useAuth();
+  const { isReadOnly, mirrorCompanyId } = useReadOnly();
+  const companyId = isReadOnly ? mirrorCompanyId : user?.companyId;
 
   return (
     <AppLayout
@@ -62,6 +66,11 @@ export default function Settings() {
               </div>
             </div>
           </Card>
+        )}
+
+        {/* Implementation Contacts */}
+        {companyId && (
+          <CompanyContacts companyId={companyId} readOnly={isReadOnly} />
         )}
 
         {/* Security */}
