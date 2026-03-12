@@ -186,9 +186,13 @@ export default function Companies() {
               </div>
 
               {/* Info */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-3 gap-4 mb-4">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Responsável</p>
+                  <span className="text-sm font-medium">{company.ownerName || "Admin Master"}</span>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Admin Empresa</p>
                   <span className="text-sm font-medium">{company.adminName}</span>
                 </div>
                 <div>
