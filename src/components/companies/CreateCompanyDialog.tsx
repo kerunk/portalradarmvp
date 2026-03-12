@@ -124,9 +124,19 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
       createdAt: new Date().toISOString().split('T')[0],
       logo: companyLogo || undefined,
       onboardingStatus: 'not_started',
+      ownerEmail: user?.email,
+      ownerName: user?.name,
     };
     
     addCompany(company);
+    
+    // Auto-assign to gerente_conta if applicable
+    if (user?.email) {
+      const role = getAdminRoleForUser(user.email);
+      if (role === "gerente_conta") {
+        addCompanyToManager(user.email, company.id);
+      }
+    }
     setSavedCompany(company);
     
     setCreatedData({
