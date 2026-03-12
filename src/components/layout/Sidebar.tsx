@@ -49,7 +49,6 @@ const adminSections: NavSection[] = [
       { name: "Dashboard", href: "/", icon: LayoutDashboard },
       { name: "Empresas", href: "/empresas", icon: Building2 },
       { name: "Usuários", href: "/usuarios", icon: UserCog },
-      { name: "Projetos", href: "/plano", icon: FolderOpen },
     ],
   },
   {
@@ -66,7 +65,6 @@ const adminSections: NavSection[] = [
     items: [
       { name: "Indicadores", href: "/indicadores", icon: BarChart3 },
       { name: "Relatórios", href: "/relatorios", icon: FileText },
-      { name: "Maturidade", href: "/maturidade", icon: TrendingUp },
     ],
   },
   {
