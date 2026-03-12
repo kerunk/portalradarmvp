@@ -29,6 +29,7 @@ import { getCompanies, type CompanyState } from "@/lib/storage";
 import { Badge } from "@/components/ui/badge";
 
 export default function Companies() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
