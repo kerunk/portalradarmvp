@@ -66,7 +66,7 @@ function getCompanyAlerts(data: CompanyRiskData, health: HealthStatus): CompanyA
       health,
       alertType: "delayed",
       message: `${data.delayedActions} ${data.delayedActions === 1 ? "ação atrasada" : "ações atrasadas"}`,
-      navigateTo: "/ciclos",
+      navigateTo: `/empresas/${company.id}?tab=registros`,
     });
   }
   if (coverage < 15 && data.totalEmployees > 0) {
