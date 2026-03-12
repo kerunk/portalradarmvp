@@ -206,8 +206,12 @@ export default function Companies() {
                   variant="ghost"
                   size="sm"
                   className="text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/empresas/${company.id}`);
+                  }}
                 >
-                  Ver detalhes
+                  Ver portal
                   <ChevronRight size={14} className="ml-1" />
                 </Button>
               </div>
