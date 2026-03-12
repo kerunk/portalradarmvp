@@ -48,7 +48,7 @@ export default function DelayedActions() {
                 companyId: company.id,
                 companyName: company.name,
                 cycleId,
-                factorName: factor.name,
+                factorName: factor.id,
                 actionTitle: action.title,
                 responsible: action.responsible || "Sem responsável",
                 dueDate: action.dueDate,
