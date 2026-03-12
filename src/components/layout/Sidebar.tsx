@@ -37,39 +37,52 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import logoMvp from "@/assets/logo-mvp.jpeg";
+import { getAdminRoleForUser, getPermissions, ADMIN_ROLE_LABELS, type AdminRole } from "@/lib/permissions";
 
 interface NavSection {
   label: string;
   items: { name: string; href: string; icon: React.ElementType }[];
 }
 
-const adminSections: NavSection[] = [
-  {
-    label: "CONTROLE DA PLATAFORMA",
-    items: [
-      { name: "Dashboard", href: "/", icon: LayoutDashboard },
-      { name: "Empresas", href: "/empresas", icon: Building2 },
-      { name: "Usuários", href: "/usuarios", icon: UserCog },
-    ],
-  },
-  {
-    label: "INTELIGÊNCIA",
-    items: [
-      { name: "Indicadores", href: "/indicadores", icon: BarChart3 },
-      { name: "Relatórios", href: "/relatorios", icon: FileText },
-    ],
-  },
-  {
-    label: "ADMINISTRAÇÃO DO SISTEMA",
-    items: [
-      { name: "Prateleira Global", href: "/praticas", icon: BookOpen },
-      { name: "Manual Global MVP", href: "/manual-editor", icon: BookMarked },
-      { name: "Config. Indicadores", href: "/config-indicadores", icon: SlidersHorizontal },
-      { name: "Ajuda da Plataforma", href: "/admin-ajuda", icon: HelpCircle },
-      { name: "Configurações", href: "/configuracoes", icon: Settings },
-    ],
-  },
-];
+function getAdminSections(adminRole: AdminRole): NavSection[] {
+  const perms = getPermissions(adminRole);
+  const sections: NavSection[] = [];
+
+  // Control section
+  const controlItems: NavSection["items"] = [
+    { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  ];
+  if (perms.viewAllCompanies || perms.viewAssignedCompanies) {
+    controlItems.push({ name: "Empresas", href: "/empresas", icon: Building2 });
+  }
+  if (perms.manageAdminUsers) {
+    controlItems.push({ name: "Usuários", href: "/usuarios", icon: UserCog });
+  }
+  sections.push({ label: "CONTROLE DA PLATAFORMA", items: controlItems });
+
+  // Intelligence section
+  if (perms.viewIndicators || perms.viewReports) {
+    const intItems: NavSection["items"] = [];
+    if (perms.viewIndicators) intItems.push({ name: "Indicadores", href: "/indicadores", icon: BarChart3 });
+    if (perms.viewReports) intItems.push({ name: "Relatórios", href: "/relatorios", icon: FileText });
+    sections.push({ label: "INTELIGÊNCIA", items: intItems });
+  }
+
+  // System admin section (only for roles with edit permissions)
+  if (perms.editGlobalShelf || perms.editPlatformSettings) {
+    const sysItems: NavSection["items"] = [];
+    if (perms.editGlobalShelf) sysItems.push({ name: "Prateleira Global", href: "/praticas", icon: BookOpen });
+    if (perms.editGlobalManual) sysItems.push({ name: "Manual Global MVP", href: "/manual-editor", icon: BookMarked });
+    if (perms.editIndicatorSettings) sysItems.push({ name: "Config. Indicadores", href: "/config-indicadores", icon: SlidersHorizontal });
+    if (perms.editAdminHelp) sysItems.push({ name: "Ajuda da Plataforma", href: "/admin-ajuda", icon: HelpCircle });
+    if (perms.editPlatformSettings) sysItems.push({ name: "Configurações", href: "/configuracoes", icon: Settings });
+    if (sysItems.length > 0) {
+      sections.push({ label: "ADMINISTRAÇÃO DO SISTEMA", items: sysItems });
+    }
+  }
+
+  return sections;
+}
 
 // Navigation for Client Portal
 const clientNavigation = [
