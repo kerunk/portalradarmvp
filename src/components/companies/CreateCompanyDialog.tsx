@@ -20,6 +20,8 @@ import { Building2, User, Mail, Lock, FileDown, CheckCircle2, Upload, Image } fr
 import { useToast } from "@/hooks/use-toast";
 import { addCompany, type CompanyState } from "@/lib/storage";
 import { generateAccessPDF } from "@/lib/pdfGenerator";
+import { useAuth } from "@/contexts/AuthContext";
+import { getAdminRoleForUser, addCompanyToManager } from "@/lib/permissions";
 
 interface CreateCompanyDialogProps {
   open: boolean;
