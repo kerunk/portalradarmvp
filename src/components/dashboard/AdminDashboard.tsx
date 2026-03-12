@@ -604,6 +604,21 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
           </div>
         </Card>
       </div>
+
+      {/* BLOCO 6 — Visão Estratégica */}
+      <StrategicOverview refreshKey={refreshKey} />
+
+      {/* BLOCO 7 — Ranking + Empresas Paradas */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <EvolutionRanking refreshKey={refreshKey} />
+        <StalledCompanies refreshKey={refreshKey} />
+      </div>
+
+      {/* BLOCO 8 — Gerentes + Distribuição de Carga */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ManagerRanking refreshKey={refreshKey} />
+        <LoadDistribution refreshKey={refreshKey} />
+      </div>
     </div>
   );
 }
