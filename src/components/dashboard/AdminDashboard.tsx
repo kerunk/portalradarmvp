@@ -310,6 +310,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
           subtitle="na carteira"
           tooltip="Total de ações atrasadas em todas as empresas"
           variant={totalActionsDelayed > 0 ? "danger" : "default"}
+          onClick={totalActionsDelayed > 0 ? () => navigate("/acoes-atrasadas") : undefined}
         />
         <MetricCard
           title="Ciclos em Andamento"
