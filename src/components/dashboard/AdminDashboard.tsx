@@ -257,6 +257,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
           subtitle={`${companiesPending} em onboarding`}
           tooltip="Empresas com onboarding concluído"
           variant="default"
+          onClick={() => navigate("/empresas")}
         />
         <MetricCard
           title="Colaboradores"
