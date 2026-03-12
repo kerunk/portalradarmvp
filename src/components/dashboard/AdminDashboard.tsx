@@ -84,7 +84,7 @@ function getCompanyAlerts(data: CompanyRiskData, health: HealthStatus): CompanyA
       health,
       alertType: "low-maturity",
       message: `Maturidade em ${data.maturityScore}%`,
-      navigateTo: "/indicadores?tab=overview",
+      navigateTo: `/empresas/${company.id}?tab=indicadores`,
     });
   }
   if (data.cyclesInProgress === 0 && data.closedCycles === 0 && data.company.onboardingStatus === "completed") {
