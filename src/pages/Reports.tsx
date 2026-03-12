@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import jsPDF from "jspdf";
 import { getCompanies } from "@/lib/storage";
 import { getCompanyRiskData } from "@/lib/adminNotifications";
 import { getEnrichedCompanies, RISK_LABELS } from "@/lib/portfolioUtils";
