@@ -6,13 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Eye, EyeOff, Lock, CheckCircle2 } from "lucide-react";
+import { Eye, EyeOff, Lock, CheckCircle2, LogOut } from "lucide-react";
 import logoMvp from "@/assets/logo-mvp.jpeg";
 
 export default function ChangePassword() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, changePassword, isAuthenticated } = useAuth();
+  const { user, changePassword, logout, isAuthenticated } = useAuth();
   
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -25,6 +25,11 @@ export default function ChangePassword() {
     navigate("/login");
     return null;
   }
+
+  const handleCancelAndLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   const passwordRequirements = [
     { label: "Mínimo 8 caracteres", met: newPassword.length >= 8 },
@@ -196,6 +201,15 @@ export default function ChangePassword() {
             </Button>
           </form>
         </Card>
+
+        <Button
+          variant="ghost"
+          className="w-full text-muted-foreground hover:text-foreground"
+          onClick={handleCancelAndLogout}
+        >
+          <LogOut size={16} className="mr-2" />
+          Cancelar e voltar para login
+        </Button>
 
         <p className="text-center text-xs text-muted-foreground">
           Esta alteração é obrigatória no primeiro acesso para garantir a segurança da sua conta.
