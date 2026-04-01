@@ -138,6 +138,10 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
         addCompanyToManager(user.email, company.id);
       }
     }
+
+    // Emit operational event
+    emitCompanyCreated(company.name, company.id, user?.name, user?.email);
+
     setSavedCompany(company);
     
     setCreatedData({
