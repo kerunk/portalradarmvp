@@ -235,6 +235,8 @@ export default function UserManagement() {
   const [filterRole, setFilterRole] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ManagedUser | null>(null);
+  const [transferManagerEmail, setTransferManagerEmail] = useState("");
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
 
