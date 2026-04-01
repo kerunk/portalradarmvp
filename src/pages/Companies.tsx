@@ -342,13 +342,30 @@ export default function Companies() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => { e.stopPropagation(); navigate(`/empresas/${ec.company.id}`); }}
-                      >
-                        Ver portal <ChevronRight size={14} className="ml-1" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        {canReassign && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Alterar gerente responsável"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReassignCompany(ec.company);
+                              setSelectedManager(ec.company.ownerEmail || "");
+                            }}
+                          >
+                            <UserCog size={14} className="text-muted-foreground" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); navigate(`/empresas/${ec.company.id}`); }}
+                        >
+                          Ver portal <ChevronRight size={14} className="ml-1" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
