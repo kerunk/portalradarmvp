@@ -6,6 +6,9 @@ const DISMISSED_EVENTS_KEY = "mvp_operational_events_dismissed";
 
 export type OperationalEventType =
   | "company_created"
+  | "company_deleted"
+  | "company_deactivated"
+  | "company_reactivated"
   | "company_manager_changed"
   | "onboarding_started"
   | "onboarding_completed"

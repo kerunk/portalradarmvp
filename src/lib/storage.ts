@@ -141,6 +141,7 @@ export interface CompanyState {
   onboardingStatus: OnboardingStatus;
   ownerEmail?: string; // Admin who created this company (gerente_conta auto-assignment)
   ownerName?: string;
+  active?: boolean; // undefined or true = active, false = inactive
 }
 
 // Smart Alert Interface
