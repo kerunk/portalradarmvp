@@ -57,9 +57,12 @@ export default function Companies() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [reassignCompany, setReassignCompany] = useState<CompanyState | null>(null);
   const [selectedManager, setSelectedManager] = useState("");
+  const [deleteCompany, setDeleteCompany] = useState<CompanyState | null>(null);
+  const [deactivateCompany, setDeactivateCompany] = useState<CompanyState | null>(null);
 
   const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
   const canReassign = adminRole === "admin_master" || adminRole === "admin_mvp";
+  const canDelete = hasPermission(adminRole, "deleteCompanies");
 
   useEffect(() => {
     if (!createDialogOpen) setRefreshKey(k => k + 1);
