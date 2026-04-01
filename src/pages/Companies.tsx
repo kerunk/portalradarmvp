@@ -46,6 +46,7 @@ type SortKey = "name" | "maturity" | "risk" | "lastActivity";
 export default function Companies() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRisk, setFilterRisk] = useState("all");
   const [filterStage, setFilterStage] = useState("all");
@@ -54,8 +55,11 @@ export default function Companies() {
   const [sortAsc, setSortAsc] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [reassignCompany, setReassignCompany] = useState<CompanyState | null>(null);
+  const [selectedManager, setSelectedManager] = useState("");
 
   const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
+  const canReassign = adminRole === "admin_master" || adminRole === "admin_mvp";
 
   useEffect(() => {
     if (!createDialogOpen) setRefreshKey(k => k + 1);
