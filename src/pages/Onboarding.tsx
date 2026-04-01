@@ -19,6 +19,7 @@ import {
   Pencil,
   Trash2,
   Database,
+  LogOut,
 } from "lucide-react";
 import {
   type NucleoMember,
