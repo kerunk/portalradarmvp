@@ -279,8 +279,13 @@ export interface EnrichedCompany {
   cycleDelays: CycleDelayInfo[];
 }
 
-export function getEnrichedCompanies(): EnrichedCompany[] {
-  const companies = getCompanies();
+export function getEnrichedCompanies(filterEmail?: string, filterRole?: string): EnrichedCompany[] {
+  let companies = getCompanies();
+  
+  // Gerente de Conta only sees their own companies
+  if (filterRole === "gerente_conta" && filterEmail) {
+    companies = companies.filter(c => c.ownerEmail?.toLowerCase() === filterEmail.toLowerCase());
+  }
   return companies.map(c => {
     const riskData = getCompanyRiskData(c);
     const riskLevel = calculateRiskLevel(riskData);
