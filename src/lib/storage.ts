@@ -20,6 +20,14 @@ export function getActiveCompany(): string | null {
   return _activeCompanyId;
 }
 
+// Tenant validation: ensures a client can only access their own company data
+export function validateTenantAccess(requestedCompanyId: string, userCompanyId?: string): boolean {
+  // Admins (no companyId) can access any tenant
+  if (!userCompanyId) return true;
+  // Clients can only access their own company
+  return requestedCompanyId === userCompanyId;
+}
+
 function getStorageKey(): string {
   if (_activeCompanyId) {
     return `mvp_portal_company_${_activeCompanyId}`;
