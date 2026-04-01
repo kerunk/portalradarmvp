@@ -333,6 +333,14 @@ export default function Companies() {
                 <SelectItem value="finalizado">Finalizado</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos status</SelectItem>
+                <SelectItem value="active">Ativas</SelectItem>
+                <SelectItem value="inactive">Inativas</SelectItem>
+              </SelectContent>
+            </Select>
             {owners.length > 0 && (
               <Select value={filterOwner} onValueChange={setFilterOwner}>
                 <SelectTrigger className="w-[160px]"><SelectValue placeholder="Responsável" /></SelectTrigger>
