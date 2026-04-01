@@ -187,10 +187,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Save user to storage when it changes
   useEffect(() => {
-    if (user) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
+    try {
+      if (user) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch (e) {
+      // localStorage full — clear stale keys and retry
+      console.warn("localStorage quota exceeded, clearing stale data...", e);
+      try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('mvp_portal_company_')) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+        if (user) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+        }
+      } catch (retryError) {
+        console.error("Failed to save auth state even after cleanup:", retryError);
+      }
     }
   }, [user]);
 
