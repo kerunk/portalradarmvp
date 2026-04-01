@@ -464,6 +464,7 @@ export default function UserManagement() {
     setDeleteTarget(null);
   };
 
+  const adminRoleCounts = useMemo(() => {
     const counts: Record<AdminRole, number> = {
       admin_master: 0,
       admin_mvp: 0,
