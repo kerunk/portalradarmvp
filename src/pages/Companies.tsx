@@ -391,7 +391,7 @@ export default function Companies() {
               {sorted.map((ec) => {
                 const RiskIcon = riskIcons[ec.riskLevel];
                 return (
-                  <TableRow key={ec.company.id} className="cursor-pointer" onClick={() => navigate(`/empresas/${ec.company.id}`)}>
+                  <TableRow key={ec.company.id} className={cn("cursor-pointer", ec.company.active === false && "opacity-60")} onClick={() => navigate(`/empresas/${ec.company.id}`)}>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
