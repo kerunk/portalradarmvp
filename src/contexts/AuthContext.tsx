@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { getCompanies, updateCompanyOnboardingStatus, setActiveCompany, type OnboardingStatus } from "@/lib/storage";
+import { getCompanies, updateCompanyOnboardingStatus, setActiveCompany, getCompanyById, type OnboardingStatus } from "@/lib/storage";
+import { emitOnboardingStarted, emitOnboardingCompleted } from "@/lib/operationalEvents";
 
 // ============================================================
 // MVP Portal Authentication Context
@@ -500,6 +501,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user.onboardingStatus === 'not_started') {
       updateCompanyOnboardingStatus(user.companyId, 'in_progress');
       setUser({ ...user, onboardingStatus: 'in_progress' });
+      const company = getCompanyById(user.companyId);
+      if (company) emitOnboardingStarted(company.name, company.id);
     }
   };
 
@@ -509,6 +512,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (user.companyId) {
       updateCompanyOnboardingStatus(user.companyId, 'completed');
+      const company = getCompanyById(user.companyId);
+      if (company) emitOnboardingCompleted(company.name, company.id);
     }
     
     setUser({ ...user, onboardingStatus: 'completed' });

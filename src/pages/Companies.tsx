@@ -15,13 +15,17 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
   Search, Building2, TrendingUp, AlertTriangle,
   ChevronRight, Plus, ShieldCheck, ShieldAlert,
-  ArrowUpDown,
+  ArrowUpDown, UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CreateCompanyDialog } from "@/components/companies/CreateCompanyDialog";
-import { getCompanies, type CompanyState } from "@/lib/storage";
+import { getCompanies, setCompanies, type CompanyState } from "@/lib/storage";
 import { Badge } from "@/components/ui/badge";
 import {
   getEnrichedCompanies,
@@ -31,7 +35,9 @@ import {
   type EnrichedCompany, type RiskLevel, type ImplementationStage,
 } from "@/lib/portfolioUtils";
 import { useAuth } from "@/contexts/AuthContext";
-import { getAdminRoleForUser } from "@/lib/permissions";
+import { getAdminRoleForUser, getAdminRoleAssignments, hasPermission } from "@/lib/permissions";
+import { emitManagerChanged } from "@/lib/operationalEvents";
+import { useToast } from "@/hooks/use-toast";
 
 const riskIcons = { healthy: ShieldCheck, warning: AlertTriangle, risk: ShieldAlert };
 
@@ -40,6 +46,7 @@ type SortKey = "name" | "maturity" | "risk" | "lastActivity";
 export default function Companies() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRisk, setFilterRisk] = useState("all");
   const [filterStage, setFilterStage] = useState("all");
@@ -48,14 +55,23 @@ export default function Companies() {
   const [sortAsc, setSortAsc] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [reassignCompany, setReassignCompany] = useState<CompanyState | null>(null);
+  const [selectedManager, setSelectedManager] = useState("");
 
   const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
+  const canReassign = adminRole === "admin_master" || adminRole === "admin_mvp";
 
   useEffect(() => {
     if (!createDialogOpen) setRefreshKey(k => k + 1);
   }, [createDialogOpen]);
 
   const enriched = useMemo(() => getEnrichedCompanies(user?.email, adminRole), [refreshKey, user?.email, adminRole]);
+
+  // Available managers for reassignment
+  const availableManagers = useMemo(() => {
+    const assignments = getAdminRoleAssignments();
+    return assignments.filter(a => a.adminRole === "gerente_conta" || a.adminRole === "admin_mvp" || a.adminRole === "admin_master");
+  }, [refreshKey]);
 
   // Unique owners
   const owners = useMemo(() => {
@@ -65,6 +81,46 @@ export default function Companies() {
     });
     return Array.from(set).sort();
   }, [enriched]);
+
+  // Handle manager reassignment
+  const handleReassignManager = () => {
+    if (!reassignCompany || !selectedManager) return;
+    const manager = availableManagers.find(m => m.email === selectedManager);
+    if (!manager) return;
+
+    const allCompanies = getCompanies();
+    const updated = allCompanies.map(c =>
+      c.id === reassignCompany.id
+        ? { ...c, ownerEmail: manager.email, ownerName: manager.email === "admin@radarmvp.com" ? "Admin Master" : (availableManagers.find(m => m.email === manager.email)?.email || manager.email) }
+        : c
+    );
+    // Resolve name from managed users
+    let managerName = manager.email;
+    try {
+      const storedUsers = localStorage.getItem("mvp_managed_users_v2");
+      if (storedUsers) {
+        const managed = JSON.parse(storedUsers) as Array<{ name: string; email: string }>;
+        const found = managed.find(u => u.email.toLowerCase() === manager.email.toLowerCase());
+        if (found) managerName = found.name;
+      }
+    } catch {}
+    if (manager.email === "admin@radarmvp.com") managerName = "Admin Master";
+
+    const finalCompanies = updated.map(c =>
+      c.id === reassignCompany.id ? { ...c, ownerName: managerName } : c
+    );
+    setCompanies(finalCompanies);
+
+    emitManagerChanged(reassignCompany.name, reassignCompany.id, managerName, manager.email);
+
+    toast({
+      title: "Gerente alterado",
+      description: `${reassignCompany.name} agora é responsabilidade de ${managerName}.`,
+    });
+    setReassignCompany(null);
+    setSelectedManager("");
+    setRefreshKey(k => k + 1);
+  };
 
   // Filter
   const filtered = useMemo(() => {
@@ -286,13 +342,30 @@ export default function Companies() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => { e.stopPropagation(); navigate(`/empresas/${ec.company.id}`); }}
-                      >
-                        Ver portal <ChevronRight size={14} className="ml-1" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        {canReassign && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Alterar gerente responsável"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReassignCompany(ec.company);
+                              setSelectedManager(ec.company.ownerEmail || "");
+                            }}
+                          >
+                            <UserCog size={14} className="text-muted-foreground" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); navigate(`/empresas/${ec.company.id}`); }}
+                        >
+                          Ver portal <ChevronRight size={14} className="ml-1" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -309,6 +382,48 @@ export default function Companies() {
         </Card>
 
         <CreateCompanyDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+
+        {/* Manager Reassignment Dialog */}
+        <Dialog open={!!reassignCompany} onOpenChange={(open) => { if (!open) { setReassignCompany(null); setSelectedManager(""); } }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <UserCog className="h-5 w-5 text-primary" />
+                Alterar Gerente Responsável
+              </DialogTitle>
+              <DialogDescription>
+                {reassignCompany && `Selecione o novo gerente responsável por ${reassignCompany.name}.`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label>Gerente Responsável Atual</Label>
+                <p className="text-sm font-medium text-foreground">{reassignCompany?.ownerName || "Não atribuído"}</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Novo Gerente Responsável</Label>
+                <Select value={selectedManager} onValueChange={setSelectedManager}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    {availableManagers.map(m => (
+                      <SelectItem key={m.email} value={m.email}>
+                        {m.email === "admin@radarmvp.com" ? "Admin Master" : m.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" onClick={() => { setReassignCompany(null); setSelectedManager(""); }}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleReassignManager} disabled={!selectedManager}>
+                  Confirmar Alteração
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );

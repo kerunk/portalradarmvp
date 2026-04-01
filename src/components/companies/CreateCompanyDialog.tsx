@@ -21,7 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 import { addCompany, type CompanyState } from "@/lib/storage";
 import { generateAccessPDF } from "@/lib/pdfGenerator";
 import { useAuth } from "@/contexts/AuthContext";
-import { getAdminRoleForUser, addCompanyToManager } from "@/lib/permissions";
+import { getAdminRoleForUser, addCompanyToManager, getAdminRoleAssignments } from "@/lib/permissions";
+import { emitCompanyCreated } from "@/lib/operationalEvents";
 
 interface CreateCompanyDialogProps {
   open: boolean;
@@ -137,6 +138,10 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
         addCompanyToManager(user.email, company.id);
       }
     }
+
+    // Emit operational event
+    emitCompanyCreated(company.name, company.id, user?.name, user?.email);
+
     setSavedCompany(company);
     
     setCreatedData({
