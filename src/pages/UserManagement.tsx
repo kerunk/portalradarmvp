@@ -332,6 +332,18 @@ export default function UserManagement() {
       // Register user for login with temp password
       registerUserForLogin(newUser, tempPassword);
 
+      // Audit & operational event
+      addOperationalEvent({
+        type: "user_created",
+        title: "Novo usuário criado",
+        message: `${formName} (${ADMIN_ROLE_LABELS[formAdminRole]}) foi criado por ${currentUser?.name || "Admin"}.`,
+      });
+      auditUserAction(
+        currentUser?.email || "", currentUser?.name || "Admin",
+        "user_created", formEmail, formName,
+        `Perfil: ${ADMIN_ROLE_LABELS[formAdminRole]}`
+      );
+
       // Show credentials confirmation
       setCreatedCredentials({
         name: formName,
