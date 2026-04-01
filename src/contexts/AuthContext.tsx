@@ -222,6 +222,10 @@ function resolveUserProfile(email: string): UserProfile | null {
     const companies = getCompanies();
     const company = companies.find(c => c.adminEmail.toLowerCase() === lower);
     if (company) {
+      // Block inactive companies
+      if (company.active === false) {
+        return null; // Will be handled in login with specific message
+      }
       return {
         id: `user-${company.id}`,
         name: company.adminName,
