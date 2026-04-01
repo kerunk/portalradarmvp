@@ -368,7 +368,12 @@ export default function Companies() {
                           <span className="text-sm font-bold text-primary">{ec.company.name.charAt(0)}</span>
                         </div>
                         <div>
-                          <p className="font-medium text-foreground">{ec.company.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-foreground">{ec.company.name}</p>
+                            {ec.company.active === false && (
+                              <Badge variant="outline" className="text-[10px] border-destructive/30 text-destructive">Inativa</Badge>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground">{ec.company.sector} · {ec.company.employees} colab.</p>
                         </div>
                       </div>
