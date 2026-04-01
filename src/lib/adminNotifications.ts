@@ -139,12 +139,18 @@ export function getCompanyRiskData(company: CompanyState): CompanyRiskData {
   };
 }
 
-export function generateAdminNotifications(): AdminNotification[] {
-  const companies = getCompanies();
+export function generateAdminNotifications(filterEmail?: string, filterRole?: string): AdminNotification[] {
+  let companies = getCompanies();
   const dismissed = getDismissedAdmin();
   const notifications: AdminNotification[] = [];
 
+  // Filter companies for gerente_conta
+  if (filterRole === "gerente_conta" && filterEmail) {
+    companies = companies.filter(c => c.ownerEmail?.toLowerCase() === filterEmail.toLowerCase());
+  }
+
   const companyDataList = companies.map(c => getCompanyRiskData(c));
+  const companyIds = new Set(companies.map(c => c.id));
 
   for (const data of companyDataList) {
     const { company } = data;
@@ -309,6 +315,29 @@ export function generateAdminNotifications(): AdminNotification[] {
       }
     }
   }
+
+  // ── OPERATIONAL EVENTS (company_created, manager_changed, etc.) ──
+  const opEvents = getActiveOperationalEvents();
+  opEvents.forEach(evt => {
+    // Filter: gerente_conta only sees events for their own companies
+    if (filterRole === "gerente_conta" && evt.companyId && !companyIds.has(evt.companyId)) {
+      return;
+    }
+    const id = `op-${evt.id}`;
+    if (!dismissed.includes(id)) {
+      notifications.push({
+        id,
+        priority: 'insight',
+        type: 'milestone',
+        title: evt.title,
+        message: evt.message,
+        companyId: evt.companyId,
+        companyName: evt.companyName,
+        navigateTo: evt.companyId ? `/empresas/${evt.companyId}` : `/empresas`,
+        time: new Date(evt.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+      });
+    }
+  });
 
   // Sort: critical → warning → insight
   const priorityOrder = { critical: 0, warning: 1, insight: 2 };

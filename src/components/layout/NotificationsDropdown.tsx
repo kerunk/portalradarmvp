@@ -20,6 +20,8 @@ import {
   type AdminNotificationPriority,
   type AdminNotificationType,
 } from "@/lib/adminNotifications";
+import { useAuth } from "@/contexts/AuthContext";
+import { getAdminRoleForUser } from "@/lib/permissions";
 
 const typeIcons: Record<AdminNotificationType, typeof AlertTriangle> = {
   risk: AlertTriangle,
@@ -41,8 +43,10 @@ const priorityLabels: Record<AdminNotificationPriority, { emoji: string; label: 
 
 export function NotificationsDropdown() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
   const [refreshKey, setRefreshKey] = useState(0);
-  const notifications = useMemo(() => generateAdminNotifications(), [refreshKey]);
+  const notifications = useMemo(() => generateAdminNotifications(user?.email, adminRole), [refreshKey, user?.email, adminRole]);
   const unreadCount = notifications.length;
 
   const criticalCount = notifications.filter(n => n.priority === 'critical').length;
