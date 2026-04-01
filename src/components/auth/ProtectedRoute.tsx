@@ -26,7 +26,7 @@ export function ProtectedRoute({ children, requireAdmin = false, requirePermissi
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // User must change password first
+  // User must change password first — only redirect TO change password, never block leaving
   if (user.mustChangePassword && location.pathname !== "/alterar-senha") {
     return <Navigate to="/alterar-senha" replace />;
   }
