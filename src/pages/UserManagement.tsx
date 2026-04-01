@@ -112,18 +112,13 @@ function syncAdminRoles(users: ManagedUser[]) {
 
 function registerUserForLogin(user: ManagedUser, password: string) {
   try {
-    const storedUsers = localStorage.getItem(USERS_KEY);
-    const users = storedUsers ? JSON.parse(storedUsers) : {};
-    users[user.email.toLowerCase()] = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: "admin_mvp",
+    const stored = localStorage.getItem(CREDENTIALS_KEY);
+    const creds = stored ? JSON.parse(stored) : {};
+    creds[user.email.toLowerCase()] = {
       password: password,
       mustChangePassword: true,
-      onboardingStatus: "completed",
     };
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(creds));
   } catch (e) {
     console.error("Error registering user for login:", e);
   }
