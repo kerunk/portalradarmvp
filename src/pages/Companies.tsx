@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import {
   Search, Building2, TrendingUp, AlertTriangle,
   ChevronRight, Plus, ShieldCheck, ShieldAlert,
-  ArrowUpDown, UserCog,
+  ArrowUpDown, UserCog, Trash2, PowerOff, Power,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CreateCompanyDialog } from "@/components/companies/CreateCompanyDialog";
