@@ -428,6 +428,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       setActiveCompany(profile.role === 'cliente' ? profile.companyId || null : null);
       setUser({ ...profile, mustChangePassword: credential.mustChangePassword });
+      addAuditEntry({
+        actorEmail: email, actorName: profile.name,
+        action: "login_success", entityType: "user",
+        entityId: email, entityLabel: profile.name,
+      });
       return { success: true };
     }
 
