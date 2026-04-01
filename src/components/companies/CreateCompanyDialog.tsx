@@ -23,6 +23,7 @@ import { generateAccessPDF } from "@/lib/pdfGenerator";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAdminRoleForUser, addCompanyToManager, getAdminRoleAssignments } from "@/lib/permissions";
 import { emitCompanyCreated } from "@/lib/operationalEvents";
+import { registerCredential } from "@/contexts/AuthContext";
 
 interface CreateCompanyDialogProps {
   open: boolean;
@@ -130,6 +131,9 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
     };
     
     addCompany(company);
+    
+    // Save credentials to the credentials store for consistent auth
+    registerCredential(company.adminEmail, tempPassword, true);
     
     // Auto-assign to gerente_conta if applicable
     if (user?.email) {
