@@ -36,6 +36,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { getCompanyCountForManager, getCompaniesForManager } from "@/lib/portfolioUtils";
 import { addOperationalEvent } from "@/lib/operationalEvents";
+import { auditUserAction } from "@/lib/auditLog";
 import jsPDF from "jspdf";
 import {
   type AdminRole,
