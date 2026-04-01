@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import {
   Search, Building2, TrendingUp, AlertTriangle,
   ChevronRight, Plus, ShieldCheck, ShieldAlert,
-  ArrowUpDown, UserCog,
+  ArrowUpDown, UserCog, Trash2, PowerOff, Power,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CreateCompanyDialog } from "@/components/companies/CreateCompanyDialog";
@@ -36,7 +36,7 @@ import {
 } from "@/lib/portfolioUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAdminRoleForUser, getAdminRoleAssignments, hasPermission } from "@/lib/permissions";
-import { emitManagerChanged } from "@/lib/operationalEvents";
+import { emitManagerChanged, addOperationalEvent } from "@/lib/operationalEvents";
 import { useToast } from "@/hooks/use-toast";
 
 const riskIcons = { healthy: ShieldCheck, warning: AlertTriangle, risk: ShieldAlert };
@@ -57,9 +57,12 @@ export default function Companies() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [reassignCompany, setReassignCompany] = useState<CompanyState | null>(null);
   const [selectedManager, setSelectedManager] = useState("");
+  const [deleteCompany, setDeleteCompany] = useState<CompanyState | null>(null);
+  const [deactivateCompany, setDeactivateCompany] = useState<CompanyState | null>(null);
 
   const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
   const canReassign = adminRole === "admin_master" || adminRole === "admin_mvp";
+  const canDelete = hasPermission(adminRole, "deleteCompanies");
 
   useEffect(() => {
     if (!createDialogOpen) setRefreshKey(k => k + 1);
@@ -119,6 +122,67 @@ export default function Companies() {
     });
     setReassignCompany(null);
     setSelectedManager("");
+    setRefreshKey(k => k + 1);
+  };
+
+  // Check if company has data
+  const companyHasData = (company: CompanyState): boolean => {
+    try {
+      const key = `mvp_portal_company_${company.id}`;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const data = JSON.parse(stored);
+        const hasCycles = data.cycles && Object.keys(data.cycles).length > 0;
+        const hasTurmas = data.turmas && data.turmas.length > 0;
+        const hasRecords = data.records && data.records.length > 0;
+        const hasEmployees = data.employees && data.employees.length > 0;
+        return hasCycles || hasTurmas || hasRecords || hasEmployees;
+      }
+    } catch {}
+    return false;
+  };
+
+  // Handle company deletion
+  const handleDeleteCompany = () => {
+    if (!deleteCompany) return;
+    const allCompanies = getCompanies();
+    const updated = allCompanies.filter(c => c.id !== deleteCompany.id);
+    setCompanies(updated);
+    try { localStorage.removeItem(`mvp_portal_company_${deleteCompany.id}`); } catch {}
+    addOperationalEvent({
+      type: "company_deleted",
+      title: "Empresa excluída",
+      message: `A empresa ${deleteCompany.name} foi excluída por ${user?.name || user?.email}.`,
+      companyId: deleteCompany.id,
+      companyName: deleteCompany.name,
+    });
+    toast({ title: "Empresa excluída", description: `${deleteCompany.name} foi removida da plataforma.` });
+    setDeleteCompany(null);
+    setRefreshKey(k => k + 1);
+  };
+
+  // Handle company deactivation/reactivation
+  const handleToggleActive = (company: CompanyState) => {
+    const isCurrentlyActive = company.active !== false;
+    const allCompanies = getCompanies();
+    const updated = allCompanies.map(c =>
+      c.id === company.id ? { ...c, active: !isCurrentlyActive } : c
+    );
+    setCompanies(updated);
+    addOperationalEvent({
+      type: isCurrentlyActive ? "company_deactivated" : "company_reactivated",
+      title: isCurrentlyActive ? "Empresa inativada" : "Empresa reativada",
+      message: `A empresa ${company.name} foi ${isCurrentlyActive ? "inativada" : "reativada"} por ${user?.name || user?.email}.`,
+      companyId: company.id,
+      companyName: company.name,
+    });
+    toast({
+      title: isCurrentlyActive ? "Empresa inativada" : "Empresa reativada",
+      description: isCurrentlyActive
+        ? `${company.name} foi inativada. O acesso ao portal está bloqueado.`
+        : `${company.name} foi reativada e pode acessar o portal novamente.`,
+    });
+    setDeactivateCompany(null);
     setRefreshKey(k => k + 1);
   };
 
@@ -304,7 +368,12 @@ export default function Companies() {
                           <span className="text-sm font-bold text-primary">{ec.company.name.charAt(0)}</span>
                         </div>
                         <div>
-                          <p className="font-medium text-foreground">{ec.company.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-foreground">{ec.company.name}</p>
+                            {ec.company.active === false && (
+                              <Badge variant="outline" className="text-[10px] border-destructive/30 text-destructive">Inativa</Badge>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground">{ec.company.sector} · {ec.company.employees} colab.</p>
                         </div>
                       </div>
@@ -343,6 +412,41 @@ export default function Companies() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {canDelete && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title={ec.company.active !== false ? "Inativar empresa" : "Reativar empresa"}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (ec.company.active === false) {
+                                  handleToggleActive(ec.company);
+                                } else {
+                                  setDeactivateCompany(ec.company);
+                                }
+                              }}
+                            >
+                              {ec.company.active !== false
+                                ? <PowerOff size={14} className="text-muted-foreground" />
+                                : <Power size={14} className="text-emerald-500" />
+                              }
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title="Excluir empresa"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteCompany(ec.company);
+                              }}
+                            >
+                              <Trash2 size={14} className="text-destructive" />
+                            </Button>
+                          </>
+                        )}
                         {canReassign && (
                           <Button
                             variant="ghost"
@@ -419,6 +523,87 @@ export default function Companies() {
                 </Button>
                 <Button onClick={handleReassignManager} disabled={!selectedManager}>
                   Confirmar Alteração
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Company Dialog */}
+        <Dialog open={!!deleteCompany} onOpenChange={(open) => { if (!open) setDeleteCompany(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <Trash2 className="h-5 w-5" />
+                Excluir Empresa
+              </DialogTitle>
+              <DialogDescription>
+                {deleteCompany && `Você está prestes a excluir ${deleteCompany.name} da plataforma.`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/5">
+                <p className="text-sm font-medium text-destructive">ATENÇÃO</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Essa ação removerá o acesso da empresa ao portal e apagará dados associados.
+                </p>
+              </div>
+              {deleteCompany && companyHasData(deleteCompany) && (
+                <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                  <p className="text-sm font-medium text-amber-600">Esta empresa possui dados registrados</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Recomendamos inativar a empresa em vez de excluí-la para preservar o histórico.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => {
+                      const company = deleteCompany;
+                      setDeleteCompany(null);
+                      setDeactivateCompany(company);
+                    }}
+                  >
+                    <PowerOff size={14} className="mr-1" /> Inativar em vez de excluir
+                  </Button>
+                </div>
+              )}
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" onClick={() => setDeleteCompany(null)}>
+                  Cancelar
+                </Button>
+                <Button variant="destructive" onClick={handleDeleteCompany}>
+                  Confirmar Exclusão
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Deactivate Company Dialog */}
+        <Dialog open={!!deactivateCompany} onOpenChange={(open) => { if (!open) setDeactivateCompany(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <PowerOff className="h-5 w-5 text-amber-500" />
+                Inativar Empresa
+              </DialogTitle>
+              <DialogDescription>
+                {deactivateCompany && `Deseja inativar ${deactivateCompany.name}?`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="p-3 rounded-lg border bg-muted/50">
+                <p className="text-sm text-muted-foreground">
+                  A empresa não conseguirá acessar o portal enquanto estiver inativa. Os dados serão preservados e o acesso poderá ser reativado a qualquer momento.
+                </p>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" onClick={() => setDeactivateCompany(null)}>
+                  Cancelar
+                </Button>
+                <Button onClick={() => deactivateCompany && handleToggleActive(deactivateCompany)}>
+                  Confirmar Inativação
                 </Button>
               </div>
             </div>

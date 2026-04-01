@@ -24,6 +24,7 @@ export interface User {
 export interface LoginResult {
   success: boolean;
   locked?: boolean;
+  inactive?: boolean;
   remainingSeconds?: number;
 }
 
@@ -222,6 +223,10 @@ function resolveUserProfile(email: string): UserProfile | null {
     const companies = getCompanies();
     const company = companies.find(c => c.adminEmail.toLowerCase() === lower);
     if (company) {
+      // Block inactive companies
+      if (company.active === false) {
+        return null; // Will be handled in login with specific message
+      }
       return {
         id: `user-${company.id}`,
         name: company.adminName,
@@ -362,30 +367,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const companies = getCompanies();
         const company = companies.find(c => c.adminEmail.toLowerCase() === email.toLowerCase());
-        if (company && company.tempPassword === password) {
-          // Check if there's a saved credential that overrides the temp password
-          const saved = getCredential(email);
-          if (saved) {
-            // User already changed password — temp password no longer valid
-            if (saved.password !== password) {
-              const current = getLoginAttempts(email);
-              const newCount = current.count + 1;
-              if (newCount >= MAX_LOGIN_ATTEMPTS) {
-                setLoginAttempts(email, { count: newCount, lockedUntil: Date.now() + LOCKOUT_DURATION_MS });
-                return { success: false, locked: true, remainingSeconds: LOCKOUT_DURATION_MS / 1000 };
-              }
-              setLoginAttempts(email, { count: newCount, lockedUntil: null });
-              return { success: false };
-            }
+        if (company) {
+          // Block inactive companies
+          if (company.active === false) {
+            return { success: false, inactive: true };
           }
-          
-          clearLoginAttempts(email);
-          const profile = resolveUserProfile(email);
-          if (profile) {
-            const mustChange = company.onboardingStatus === 'not_started';
-            setActiveCompany(profile.companyId || null);
-            setUser({ ...profile, mustChangePassword: mustChange });
-            return { success: true };
+          if (company.tempPassword === password) {
+            // Check if there's a saved credential that overrides the temp password
+            const saved = getCredential(email);
+            if (saved) {
+              // User already changed password — temp password no longer valid
+              if (saved.password !== password) {
+                const current = getLoginAttempts(email);
+                const newCount = current.count + 1;
+                if (newCount >= MAX_LOGIN_ATTEMPTS) {
+                  setLoginAttempts(email, { count: newCount, lockedUntil: Date.now() + LOCKOUT_DURATION_MS });
+                  return { success: false, locked: true, remainingSeconds: LOCKOUT_DURATION_MS / 1000 };
+                }
+                setLoginAttempts(email, { count: newCount, lockedUntil: null });
+                return { success: false };
+              }
+            }
+            
+            clearLoginAttempts(email);
+            const profile = resolveUserProfile(email);
+            if (profile) {
+              const mustChange = company.onboardingStatus === 'not_started';
+              setActiveCompany(profile.companyId || null);
+              setUser({ ...profile, mustChangePassword: mustChange });
+              return { success: true };
+            }
           }
         }
       } catch {}
@@ -401,6 +412,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     
     if (credential.password === password) {
+      // Check if it's an inactive company
+      try {
+        const companies = getCompanies();
+        const company = companies.find(c => c.adminEmail.toLowerCase() === email.toLowerCase());
+        if (company && company.active === false) {
+          return { success: false, inactive: true };
+        }
+      } catch {}
+      
       clearLoginAttempts(email);
       const profile = resolveUserProfile(email);
       if (!profile) return { success: false };

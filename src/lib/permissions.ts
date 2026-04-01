@@ -54,7 +54,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermissions> = {
     viewAssignedCompanies: true,
     createCompanies: true,
     editCompanies: false,
-    deleteCompanies: false,
+    deleteCompanies: true,
     accessCompanyMirror: true,
     manageAdminUsers: false,
     editGlobalShelf: false,
