@@ -719,6 +719,68 @@ export default function UserManagement() {
             </TableBody>
           </Table>
         </Card>
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle size={20} />
+                Excluir Usuário
+              </DialogTitle>
+            </DialogHeader>
+            {deleteTarget && (
+              <div className="space-y-4 pt-2">
+                <div className="p-3 rounded-lg border border-border bg-muted/30">
+                  <p className="text-sm font-medium text-foreground">{deleteTarget.name}</p>
+                  <p className="text-xs text-muted-foreground">{deleteTarget.email} · {ADMIN_ROLE_LABELS[deleteTarget.adminRole]}</p>
+                </div>
+
+                {deleteTarget.adminRole === "gerente_conta" && managerCompanyCount > 0 ? (
+                  <div className="space-y-3">
+                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
+                        ⚠ Este gerente possui {managerCompanyCount} empresa{managerCompanyCount > 1 ? "s" : ""} vinculada{managerCompanyCount > 1 ? "s" : ""}.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Antes de excluir, transfira a carteira para outro gerente.
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-sm">Transferir carteira para:</Label>
+                      <Select value={transferManagerEmail} onValueChange={setTransferManagerEmail}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Selecione o novo gerente..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableTransferManagers.map(m => (
+                            <SelectItem key={m.email} value={m.email}>
+                              {m.name} ({ADMIN_ROLE_LABELS[m.adminRole]})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.
+                  </p>
+                )}
+
+                <div className="flex justify-end gap-3 pt-2 border-t border-border">
+                  <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleConfirmDelete}
+                    disabled={deleteTarget.adminRole === "gerente_conta" && managerCompanyCount > 0 && !transferManagerEmail}
+                  >
+                    {managerCompanyCount > 0 ? "Transferir e Excluir" : "Excluir Usuário"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
