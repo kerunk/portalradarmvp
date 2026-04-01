@@ -116,6 +116,13 @@ export default function Companies() {
     setCompanies(finalCompanies);
 
     emitManagerChanged(reassignCompany.name, reassignCompany.id, managerName, manager.email);
+    auditCompanyAction(
+      user?.email || "", user?.name || "Admin",
+      "company_reassigned", reassignCompany.id, reassignCompany.name,
+      `Gerente alterado para ${managerName} (${manager.email})`,
+      { ownerName: reassignCompany.ownerName, ownerEmail: reassignCompany.ownerEmail },
+      { ownerName: managerName, ownerEmail: manager.email }
+    );
 
     toast({
       title: "Gerente alterado",
