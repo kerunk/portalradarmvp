@@ -256,8 +256,11 @@ export interface PipelineStats {
   finalizado: number;
 }
 
-export function getPipelineStats(): PipelineStats {
-  const companies = getCompanies();
+export function getPipelineStats(filterEmail?: string, filterRole?: string): PipelineStats {
+  let companies = getCompanies();
+  if (filterRole === "gerente_conta" && filterEmail) {
+    companies = companies.filter(c => c.ownerEmail?.toLowerCase() === filterEmail.toLowerCase());
+  }
   const stats: PipelineStats = { onboarding: 0, implementacao: 0, consolidacao: 0, finalizado: 0 };
   companies.forEach(c => {
     stats[getCompanyStage(c)]++;
@@ -279,8 +282,13 @@ export interface EnrichedCompany {
   cycleDelays: CycleDelayInfo[];
 }
 
-export function getEnrichedCompanies(): EnrichedCompany[] {
-  const companies = getCompanies();
+export function getEnrichedCompanies(filterEmail?: string, filterRole?: string): EnrichedCompany[] {
+  let companies = getCompanies();
+  
+  // Gerente de Conta only sees their own companies
+  if (filterRole === "gerente_conta" && filterEmail) {
+    companies = companies.filter(c => c.ownerEmail?.toLowerCase() === filterEmail.toLowerCase());
+  }
   return companies.map(c => {
     const riskData = getCompanyRiskData(c);
     const riskLevel = calculateRiskLevel(riskData);

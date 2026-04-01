@@ -82,6 +82,14 @@ function getAdminSections(adminRole: AdminRole): NavSection[] {
     }
   }
 
+  // Help / Manual — always visible for all admin roles
+  if (!perms.editAdminHelp) {
+    // If not already in system admin section, add standalone
+    sections.push({ label: "APOIO", items: [
+      { name: "Manual da Plataforma", href: "/admin-ajuda", icon: HelpCircle },
+    ]});
+  }
+
   return sections;
 }
 
