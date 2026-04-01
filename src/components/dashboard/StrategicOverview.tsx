@@ -6,14 +6,19 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getEnrichedCompanies } from "@/lib/portfolioUtils";
+import { useAuth } from "@/contexts/AuthContext";
+import { getAdminRoleForUser } from "@/lib/permissions";
 
 interface StrategicOverviewProps {
   refreshKey?: number;
 }
 
 export function StrategicOverview({ refreshKey }: StrategicOverviewProps) {
+  const { user } = useAuth();
+  const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
+
   const stats = useMemo(() => {
-    const enriched = getEnrichedCompanies();
+    const enriched = getEnrichedCompanies(user?.email, adminRole);
     const total = enriched.length;
     const healthy = enriched.filter(e => e.riskLevel === "healthy").length;
     const warning = enriched.filter(e => e.riskLevel === "warning").length;
@@ -25,7 +30,7 @@ export function StrategicOverview({ refreshKey }: StrategicOverviewProps) {
     const activeCycles = enriched.reduce((s, e) => s + e.riskData.cyclesInProgress, 0);
 
     return { total, healthy, warning, risk, avgMaturity, evolving, activeCycles };
-  }, [refreshKey]);
+  }, [refreshKey, user?.email, adminRole]);
 
   const items = [
     { label: "Total de Empresas", value: stats.total, icon: Building2, color: "text-primary", bg: "bg-primary/10" },
