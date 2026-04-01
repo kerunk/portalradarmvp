@@ -2,8 +2,9 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { useReadOnly } from "@/contexts/ReadOnlyContext";
-import { Settings as SettingsIcon, User, Building2, Lock } from "lucide-react";
+import { User, Building2 } from "lucide-react";
 import { CompanyContacts } from "@/components/companies/CompanyContacts";
+import { ChangePasswordForm } from "@/components/settings/ChangePasswordForm";
 
 export default function Settings() {
   const { user, isAdminMVP } = useAuth();
@@ -73,21 +74,8 @@ export default function Settings() {
           <CompanyContacts companyId={companyId} readOnly={isReadOnly} />
         )}
 
-        {/* Security */}
-        <Card className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Lock size={20} className="text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground">Segurança</h3>
-              <p className="text-sm text-muted-foreground">Configurações de acesso</p>
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Para alterar sua senha, utilize a opção no próximo ciclo de atualização.
-          </p>
-        </Card>
+        {/* Security - Change Password */}
+        <ChangePasswordForm />
       </div>
     </AppLayout>
   );
