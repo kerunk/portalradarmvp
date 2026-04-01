@@ -56,7 +56,7 @@ const ADMIN_USER: User & { password: string } = {
 // Get all users (demo + created from companies)
 function getAllUsers(): Record<string, User & { password: string }> {
   const users: Record<string, User & { password: string }> = {
-    "admin@mvp.com": ADMIN_USER,
+    "admin@radarmvp.com": ADMIN_USER,
   };
   
   // Load custom users from storage
