@@ -256,8 +256,11 @@ export interface PipelineStats {
   finalizado: number;
 }
 
-export function getPipelineStats(): PipelineStats {
-  const companies = getCompanies();
+export function getPipelineStats(filterEmail?: string, filterRole?: string): PipelineStats {
+  let companies = getCompanies();
+  if (filterRole === "gerente_conta" && filterEmail) {
+    companies = companies.filter(c => c.ownerEmail?.toLowerCase() === filterEmail.toLowerCase());
+  }
   const stats: PipelineStats = { onboarding: 0, implementacao: 0, consolidacao: 0, finalizado: 0 };
   companies.forEach(c => {
     stats[getCompanyStage(c)]++;
