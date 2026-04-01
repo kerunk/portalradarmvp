@@ -12,7 +12,11 @@ export type OperationalEventType =
   | "company_manager_changed"
   | "onboarding_started"
   | "onboarding_completed"
-  | "risk_status_changed";
+  | "risk_status_changed"
+  | "user_created"
+  | "user_deleted"
+  | "user_deactivated"
+  | "portfolio_transferred";
 
 export interface OperationalEvent {
   id: string;
