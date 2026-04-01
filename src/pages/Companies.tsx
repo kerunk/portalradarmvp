@@ -212,9 +212,12 @@ export default function Companies() {
       const matchRisk = filterRisk === "all" || ec.riskLevel === filterRisk;
       const matchStage = filterStage === "all" || ec.stage === filterStage;
       const matchOwner = filterOwner === "all" || (ec.company.ownerName || "Admin Master") === filterOwner;
-      return matchSearch && matchRisk && matchStage && matchOwner;
+      const matchStatus = filterStatus === "all"
+        || (filterStatus === "active" && ec.company.active !== false)
+        || (filterStatus === "inactive" && ec.company.active === false);
+      return matchSearch && matchRisk && matchStage && matchOwner && matchStatus;
     });
-  }, [enriched, searchTerm, filterRisk, filterStage, filterOwner]);
+  }, [enriched, searchTerm, filterRisk, filterStage, filterOwner, filterStatus]);
 
   // Sort
   const sorted = useMemo(() => {
