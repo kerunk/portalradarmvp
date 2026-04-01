@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Eye, EyeOff, LogIn, Shield } from "lucide-react";
+import { Eye, EyeOff, LogIn, Shield, AlertTriangle } from "lucide-react";
 import logoMvp from "@/assets/logo-mvp.jpeg";
 
 export default function Login() {
@@ -18,12 +18,25 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [lockoutSeconds, setLockoutSeconds] = useState(0);
 
   // If already authenticated, redirect
   if (isAuthenticated) {
     navigate("/");
     return null;
   }
+
+  // Lockout countdown
+  useEffect(() => {
+    if (lockoutSeconds <= 0) return;
+    const timer = setInterval(() => {
+      setLockoutSeconds(prev => {
+        if (prev <= 1) return 0;
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lockoutSeconds]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,16 +50,25 @@ export default function Login() {
       return;
     }
 
+    if (lockoutSeconds > 0) return;
+
     setIsLoading(true);
     
-    const success = await login(email, password);
+    const result = await login(email, password);
     
-    if (success) {
+    if (result.success) {
       toast({
         title: "Bem-vindo!",
         description: "Login realizado com sucesso.",
       });
       navigate("/");
+    } else if (result.locked) {
+      setLockoutSeconds(result.remainingSeconds || 300);
+      toast({
+        title: "Conta temporariamente bloqueada",
+        description: `Muitas tentativas inválidas. Aguarde ${Math.ceil((result.remainingSeconds || 300) / 60)} minuto(s).`,
+        variant: "destructive",
+      });
     } else {
       toast({
         title: "Credenciais inválidas",
@@ -56,6 +78,12 @@ export default function Login() {
     }
     
     setIsLoading(false);
+  };
+
+  const formatLockout = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -80,6 +108,21 @@ export default function Login() {
           </div>
         </div>
 
+        {/* Lockout Warning */}
+        {lockoutSeconds > 0 && (
+          <Card className="p-4 border-destructive/50 bg-destructive/5">
+            <div className="flex items-center gap-3">
+              <AlertTriangle size={20} className="text-destructive" />
+              <div>
+                <p className="text-sm font-medium text-destructive">Conta bloqueada temporariamente</p>
+                <p className="text-xs text-muted-foreground">
+                  Muitas tentativas inválidas. Tente novamente em {formatLockout(lockoutSeconds)}.
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
+
         {/* Login Card */}
         <Card className="p-6 shadow-elevated">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -93,7 +136,7 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
-                  disabled={isLoading}
+                  disabled={isLoading || lockoutSeconds > 0}
                 />
               </div>
 
@@ -107,7 +150,7 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="current-password"
-                    disabled={isLoading}
+                    disabled={isLoading || lockoutSeconds > 0}
                   />
                   <Button
                     type="button"
@@ -125,10 +168,12 @@ export default function Login() {
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading}
+              disabled={isLoading || lockoutSeconds > 0}
             >
               {isLoading ? (
                 "Entrando..."
+              ) : lockoutSeconds > 0 ? (
+                `Bloqueado (${formatLockout(lockoutSeconds)})`
               ) : (
                 <>
                   <LogIn size={18} className="mr-2" />
@@ -153,7 +198,7 @@ export default function Login() {
             <div className="text-sm">
               <p className="font-medium text-foreground mb-1">Acesso de Demonstração</p>
               <div className="space-y-1 text-muted-foreground text-xs">
-              <p><strong>Admin MVP:</strong> admin@radarmvp.com / admin123</p>
+                <p><strong>Admin MVP Master:</strong> admin@radarmvp.com / admin123</p>
                 <p><strong>Cliente:</strong> admin@alpha.com / cliente123</p>
               </div>
             </div>

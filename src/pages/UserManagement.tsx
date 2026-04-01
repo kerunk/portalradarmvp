@@ -436,7 +436,7 @@ export default function UserManagement() {
                     <Select value={formAdminRole} onValueChange={(v) => setFormAdminRole(v as AdminRole)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {(Object.keys(ADMIN_ROLE_LABELS) as AdminRole[]).map(role => (
+                        {(["admin_mvp", "gerente_conta"] as AdminRole[]).map(role => (
                           <SelectItem key={role} value={role}>
                             {ADMIN_ROLE_LABELS[role]}
                           </SelectItem>

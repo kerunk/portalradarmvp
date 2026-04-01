@@ -22,13 +22,19 @@ export interface User {
   password?: string;
 }
 
+export interface LoginResult {
+  success: boolean;
+  locked?: boolean;
+  remainingSeconds?: number;
+}
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isAdminMVP: boolean;
   isCliente: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<LoginResult>;
   logout: () => void;
   switchRole: (role: UserRole) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
