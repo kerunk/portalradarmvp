@@ -487,12 +487,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const email = user.email.toLowerCase();
     const credential = getEffectiveCredential(email);
     
-    if (!credential || credential.password !== currentPassword) {
+    // Fallback: check company tempPassword if no credential found
+    if (!credential) {
+      try {
+        const companies = getCompanies();
+        const company = companies.find(c => c.adminEmail.toLowerCase() === email);
+        if (company && company.tempPassword === currentPassword) {
+          // Valid temp password — allow change
+        } else {
+          return false;
+        }
+      } catch {
+        return false;
+      }
+    } else if (credential.password !== currentPassword) {
       return false;
     }
     
     // Save the new credential — this MUST succeed
-    const saved = setCredential(email, {
+    const saved = setCredentialInternal(email, {
       password: newPassword,
       mustChangePassword: false,
     });
