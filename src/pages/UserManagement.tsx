@@ -369,7 +369,101 @@ export default function UserManagement() {
     saveUsers(updated);
   };
 
-  const adminRoleCounts = useMemo(() => {
+  // ── Delete user logic ──
+  const canDeleteUser = (u: ManagedUser): { allowed: boolean; reason?: string } => {
+    // Only admin_master can delete
+    if (currentAdminRole !== "admin_master") return { allowed: false, reason: "Apenas o Admin Master pode excluir usuários." };
+    // Never delete yourself
+    if (u.email.toLowerCase() === currentUser?.email?.toLowerCase()) return { allowed: false, reason: "Não é possível excluir seu próprio usuário." };
+    // Never delete the primary admin_master (admin@radarmvp.com)
+    if (u.email.toLowerCase() === "admin@radarmvp.com") return { allowed: false, reason: "O Administrador MVP Master principal não pode ser excluído." };
+    // Don't delete last admin_master
+    if (u.adminRole === "admin_master") {
+      const masterCount = users.filter(x => x.adminRole === "admin_master" && x.active).length;
+      if (masterCount <= 1) return { allowed: false, reason: "Não é possível excluir o último Admin Master ativo." };
+    }
+    return { allowed: true };
+  };
+
+  const handleInitiateDelete = (u: ManagedUser) => {
+    const check = canDeleteUser(u);
+    if (!check.allowed) {
+      toast({ title: check.reason || "Ação não permitida", variant: "destructive" });
+      return;
+    }
+    setDeleteTarget(u);
+    setTransferManagerEmail("");
+  };
+
+  const managerCompanyCount = useMemo(() => {
+    if (!deleteTarget || deleteTarget.adminRole !== "gerente_conta") return 0;
+    return getCompanyCountForManager(deleteTarget.email);
+  }, [deleteTarget]);
+
+  const availableTransferManagers = useMemo(() => {
+    if (!deleteTarget) return [];
+    return users.filter(u =>
+      u.id !== deleteTarget.id &&
+      u.active &&
+      (u.adminRole === "gerente_conta" || u.adminRole === "admin_mvp" || u.adminRole === "admin_master")
+    );
+  }, [deleteTarget, users]);
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+
+    // If gerente with companies, require transfer
+    if (deleteTarget.adminRole === "gerente_conta" && managerCompanyCount > 0) {
+      if (!transferManagerEmail) {
+        toast({ title: "Selecione um gerente para transferir a carteira", variant: "destructive" });
+        return;
+      }
+      // Transfer companies
+      const targetManager = users.find(u => u.email === transferManagerEmail);
+      const allCompanies = getCompanies();
+      const updated = allCompanies.map(c =>
+        c.ownerEmail?.toLowerCase() === deleteTarget.email.toLowerCase()
+          ? { ...c, ownerEmail: transferManagerEmail, ownerName: targetManager?.name || transferManagerEmail }
+          : c
+      );
+      setCompanies(updated);
+
+      addOperationalEvent({
+        type: "company_manager_changed",
+        title: "Carteira transferida por exclusão de usuário",
+        message: `${managerCompanyCount} empresa(s) de ${deleteTarget.name} foram transferidas para ${targetManager?.name || transferManagerEmail}.`,
+        managerName: targetManager?.name,
+        managerEmail: transferManagerEmail,
+      });
+    }
+
+    // Remove user
+    const updatedUsers = users.filter(u => u.id !== deleteTarget.id);
+    setUsers(updatedUsers);
+    saveUsers(updatedUsers);
+    syncAdminRoles(updatedUsers);
+
+    // Remove credentials
+    try {
+      const stored = localStorage.getItem(CREDENTIALS_KEY);
+      if (stored) {
+        const creds = JSON.parse(stored);
+        delete creds[deleteTarget.email.toLowerCase()];
+        localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(creds));
+      }
+    } catch {}
+
+    // Audit event
+    addOperationalEvent({
+      type: "company_created", // reusing type for audit
+      title: "Usuário excluído",
+      message: `${deleteTarget.name} (${deleteTarget.email}) foi excluído por ${currentUser?.name || "Admin Master"}.${managerCompanyCount > 0 ? ` Carteira transferida para ${transferManagerEmail}.` : ""}`,
+    });
+
+    toast({ title: `${deleteTarget.name} foi excluído com sucesso.` });
+    setDeleteTarget(null);
+  };
+
     const counts: Record<AdminRole, number> = {
       admin_master: 0,
       admin_mvp: 0,
