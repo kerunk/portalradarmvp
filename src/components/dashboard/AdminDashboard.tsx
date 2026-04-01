@@ -21,6 +21,8 @@ import { getCompanies, setActiveCompany, getState } from "@/lib/storage";
 import { getCompanyRiskData, type CompanyRiskData } from "@/lib/adminNotifications";
 import type { CompanyState } from "@/lib/storage";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { getAdminRoleForUser } from "@/lib/permissions";
 import { CYCLE_IDS } from "@/lib/constants";
 import {
   ResponsiveContainer, PieChart, Pie, Cell,
