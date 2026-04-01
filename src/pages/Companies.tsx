@@ -36,7 +36,7 @@ import {
 } from "@/lib/portfolioUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAdminRoleForUser, getAdminRoleAssignments, hasPermission } from "@/lib/permissions";
-import { emitManagerChanged } from "@/lib/operationalEvents";
+import { emitManagerChanged, addOperationalEvent } from "@/lib/operationalEvents";
 import { useToast } from "@/hooks/use-toast";
 
 const riskIcons = { healthy: ShieldCheck, warning: AlertTriangle, risk: ShieldAlert };
