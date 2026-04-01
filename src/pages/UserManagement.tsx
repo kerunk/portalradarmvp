@@ -28,13 +28,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Search, ShieldCheck, Crown, Briefcase, ChevronRight, Download, CheckCircle2, Copy } from "lucide-react";
+import { Plus, Pencil, Search, ShieldCheck, Crown, Briefcase, ChevronRight, Download, CheckCircle2, Copy, Trash2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
-import { getCompanies } from "@/lib/storage";
+import { getCompanies, setCompanies } from "@/lib/storage";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { getCompanyCountForManager } from "@/lib/portfolioUtils";
+import { getCompanyCountForManager, getCompaniesForManager } from "@/lib/portfolioUtils";
+import { addOperationalEvent } from "@/lib/operationalEvents";
 import jsPDF from "jspdf";
 import {
   type AdminRole,
