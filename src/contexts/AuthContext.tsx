@@ -170,12 +170,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const switchRole = (role: UserRole) => {
-    if (role === "admin_mvp") {
+  if (role === "admin_mvp") {
       setActiveCompany(null);
       setUser({
         id: "admin-1",
-        name: "Administrador MVP",
-        email: "admin@mvp.com",
+        name: "Administrador MVP Master",
+        email: "admin@radarmvp.com",
         role: "admin_mvp",
       });
     } else {

@@ -153,8 +153,8 @@ export default function Login() {
             <div className="text-sm">
               <p className="font-medium text-foreground mb-1">Acesso de Demonstração</p>
               <div className="space-y-1 text-muted-foreground text-xs">
-                <p><strong>Admin MVP:</strong> admin@mvp.com / admin123</p>
-                <p><strong>Cliente:</strong> cliente@alpha.com / cliente123</p>
+              <p><strong>Admin MVP:</strong> admin@radarmvp.com / admin123</p>
+                <p><strong>Cliente:</strong> admin@alpha.com / cliente123</p>
               </div>
             </div>
           </div>
