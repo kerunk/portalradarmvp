@@ -9,6 +9,8 @@ import {
   type ImplementationStage,
 } from "@/lib/portfolioUtils";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { getAdminRoleForUser } from "@/lib/permissions";
 
 interface ImplementationPipelineProps {
   refreshKey?: number;
@@ -17,7 +19,9 @@ interface ImplementationPipelineProps {
 const stageOrder: ImplementationStage[] = ["onboarding", "implementacao", "consolidacao", "finalizado"];
 
 export function ImplementationPipeline({ refreshKey }: ImplementationPipelineProps) {
-  const stats = useMemo(() => getPipelineStats(), [refreshKey]);
+  const { user } = useAuth();
+  const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
+  const stats = useMemo(() => getPipelineStats(user?.email, adminRole), [refreshKey, user?.email, adminRole]);
   const total = stageOrder.reduce((s, k) => s + stats[k], 0);
 
   return (
