@@ -35,7 +35,12 @@ import logoMvp from "@/assets/logo-mvp.jpeg";
 export default function Onboarding() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, completeOnboarding, isAuthenticated } = useAuth();
+  const { user, completeOnboarding, logout, isAuthenticated } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
