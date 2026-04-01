@@ -157,6 +157,11 @@ export default function Companies() {
       companyId: deleteCompany.id,
       companyName: deleteCompany.name,
     });
+    auditCompanyAction(
+      user?.email || "", user?.name || "Admin",
+      "company_deleted", deleteCompany.id, deleteCompany.name,
+      `Excluída por ${user?.name || user?.email}`
+    );
     toast({ title: "Empresa excluída", description: `${deleteCompany.name} foi removida da plataforma.` });
     setDeleteCompany(null);
     setRefreshKey(k => k + 1);
