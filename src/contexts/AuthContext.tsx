@@ -518,6 +518,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onboardingStatus: newOnboardingStatus,
     });
     
+    addAuditEntry({
+      actorEmail: email, actorName: user.name,
+      action: "password_changed", entityType: "user",
+      entityId: email, entityLabel: user.name,
+    });
+    
     return true;
   };
 
