@@ -37,6 +37,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { getAdminRoleForUser, getAdminRoleAssignments, hasPermission } from "@/lib/permissions";
 import { emitManagerChanged, addOperationalEvent } from "@/lib/operationalEvents";
+import { auditCompanyAction } from "@/lib/auditLog";
 import { useToast } from "@/hooks/use-toast";
 
 const riskIcons = { healthy: ShieldCheck, warning: AlertTriangle, risk: ShieldAlert };
@@ -115,6 +116,13 @@ export default function Companies() {
     setCompanies(finalCompanies);
 
     emitManagerChanged(reassignCompany.name, reassignCompany.id, managerName, manager.email);
+    auditCompanyAction(
+      user?.email || "", user?.name || "Admin",
+      "company_reassigned", reassignCompany.id, reassignCompany.name,
+      `Gerente alterado para ${managerName} (${manager.email})`,
+      { ownerName: reassignCompany.ownerName, ownerEmail: reassignCompany.ownerEmail },
+      { ownerName: managerName, ownerEmail: manager.email }
+    );
 
     toast({
       title: "Gerente alterado",
@@ -156,6 +164,11 @@ export default function Companies() {
       companyId: deleteCompany.id,
       companyName: deleteCompany.name,
     });
+    auditCompanyAction(
+      user?.email || "", user?.name || "Admin",
+      "company_deleted", deleteCompany.id, deleteCompany.name,
+      `Excluída por ${user?.name || user?.email}`
+    );
     toast({ title: "Empresa excluída", description: `${deleteCompany.name} foi removida da plataforma.` });
     setDeleteCompany(null);
     setRefreshKey(k => k + 1);
@@ -176,6 +189,11 @@ export default function Companies() {
       companyId: company.id,
       companyName: company.name,
     });
+    auditCompanyAction(
+      user?.email || "", user?.name || "Admin",
+      isCurrentlyActive ? "company_deactivated" : "company_activated",
+      company.id, company.name
+    );
     toast({
       title: isCurrentlyActive ? "Empresa inativada" : "Empresa reativada",
       description: isCurrentlyActive

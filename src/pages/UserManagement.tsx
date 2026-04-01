@@ -36,6 +36,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { getCompanyCountForManager, getCompaniesForManager } from "@/lib/portfolioUtils";
 import { addOperationalEvent } from "@/lib/operationalEvents";
+import { auditUserAction } from "@/lib/auditLog";
 import jsPDF from "jspdf";
 import {
   type AdminRole,
@@ -331,6 +332,18 @@ export default function UserManagement() {
       // Register user for login with temp password
       registerUserForLogin(newUser, tempPassword);
 
+      // Audit & operational event
+      addOperationalEvent({
+        type: "user_created",
+        title: "Novo usuário criado",
+        message: `${formName} (${ADMIN_ROLE_LABELS[formAdminRole]}) foi criado por ${currentUser?.name || "Admin"}.`,
+      });
+      auditUserAction(
+        currentUser?.email || "", currentUser?.name || "Admin",
+        "user_created", formEmail, formName,
+        `Perfil: ${ADMIN_ROLE_LABELS[formAdminRole]}`
+      );
+
       // Show credentials confirmation
       setCreatedCredentials({
         name: formName,
@@ -429,12 +442,17 @@ export default function UserManagement() {
       setCompanies(updated);
 
       addOperationalEvent({
-        type: "company_manager_changed",
+        type: "portfolio_transferred",
         title: "Carteira transferida por exclusão de usuário",
         message: `${managerCompanyCount} empresa(s) de ${deleteTarget.name} foram transferidas para ${targetManager?.name || transferManagerEmail}.`,
         managerName: targetManager?.name,
         managerEmail: transferManagerEmail,
       });
+      auditUserAction(
+        currentUser?.email || "", currentUser?.name || "Admin",
+        "portfolio_transferred", deleteTarget.email, deleteTarget.name,
+        `${managerCompanyCount} empresa(s) transferidas para ${targetManager?.name || transferManagerEmail}`
+      );
     }
 
     // Remove user
@@ -455,10 +473,15 @@ export default function UserManagement() {
 
     // Audit event
     addOperationalEvent({
-      type: "company_created", // reusing type for audit
+      type: "user_deleted",
       title: "Usuário excluído",
       message: `${deleteTarget.name} (${deleteTarget.email}) foi excluído por ${currentUser?.name || "Admin Master"}.${managerCompanyCount > 0 ? ` Carteira transferida para ${transferManagerEmail}.` : ""}`,
     });
+    auditUserAction(
+      currentUser?.email || "", currentUser?.name || "Admin",
+      "user_deleted", deleteTarget.email, deleteTarget.name,
+      managerCompanyCount > 0 ? `Carteira transferida para ${transferManagerEmail}` : undefined
+    );
 
     toast({ title: `${deleteTarget.name} foi excluído com sucesso.` });
     setDeleteTarget(null);

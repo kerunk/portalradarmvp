@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { getCompanies, updateCompanyOnboardingStatus, setActiveCompany, getCompanyById, type OnboardingStatus } from "@/lib/storage";
 import { emitOnboardingStarted, emitOnboardingCompleted } from "@/lib/operationalEvents";
+import { addAuditEntry } from "@/lib/auditLog";
 
 // ============================================================
 // MVP Portal Authentication Context
@@ -427,6 +428,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       setActiveCompany(profile.role === 'cliente' ? profile.companyId || null : null);
       setUser({ ...profile, mustChangePassword: credential.mustChangePassword });
+      addAuditEntry({
+        actorEmail: email, actorName: profile.name,
+        action: "login_success", entityType: "user",
+        entityId: email, entityLabel: profile.name,
+      });
       return { success: true };
     }
 
@@ -510,6 +516,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...user,
       mustChangePassword: false,
       onboardingStatus: newOnboardingStatus,
+    });
+    
+    addAuditEntry({
+      actorEmail: email, actorName: user.name,
+      action: "password_changed", entityType: "user",
+      entityId: email, entityLabel: user.name,
     });
     
     return true;
