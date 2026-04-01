@@ -407,6 +407,41 @@ export default function Companies() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {canDelete && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title={ec.company.active !== false ? "Inativar empresa" : "Reativar empresa"}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (ec.company.active === false) {
+                                  handleToggleActive(ec.company);
+                                } else {
+                                  setDeactivateCompany(ec.company);
+                                }
+                              }}
+                            >
+                              {ec.company.active !== false
+                                ? <PowerOff size={14} className="text-muted-foreground" />
+                                : <Power size={14} className="text-emerald-500" />
+                              }
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title="Excluir empresa"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteCompany(ec.company);
+                              }}
+                            >
+                              <Trash2 size={14} className="text-destructive" />
+                            </Button>
+                          </>
+                        )}
                         {canReassign && (
                           <Button
                             variant="ghost"
