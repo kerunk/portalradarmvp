@@ -78,9 +78,9 @@ const App = () => (
             <Route path="/empresas" element={<ProtectedRoute requireAdmin><Companies /></ProtectedRoute>} />
             <Route path="/empresas/:companyId" element={<ProtectedRoute requireAdmin><CompanyMirror /></ProtectedRoute>} />
             <Route path="/praticas" element={<ProtectedRoute requireAdmin><BestPracticesGlobal /></ProtectedRoute>} />
-            <Route path="/usuarios" element={<ProtectedRoute requireAdmin><UserManagement /></ProtectedRoute>} />
-            <Route path="/manual-editor" element={<ProtectedRoute requireAdmin><ManualEditor /></ProtectedRoute>} />
-            <Route path="/config-indicadores" element={<ProtectedRoute requireAdmin><IndicatorSettings /></ProtectedRoute>} />
+            <Route path="/usuarios" element={<ProtectedRoute requireAdmin requirePermission="manageAdminUsers"><UserManagement /></ProtectedRoute>} />
+            <Route path="/manual-editor" element={<ProtectedRoute requireAdmin requirePermission="editGlobalManual"><ManualEditor /></ProtectedRoute>} />
+            <Route path="/config-indicadores" element={<ProtectedRoute requireAdmin requirePermission="editIndicatorSettings"><IndicatorSettings /></ProtectedRoute>} />
             <Route path="/admin-ajuda" element={<ProtectedRoute requireAdmin><AdminHelp /></ProtectedRoute>} />
             <Route path="/carteira/:userId" element={<ProtectedRoute requireAdmin><ManagerPortfolio /></ProtectedRoute>} />
             <Route path="/acoes-atrasadas" element={<ProtectedRoute requireAdmin><DelayedActions /></ProtectedRoute>} />

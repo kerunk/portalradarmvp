@@ -1,12 +1,14 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAdminRoleForUser, hasPermission, type AdminPermissions } from "@/lib/permissions";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
+  requirePermission?: keyof AdminPermissions;
 }
 
-export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requireAdmin = false, requirePermission }: ProtectedRouteProps) {
   const { user, isAuthenticated, isLoading, isAdminMVP } = useAuth();
   const location = useLocation();
 
@@ -42,6 +44,14 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
   // Route requires admin but user is not admin
   if (requireAdmin && !isAdminMVP) {
     return <Navigate to="/" replace />;
+  }
+
+  // Route requires specific admin permission
+  if (requirePermission && isAdminMVP && user) {
+    const adminRole = getAdminRoleForUser(user.email);
+    if (!hasPermission(adminRole, requirePermission)) {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return <>{children}</>;
