@@ -15,13 +15,17 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
   Search, Building2, TrendingUp, AlertTriangle,
   ChevronRight, Plus, ShieldCheck, ShieldAlert,
-  ArrowUpDown,
+  ArrowUpDown, UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CreateCompanyDialog } from "@/components/companies/CreateCompanyDialog";
-import { getCompanies, type CompanyState } from "@/lib/storage";
+import { getCompanies, setCompanies, type CompanyState } from "@/lib/storage";
 import { Badge } from "@/components/ui/badge";
 import {
   getEnrichedCompanies,
@@ -31,7 +35,9 @@ import {
   type EnrichedCompany, type RiskLevel, type ImplementationStage,
 } from "@/lib/portfolioUtils";
 import { useAuth } from "@/contexts/AuthContext";
-import { getAdminRoleForUser } from "@/lib/permissions";
+import { getAdminRoleForUser, getAdminRoleAssignments, hasPermission } from "@/lib/permissions";
+import { emitManagerChanged } from "@/lib/operationalEvents";
+import { useToast } from "@/hooks/use-toast";
 
 const riskIcons = { healthy: ShieldCheck, warning: AlertTriangle, risk: ShieldAlert };
 
