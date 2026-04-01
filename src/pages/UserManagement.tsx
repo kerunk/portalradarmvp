@@ -28,13 +28,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Search, ShieldCheck, Crown, Briefcase, ChevronRight, Download, CheckCircle2, Copy } from "lucide-react";
+import { Plus, Pencil, Search, ShieldCheck, Crown, Briefcase, ChevronRight, Download, CheckCircle2, Copy, Trash2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
-import { getCompanies } from "@/lib/storage";
+import { getCompanies, setCompanies } from "@/lib/storage";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { getCompanyCountForManager } from "@/lib/portfolioUtils";
+import { getCompanyCountForManager, getCompaniesForManager } from "@/lib/portfolioUtils";
+import { addOperationalEvent } from "@/lib/operationalEvents";
 import jsPDF from "jspdf";
 import {
   type AdminRole,
@@ -234,6 +235,8 @@ export default function UserManagement() {
   const [filterRole, setFilterRole] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ManagedUser | null>(null);
+  const [transferManagerEmail, setTransferManagerEmail] = useState("");
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
 
@@ -364,6 +367,101 @@ export default function UserManagement() {
     );
     setUsers(updated);
     saveUsers(updated);
+  };
+
+  // ── Delete user logic ──
+  const canDeleteUser = (u: ManagedUser): { allowed: boolean; reason?: string } => {
+    // Only admin_master can delete
+    if (currentAdminRole !== "admin_master") return { allowed: false, reason: "Apenas o Admin Master pode excluir usuários." };
+    // Never delete yourself
+    if (u.email.toLowerCase() === currentUser?.email?.toLowerCase()) return { allowed: false, reason: "Não é possível excluir seu próprio usuário." };
+    // Never delete the primary admin_master (admin@radarmvp.com)
+    if (u.email.toLowerCase() === "admin@radarmvp.com") return { allowed: false, reason: "O Administrador MVP Master principal não pode ser excluído." };
+    // Don't delete last admin_master
+    if (u.adminRole === "admin_master") {
+      const masterCount = users.filter(x => x.adminRole === "admin_master" && x.active).length;
+      if (masterCount <= 1) return { allowed: false, reason: "Não é possível excluir o último Admin Master ativo." };
+    }
+    return { allowed: true };
+  };
+
+  const handleInitiateDelete = (u: ManagedUser) => {
+    const check = canDeleteUser(u);
+    if (!check.allowed) {
+      toast({ title: check.reason || "Ação não permitida", variant: "destructive" });
+      return;
+    }
+    setDeleteTarget(u);
+    setTransferManagerEmail("");
+  };
+
+  const managerCompanyCount = useMemo(() => {
+    if (!deleteTarget || deleteTarget.adminRole !== "gerente_conta") return 0;
+    return getCompanyCountForManager(deleteTarget.email);
+  }, [deleteTarget]);
+
+  const availableTransferManagers = useMemo(() => {
+    if (!deleteTarget) return [];
+    return users.filter(u =>
+      u.id !== deleteTarget.id &&
+      u.active &&
+      (u.adminRole === "gerente_conta" || u.adminRole === "admin_mvp" || u.adminRole === "admin_master")
+    );
+  }, [deleteTarget, users]);
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+
+    // If gerente with companies, require transfer
+    if (deleteTarget.adminRole === "gerente_conta" && managerCompanyCount > 0) {
+      if (!transferManagerEmail) {
+        toast({ title: "Selecione um gerente para transferir a carteira", variant: "destructive" });
+        return;
+      }
+      // Transfer companies
+      const targetManager = users.find(u => u.email === transferManagerEmail);
+      const allCompanies = getCompanies();
+      const updated = allCompanies.map(c =>
+        c.ownerEmail?.toLowerCase() === deleteTarget.email.toLowerCase()
+          ? { ...c, ownerEmail: transferManagerEmail, ownerName: targetManager?.name || transferManagerEmail }
+          : c
+      );
+      setCompanies(updated);
+
+      addOperationalEvent({
+        type: "company_manager_changed",
+        title: "Carteira transferida por exclusão de usuário",
+        message: `${managerCompanyCount} empresa(s) de ${deleteTarget.name} foram transferidas para ${targetManager?.name || transferManagerEmail}.`,
+        managerName: targetManager?.name,
+        managerEmail: transferManagerEmail,
+      });
+    }
+
+    // Remove user
+    const updatedUsers = users.filter(u => u.id !== deleteTarget.id);
+    setUsers(updatedUsers);
+    saveUsers(updatedUsers);
+    syncAdminRoles(updatedUsers);
+
+    // Remove credentials
+    try {
+      const stored = localStorage.getItem(CREDENTIALS_KEY);
+      if (stored) {
+        const creds = JSON.parse(stored);
+        delete creds[deleteTarget.email.toLowerCase()];
+        localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(creds));
+      }
+    } catch {}
+
+    // Audit event
+    addOperationalEvent({
+      type: "company_created", // reusing type for audit
+      title: "Usuário excluído",
+      message: `${deleteTarget.name} (${deleteTarget.email}) foi excluído por ${currentUser?.name || "Admin Master"}.${managerCompanyCount > 0 ? ` Carteira transferida para ${transferManagerEmail}.` : ""}`,
+    });
+
+    toast({ title: `${deleteTarget.name} foi excluído com sucesso.` });
+    setDeleteTarget(null);
   };
 
   const adminRoleCounts = useMemo(() => {
@@ -591,9 +689,21 @@ export default function UserManagement() {
                     </TableCell>
                     {canManageUsers && (
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(u)}>
-                          <Pencil size={14} />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => openEdit(u)}>
+                            <Pencil size={14} />
+                          </Button>
+                          {currentAdminRole === "admin_master" && u.email.toLowerCase() !== "admin@radarmvp.com" && u.email.toLowerCase() !== currentUser?.email?.toLowerCase() && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleInitiateDelete(u)}
+                            >
+                              <Trash2 size={14} />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     )}
                   </TableRow>
@@ -609,6 +719,68 @@ export default function UserManagement() {
             </TableBody>
           </Table>
         </Card>
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle size={20} />
+                Excluir Usuário
+              </DialogTitle>
+            </DialogHeader>
+            {deleteTarget && (
+              <div className="space-y-4 pt-2">
+                <div className="p-3 rounded-lg border border-border bg-muted/30">
+                  <p className="text-sm font-medium text-foreground">{deleteTarget.name}</p>
+                  <p className="text-xs text-muted-foreground">{deleteTarget.email} · {ADMIN_ROLE_LABELS[deleteTarget.adminRole]}</p>
+                </div>
+
+                {deleteTarget.adminRole === "gerente_conta" && managerCompanyCount > 0 ? (
+                  <div className="space-y-3">
+                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
+                        ⚠ Este gerente possui {managerCompanyCount} empresa{managerCompanyCount > 1 ? "s" : ""} vinculada{managerCompanyCount > 1 ? "s" : ""}.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Antes de excluir, transfira a carteira para outro gerente.
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-sm">Transferir carteira para:</Label>
+                      <Select value={transferManagerEmail} onValueChange={setTransferManagerEmail}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Selecione o novo gerente..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableTransferManagers.map(m => (
+                            <SelectItem key={m.email} value={m.email}>
+                              {m.name} ({ADMIN_ROLE_LABELS[m.adminRole]})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.
+                  </p>
+                )}
+
+                <div className="flex justify-end gap-3 pt-2 border-t border-border">
+                  <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleConfirmDelete}
+                    disabled={deleteTarget.adminRole === "gerente_conta" && managerCompanyCount > 0 && !transferManagerEmail}
+                  >
+                    {managerCompanyCount > 0 ? "Transferir e Excluir" : "Excluir Usuário"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
