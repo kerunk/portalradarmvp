@@ -125,6 +125,67 @@ export default function Companies() {
     setRefreshKey(k => k + 1);
   };
 
+  // Check if company has data
+  const companyHasData = (company: CompanyState): boolean => {
+    try {
+      const key = `mvp_portal_company_${company.id}`;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const data = JSON.parse(stored);
+        const hasCycles = data.cycles && Object.keys(data.cycles).length > 0;
+        const hasTurmas = data.turmas && data.turmas.length > 0;
+        const hasRecords = data.records && data.records.length > 0;
+        const hasEmployees = data.employees && data.employees.length > 0;
+        return hasCycles || hasTurmas || hasRecords || hasEmployees;
+      }
+    } catch {}
+    return false;
+  };
+
+  // Handle company deletion
+  const handleDeleteCompany = () => {
+    if (!deleteCompany) return;
+    const allCompanies = getCompanies();
+    const updated = allCompanies.filter(c => c.id !== deleteCompany.id);
+    setCompanies(updated);
+    try { localStorage.removeItem(`mvp_portal_company_${deleteCompany.id}`); } catch {}
+    addOperationalEvent({
+      type: "company_deleted",
+      title: "Empresa excluída",
+      message: `A empresa ${deleteCompany.name} foi excluída por ${user?.name || user?.email}.`,
+      companyId: deleteCompany.id,
+      companyName: deleteCompany.name,
+    });
+    toast({ title: "Empresa excluída", description: `${deleteCompany.name} foi removida da plataforma.` });
+    setDeleteCompany(null);
+    setRefreshKey(k => k + 1);
+  };
+
+  // Handle company deactivation/reactivation
+  const handleToggleActive = (company: CompanyState) => {
+    const isCurrentlyActive = company.active !== false;
+    const allCompanies = getCompanies();
+    const updated = allCompanies.map(c =>
+      c.id === company.id ? { ...c, active: !isCurrentlyActive } : c
+    );
+    setCompanies(updated);
+    addOperationalEvent({
+      type: isCurrentlyActive ? "company_deactivated" : "company_reactivated",
+      title: isCurrentlyActive ? "Empresa inativada" : "Empresa reativada",
+      message: `A empresa ${company.name} foi ${isCurrentlyActive ? "inativada" : "reativada"} por ${user?.name || user?.email}.`,
+      companyId: company.id,
+      companyName: company.name,
+    });
+    toast({
+      title: isCurrentlyActive ? "Empresa inativada" : "Empresa reativada",
+      description: isCurrentlyActive
+        ? `${company.name} foi inativada. O acesso ao portal está bloqueado.`
+        : `${company.name} foi reativada e pode acessar o portal novamente.`,
+    });
+    setDeactivateCompany(null);
+    setRefreshKey(k => k + 1);
+  };
+
   // Filter
   const filtered = useMemo(() => {
     return enriched.filter(ec => {
