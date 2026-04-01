@@ -4,6 +4,7 @@
 import { getCompanies, getState, setActiveCompany, type CompanyState } from './storage';
 import { CYCLE_IDS } from './constants';
 import { mvpCycles } from '@/data/mvpCycles';
+import { getActiveOperationalEvents, type OperationalEvent } from './operationalEvents';
 
 export type AdminNotificationPriority = 'critical' | 'warning' | 'insight';
 export type AdminNotificationType = 'risk' | 'opportunity' | 'milestone';
