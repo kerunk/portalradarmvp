@@ -689,9 +689,21 @@ export default function UserManagement() {
                     </TableCell>
                     {canManageUsers && (
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(u)}>
-                          <Pencil size={14} />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => openEdit(u)}>
+                            <Pencil size={14} />
+                          </Button>
+                          {currentAdminRole === "admin_master" && u.email.toLowerCase() !== "admin@radarmvp.com" && u.email.toLowerCase() !== currentUser?.email?.toLowerCase() && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleInitiateDelete(u)}
+                            >
+                              <Trash2 size={14} />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     )}
                   </TableRow>
