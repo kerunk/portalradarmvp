@@ -523,6 +523,87 @@ export default function Companies() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Company Dialog */}
+        <Dialog open={!!deleteCompany} onOpenChange={(open) => { if (!open) setDeleteCompany(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <Trash2 className="h-5 w-5" />
+                Excluir Empresa
+              </DialogTitle>
+              <DialogDescription>
+                {deleteCompany && `Você está prestes a excluir ${deleteCompany.name} da plataforma.`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/5">
+                <p className="text-sm font-medium text-destructive">ATENÇÃO</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Essa ação removerá o acesso da empresa ao portal e apagará dados associados.
+                </p>
+              </div>
+              {deleteCompany && companyHasData(deleteCompany) && (
+                <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                  <p className="text-sm font-medium text-amber-600">Esta empresa possui dados registrados</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Recomendamos inativar a empresa em vez de excluí-la para preservar o histórico.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => {
+                      const company = deleteCompany;
+                      setDeleteCompany(null);
+                      setDeactivateCompany(company);
+                    }}
+                  >
+                    <PowerOff size={14} className="mr-1" /> Inativar em vez de excluir
+                  </Button>
+                </div>
+              )}
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" onClick={() => setDeleteCompany(null)}>
+                  Cancelar
+                </Button>
+                <Button variant="destructive" onClick={handleDeleteCompany}>
+                  Confirmar Exclusão
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Deactivate Company Dialog */}
+        <Dialog open={!!deactivateCompany} onOpenChange={(open) => { if (!open) setDeactivateCompany(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <PowerOff className="h-5 w-5 text-amber-500" />
+                Inativar Empresa
+              </DialogTitle>
+              <DialogDescription>
+                {deactivateCompany && `Deseja inativar ${deactivateCompany.name}?`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="p-3 rounded-lg border bg-muted/50">
+                <p className="text-sm text-muted-foreground">
+                  A empresa não conseguirá acessar o portal enquanto estiver inativa. Os dados serão preservados e o acesso poderá ser reativado a qualquer momento.
+                </p>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" onClick={() => setDeactivateCompany(null)}>
+                  Cancelar
+                </Button>
+                <Button onClick={() => deactivateCompany && handleToggleActive(deactivateCompany)}>
+                  Confirmar Inativação
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
