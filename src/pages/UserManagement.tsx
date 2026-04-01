@@ -28,13 +28,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Search, ShieldCheck, Crown, Briefcase, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Search, ShieldCheck, Crown, Briefcase, ChevronRight, Download, CheckCircle2, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { getCompanies } from "@/lib/storage";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { getCompanyCountForManager } from "@/lib/portfolioUtils";
+import jsPDF from "jspdf";
 import {
   type AdminRole,
   ADMIN_ROLE_LABELS,
@@ -54,15 +55,26 @@ interface ManagedUser {
   assignedCompanyIds?: string[];
   active: boolean;
   createdAt: string;
+  mustChangePassword?: boolean;
 }
 
 const USERS_MGMT_KEY = "mvp_managed_users_v2";
+const USERS_KEY = "mvp_portal_users";
 
 const adminRoleIcons: Record<AdminRole, React.ElementType> = {
   admin_master: Crown,
   admin_mvp: ShieldCheck,
   gerente_conta: Briefcase,
 };
+
+function generateTempPassword(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  let pwd = "";
+  for (let i = 0; i < 10; i++) {
+    pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return pwd;
+}
 
 function loadUsers(): ManagedUser[] {
   try {
@@ -73,8 +85,8 @@ function loadUsers(): ManagedUser[] {
   const defaults: ManagedUser[] = [
     {
       id: "admin-1",
-      name: "Administrador MVP",
-      email: "admin@mvp.com",
+      name: "Administrador MVP Master",
+      email: "admin@radarmvp.com",
       adminRole: "admin_master",
       active: true,
       createdAt: "2024-01-01",
@@ -98,6 +110,129 @@ function syncAdminRoles(users: ManagedUser[]) {
   saveAdminRoleAssignments(assignments);
 }
 
+function registerUserForLogin(user: ManagedUser, password: string) {
+  try {
+    const storedUsers = localStorage.getItem(USERS_KEY);
+    const users = storedUsers ? JSON.parse(storedUsers) : {};
+    users[user.email.toLowerCase()] = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: "admin_mvp",
+      password: password,
+      mustChangePassword: true,
+      onboardingStatus: "completed",
+    };
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  } catch (e) {
+    console.error("Error registering user for login:", e);
+  }
+}
+
+function generateCredentialsPDF(name: string, email: string, password: string, role: string) {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // Header bar
+  doc.setFillColor(234, 88, 12); // orange
+  doc.rect(0, 0, pageWidth, 40, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(22);
+  doc.setFont("helvetica", "bold");
+  doc.text("Radar MVP", pageWidth / 2, 18, { align: "center" });
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.text("Plataforma de Gestão da Metodologia MVP", pageWidth / 2, 28, { align: "center" });
+
+  // Green accent line
+  doc.setFillColor(34, 139, 34);
+  doc.rect(0, 40, pageWidth, 3, "F");
+
+  // Title
+  doc.setTextColor(30, 30, 30);
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.text("Credenciais de Acesso", pageWidth / 2, 62, { align: "center" });
+
+  // Info box
+  const boxY = 75;
+  doc.setFillColor(249, 250, 251);
+  doc.setDrawColor(229, 231, 235);
+  doc.roundedRect(25, boxY, pageWidth - 50, 80, 4, 4, "FD");
+
+  doc.setFontSize(11);
+  doc.setTextColor(100, 100, 100);
+  doc.setFont("helvetica", "normal");
+
+  const leftCol = 35;
+  const rightCol = 75;
+  let y = boxY + 16;
+
+  doc.text("Nome:", leftCol, y);
+  doc.setTextColor(30, 30, 30);
+  doc.setFont("helvetica", "bold");
+  doc.text(name, rightCol, y);
+
+  y += 14;
+  doc.setTextColor(100, 100, 100);
+  doc.setFont("helvetica", "normal");
+  doc.text("Perfil:", leftCol, y);
+  doc.setTextColor(30, 30, 30);
+  doc.setFont("helvetica", "bold");
+  doc.text(role, rightCol, y);
+
+  y += 14;
+  doc.setTextColor(100, 100, 100);
+  doc.setFont("helvetica", "normal");
+  doc.text("Email:", leftCol, y);
+  doc.setTextColor(30, 30, 30);
+  doc.setFont("helvetica", "bold");
+  doc.text(email, rightCol, y);
+
+  y += 14;
+  doc.setTextColor(100, 100, 100);
+  doc.setFont("helvetica", "normal");
+  doc.text("Senha:", leftCol, y);
+  doc.setTextColor(234, 88, 12);
+  doc.setFont("helvetica", "bold");
+  doc.text(password, rightCol, y);
+
+  // Portal URL
+  y += 14;
+  doc.setTextColor(100, 100, 100);
+  doc.setFont("helvetica", "normal");
+  doc.text("Portal:", leftCol, y);
+  doc.setTextColor(34, 139, 34);
+  doc.setFont("helvetica", "bold");
+  doc.text(window.location.origin, rightCol, y);
+
+  // Instructions
+  const instructY = boxY + 95;
+  doc.setFillColor(255, 247, 237);
+  doc.setDrawColor(251, 191, 36);
+  doc.roundedRect(25, instructY, pageWidth - 50, 35, 4, 4, "FD");
+
+  doc.setFontSize(10);
+  doc.setTextColor(146, 64, 14);
+  doc.setFont("helvetica", "bold");
+  doc.text("Importante:", 35, instructY + 12);
+  doc.setFont("helvetica", "normal");
+  doc.text("No primeiro acesso, você será solicitado a alterar sua senha.", 35, instructY + 22);
+  doc.text("Escolha uma senha segura com pelo menos 8 caracteres.", 35, instructY + 30);
+
+  // Footer
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text(
+    `Documento gerado em ${new Date().toLocaleDateString("pt-BR")} — Radar MVP © ${new Date().getFullYear()}`,
+    pageWidth / 2,
+    280,
+    { align: "center" }
+  );
+
+  doc.save(`credenciais-${email.split("@")[0]}.pdf`);
+}
+
 export default function UserManagement() {
   const [users, setUsers] = useState<ManagedUser[]>(loadUsers);
   const [search, setSearch] = useState("");
@@ -106,6 +241,15 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
+
+  // Credential confirmation state
+  const [showCredentials, setShowCredentials] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    name: string;
+    email: string;
+    password: string;
+    role: string;
+  } | null>(null);
 
   const currentAdminRole = useMemo(() => {
     const assignments = getAdminRoleAssignments();
@@ -156,19 +300,22 @@ export default function UserManagement() {
     if (editingUser) {
       const updated = users.map((u) =>
         u.id === editingUser.id
-          ? {
-              ...u,
-              name: formName,
-              email: formEmail,
-              adminRole: formAdminRole,
-            }
+          ? { ...u, name: formName, email: formEmail, adminRole: formAdminRole }
           : u
       );
       setUsers(updated);
       saveUsers(updated);
       syncAdminRoles(updated);
       toast({ title: "Usuário atualizado com sucesso" });
+      setDialogOpen(false);
     } else {
+      // Check duplicate email
+      if (users.some(u => u.email.toLowerCase() === formEmail.toLowerCase())) {
+        toast({ title: "Email já cadastrado", variant: "destructive" });
+        return;
+      }
+
+      const tempPassword = generateTempPassword();
       const newUser: ManagedUser = {
         id: `user-${Date.now()}`,
         name: formName,
@@ -176,14 +323,44 @@ export default function UserManagement() {
         adminRole: formAdminRole,
         active: true,
         createdAt: new Date().toISOString().split("T")[0],
+        mustChangePassword: true,
       };
       const updated = [...users, newUser];
       setUsers(updated);
       saveUsers(updated);
       syncAdminRoles(updated);
-      toast({ title: "Usuário criado com sucesso" });
+
+      // Register user for login with temp password
+      registerUserForLogin(newUser, tempPassword);
+
+      // Show credentials confirmation
+      setCreatedCredentials({
+        name: formName,
+        email: formEmail,
+        password: tempPassword,
+        role: ADMIN_ROLE_LABELS[formAdminRole],
+      });
+      setDialogOpen(false);
+      setShowCredentials(true);
     }
-    setDialogOpen(false);
+  };
+
+  const handleDownloadPDF = () => {
+    if (!createdCredentials) return;
+    generateCredentialsPDF(
+      createdCredentials.name,
+      createdCredentials.email,
+      createdCredentials.password,
+      createdCredentials.role
+    );
+    toast({ title: "PDF de credenciais gerado com sucesso" });
+  };
+
+  const handleCopyCredentials = () => {
+    if (!createdCredentials) return;
+    const text = `Login: ${createdCredentials.email}\nSenha: ${createdCredentials.password}`;
+    navigator.clipboard.writeText(text);
+    toast({ title: "Credenciais copiadas" });
   };
 
   const toggleActive = (userId: string) => {
@@ -275,6 +452,15 @@ export default function UserManagement() {
                       </p>
                     )}
                   </div>
+
+                  {!editingUser && (
+                    <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                      <p className="text-xs text-muted-foreground">
+                        Uma <strong>senha provisória</strong> será gerada automaticamente. O usuário deverá alterá-la no primeiro acesso.
+                      </p>
+                    </div>
+                  )}
+
                   <Button onClick={handleSave} className="w-full">
                     {editingUser ? "Salvar Alterações" : "Criar Administrador"}
                   </Button>
@@ -283,6 +469,58 @@ export default function UserManagement() {
             </Dialog>
           )}
         </div>
+
+        {/* Credentials Confirmation Dialog */}
+        <Dialog open={showCredentials} onOpenChange={setShowCredentials}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CheckCircle2 size={20} className="text-emerald-500" />
+                Usuário criado com sucesso
+              </DialogTitle>
+            </DialogHeader>
+            {createdCredentials && (
+              <div className="space-y-4 pt-2">
+                <div className="p-4 rounded-lg border border-border bg-muted/30 space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Nome</span>
+                    <span className="text-sm font-medium text-foreground">{createdCredentials.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Perfil</span>
+                    <span className="text-sm font-medium text-foreground">{createdCredentials.role}</span>
+                  </div>
+                  <div className="border-t border-border my-2" />
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Login</span>
+                    <span className="text-sm font-mono font-medium text-foreground">{createdCredentials.email}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Senha provisória</span>
+                    <span className="text-sm font-mono font-bold text-primary">{createdCredentials.password}</span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    ⚠ O usuário deverá alterar a senha no primeiro acesso. Guarde ou baixe as credenciais antes de fechar.
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button onClick={handleCopyCredentials} variant="outline" className="flex-1">
+                    <Copy size={14} className="mr-2" />
+                    Copiar
+                  </Button>
+                  <Button onClick={handleDownloadPDF} className="flex-1">
+                    <Download size={14} className="mr-2" />
+                    Baixar credenciais de acesso
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Admin Role Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

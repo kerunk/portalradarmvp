@@ -131,7 +131,7 @@ export function getAdminRoleAssignments(): AdminRoleAssignment[] {
   
   // Default: admin@mvp.com is admin_master
   const defaults: AdminRoleAssignment[] = [
-    { userId: "admin-1", email: "admin@mvp.com", adminRole: "admin_master" },
+    { userId: "admin-1", email: "admin@radarmvp.com", adminRole: "admin_master" },
   ];
   localStorage.setItem(ADMIN_ROLES_KEY, JSON.stringify(defaults));
   return defaults;

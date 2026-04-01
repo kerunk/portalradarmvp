@@ -45,8 +45,8 @@ const USERS_KEY = "mvp_portal_users";
 // Fixed Admin MVP user
 const ADMIN_USER: User & { password: string } = {
   id: "admin-1",
-  name: "Administrador MVP",
-  email: "admin@mvp.com",
+  name: "Administrador MVP Master",
+  email: "admin@radarmvp.com",
   role: "admin_mvp",
   password: "admin123",
   mustChangePassword: false,
@@ -56,7 +56,7 @@ const ADMIN_USER: User & { password: string } = {
 // Get all users (demo + created from companies)
 function getAllUsers(): Record<string, User & { password: string }> {
   const users: Record<string, User & { password: string }> = {
-    "admin@mvp.com": ADMIN_USER,
+    "admin@radarmvp.com": ADMIN_USER,
   };
   
   // Load custom users from storage
@@ -170,12 +170,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const switchRole = (role: UserRole) => {
-    if (role === "admin_mvp") {
+  if (role === "admin_mvp") {
       setActiveCompany(null);
       setUser({
         id: "admin-1",
-        name: "Administrador MVP",
-        email: "admin@mvp.com",
+        name: "Administrador MVP Master",
+        email: "admin@radarmvp.com",
         role: "admin_mvp",
       });
     } else {
