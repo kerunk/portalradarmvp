@@ -126,7 +126,11 @@ function saveCredentials(creds: Record<string, UserCredential>): boolean {
   }
 }
 
-function setCredential(email: string, cred: UserCredential): boolean {
+export function registerCredential(email: string, password: string, mustChangePassword: boolean): boolean {
+  return setCredentialInternal(email, { password, mustChangePassword });
+}
+
+function setCredentialInternal(email: string, cred: UserCredential): boolean {
   const creds = getCredentials();
   creds[email.toLowerCase()] = cred;
   return saveCredentials(creds);
