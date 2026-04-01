@@ -285,6 +285,9 @@ export interface EnrichedCompany {
 export function getEnrichedCompanies(filterEmail?: string, filterRole?: string): EnrichedCompany[] {
   let companies = getCompanies();
   
+  // Filter out inactive companies from operational views
+  companies = companies.filter(c => c.active !== false);
+  
   // Gerente de Conta only sees their own companies
   if (filterRole === "gerente_conta" && filterEmail) {
     companies = companies.filter(c => c.ownerEmail?.toLowerCase() === filterEmail.toLowerCase());
