@@ -189,6 +189,11 @@ export default function Companies() {
       companyId: company.id,
       companyName: company.name,
     });
+    auditCompanyAction(
+      user?.email || "", user?.name || "Admin",
+      isCurrentlyActive ? "company_deactivated" : "company_activated",
+      company.id, company.name
+    );
     toast({
       title: isCurrentlyActive ? "Empresa inativada" : "Empresa reativada",
       description: isCurrentlyActive
