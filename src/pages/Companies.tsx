@@ -382,6 +382,48 @@ export default function Companies() {
         </Card>
 
         <CreateCompanyDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+
+        {/* Manager Reassignment Dialog */}
+        <Dialog open={!!reassignCompany} onOpenChange={(open) => { if (!open) { setReassignCompany(null); setSelectedManager(""); } }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <UserCog className="h-5 w-5 text-primary" />
+                Alterar Gerente Responsável
+              </DialogTitle>
+              <DialogDescription>
+                {reassignCompany && `Selecione o novo gerente responsável por ${reassignCompany.name}.`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label>Gerente Responsável Atual</Label>
+                <p className="text-sm font-medium text-foreground">{reassignCompany?.ownerName || "Não atribuído"}</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Novo Gerente Responsável</Label>
+                <Select value={selectedManager} onValueChange={setSelectedManager}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    {availableManagers.map(m => (
+                      <SelectItem key={m.email} value={m.email}>
+                        {m.email === "admin@radarmvp.com" ? "Admin Master" : m.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" onClick={() => { setReassignCompany(null); setSelectedManager(""); }}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleReassignManager} disabled={!selectedManager}>
+                  Confirmar Alteração
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
