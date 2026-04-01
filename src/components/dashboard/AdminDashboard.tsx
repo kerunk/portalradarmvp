@@ -134,7 +134,16 @@ const alertTypeConfig: Record<AlertType, { label: string; icon: typeof AlertTria
 
 export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardProps) {
   const navigate = useNavigate();
-  const companies = useMemo(() => getCompanies(), [refreshKey]);
+  const { user } = useAuth();
+  const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
+  
+  const companies = useMemo(() => {
+    const all = getCompanies();
+    if (adminRole === "gerente_conta" && user?.email) {
+      return all.filter(c => c.ownerEmail?.toLowerCase() === user.email.toLowerCase());
+    }
+    return all;
+  }, [refreshKey, adminRole, user?.email]);
 
   const companiesCompleted = companies.filter(c => c.onboardingStatus === "completed").length;
   const companiesPending = companies.filter(c => c.onboardingStatus !== "completed").length;

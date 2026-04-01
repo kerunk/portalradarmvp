@@ -30,6 +30,8 @@ import {
   getLastActivityLabel,
   type EnrichedCompany, type RiskLevel, type ImplementationStage,
 } from "@/lib/portfolioUtils";
+import { useAuth } from "@/contexts/AuthContext";
+import { getAdminRoleForUser } from "@/lib/permissions";
 
 const riskIcons = { healthy: ShieldCheck, warning: AlertTriangle, risk: ShieldAlert };
 
@@ -37,6 +39,7 @@ type SortKey = "name" | "maturity" | "risk" | "lastActivity";
 
 export default function Companies() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRisk, setFilterRisk] = useState("all");
   const [filterStage, setFilterStage] = useState("all");
@@ -46,11 +49,13 @@ export default function Companies() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
+
   useEffect(() => {
     if (!createDialogOpen) setRefreshKey(k => k + 1);
   }, [createDialogOpen]);
 
-  const enriched = useMemo(() => getEnrichedCompanies(), [refreshKey]);
+  const enriched = useMemo(() => getEnrichedCompanies(user?.email, adminRole), [refreshKey, user?.email, adminRole]);
 
   // Unique owners
   const owners = useMemo(() => {
