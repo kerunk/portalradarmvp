@@ -139,8 +139,8 @@ function getCredential(email: string): UserCredential | null {
 // ============================================================
 
 const DEFAULT_CREDENTIALS: Record<string, { password: string; mustChangePassword: boolean }> = {
-  "admin@radarmvp.com": { password: "admin123", mustChangePassword: false },
-  "admin@alpha.com": { password: "cliente123", mustChangePassword: false },
+  "admin@radarmvp.com": { password: "admin123", mustChangePassword: true },
+  "admin@alpha.com": { password: "cliente123", mustChangePassword: true },
 };
 
 // Get effective credential: saved overrides defaults
