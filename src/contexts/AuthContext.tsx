@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { getCompanies, updateCompanyOnboardingStatus, setActiveCompany, type OnboardingStatus } from "@/lib/storage";
+import { getCompanies, updateCompanyOnboardingStatus, setActiveCompany, getCompanyById, type OnboardingStatus } from "@/lib/storage";
+import { emitOnboardingStarted, emitOnboardingCompleted } from "@/lib/operationalEvents";
 
 // ============================================================
 // MVP Portal Authentication Context
