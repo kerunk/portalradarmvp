@@ -52,6 +52,7 @@ export default function Companies() {
   const [filterRisk, setFilterRisk] = useState("all");
   const [filterStage, setFilterStage] = useState("all");
   const [filterOwner, setFilterOwner] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [sortBy, setSortBy] = useState<SortKey>("name");
   const [sortAsc, setSortAsc] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -154,7 +155,9 @@ export default function Companies() {
   const handleDeleteCompany = () => {
     if (!deleteCompany) return;
     const allCompanies = getCompanies();
-    const updated = allCompanies.filter(c => c.id !== deleteCompany.id);
+    const updated = allCompanies.map(c =>
+      c.id === deleteCompany.id ? { ...c, active: false, deleted: true } : c
+    );
     setCompanies(updated);
     try { localStorage.removeItem(`mvp_portal_company_${deleteCompany.id}`); } catch {}
     addOperationalEvent({
@@ -211,9 +214,12 @@ export default function Companies() {
       const matchRisk = filterRisk === "all" || ec.riskLevel === filterRisk;
       const matchStage = filterStage === "all" || ec.stage === filterStage;
       const matchOwner = filterOwner === "all" || (ec.company.ownerName || "Admin Master") === filterOwner;
-      return matchSearch && matchRisk && matchStage && matchOwner;
+      const matchStatus = filterStatus === "all"
+        || (filterStatus === "active" && ec.company.active !== false)
+        || (filterStatus === "inactive" && ec.company.active === false);
+      return matchSearch && matchRisk && matchStage && matchOwner && matchStatus;
     });
-  }, [enriched, searchTerm, filterRisk, filterStage, filterOwner]);
+  }, [enriched, searchTerm, filterRisk, filterStage, filterOwner, filterStatus]);
 
   // Sort
   const sorted = useMemo(() => {
@@ -241,11 +247,12 @@ export default function Companies() {
   };
 
   // Stats
+  const activeCompanies = enriched.filter(e => e.company.active !== false);
   const totalCompanies = enriched.length;
-  const riskCt = enriched.filter(e => e.riskLevel === "risk").length;
-  const healthyCt = enriched.filter(e => e.riskLevel === "healthy").length;
-  const avgMat = enriched.length > 0
-    ? Math.round(enriched.reduce((s, e) => s + e.riskData.maturityScore, 0) / enriched.length) : 0;
+  const riskCt = activeCompanies.filter(e => e.riskLevel === "risk").length;
+  const healthyCt = activeCompanies.filter(e => e.riskLevel === "healthy").length;
+  const avgMat = activeCompanies.length > 0
+    ? Math.round(activeCompanies.reduce((s, e) => s + e.riskData.maturityScore, 0) / activeCompanies.length) : 0;
 
   return (
     <AppLayout title="Visão MVP" subtitle="Acompanhamento de todas as empresas">
@@ -329,6 +336,14 @@ export default function Companies() {
                 <SelectItem value="finalizado">Finalizado</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos status</SelectItem>
+                <SelectItem value="active">Ativas</SelectItem>
+                <SelectItem value="inactive">Inativas</SelectItem>
+              </SelectContent>
+            </Select>
             {owners.length > 0 && (
               <Select value={filterOwner} onValueChange={setFilterOwner}>
                 <SelectTrigger className="w-[160px]"><SelectValue placeholder="Responsável" /></SelectTrigger>
@@ -379,7 +394,7 @@ export default function Companies() {
               {sorted.map((ec) => {
                 const RiskIcon = riskIcons[ec.riskLevel];
                 return (
-                  <TableRow key={ec.company.id} className="cursor-pointer" onClick={() => navigate(`/empresas/${ec.company.id}`)}>
+                  <TableRow key={ec.company.id} className={cn("cursor-pointer", ec.company.active === false && "opacity-60")} onClick={() => navigate(`/empresas/${ec.company.id}`)}>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">

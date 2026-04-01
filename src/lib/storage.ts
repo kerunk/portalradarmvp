@@ -150,6 +150,7 @@ export interface CompanyState {
   ownerEmail?: string; // Admin who created this company (gerente_conta auto-assignment)
   ownerName?: string;
   active?: boolean; // undefined or true = active, false = inactive
+  deleted?: boolean; // soft delete flag
 }
 
 // Smart Alert Interface

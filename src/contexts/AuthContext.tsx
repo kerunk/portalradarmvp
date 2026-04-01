@@ -374,7 +374,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const company = companies.find(c => c.adminEmail.toLowerCase() === email.toLowerCase());
         if (company) {
           // Block inactive companies
-          if (company.active === false) {
+          if (company.active === false || company.deleted) {
             return { success: false, inactive: true };
           }
           if (company.tempPassword === password) {
@@ -421,7 +421,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const companies = getCompanies();
         const company = companies.find(c => c.adminEmail.toLowerCase() === email.toLowerCase());
-        if (company && company.active === false) {
+        if (company && (company.active === false || company.deleted)) {
           return { success: false, inactive: true };
         }
       } catch {}
