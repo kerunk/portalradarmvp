@@ -23,6 +23,7 @@ import { generateAccessPDF } from "@/lib/pdfGenerator";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAdminRoleForUser, addCompanyToManager, getAdminRoleAssignments } from "@/lib/permissions";
 import { emitCompanyCreated } from "@/lib/operationalEvents";
+import { registerCredential } from "@/contexts/AuthContext";
 
 interface CreateCompanyDialogProps {
   open: boolean;
