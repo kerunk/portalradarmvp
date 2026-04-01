@@ -24,6 +24,7 @@ export interface User {
 export interface LoginResult {
   success: boolean;
   locked?: boolean;
+  inactive?: boolean;
   remainingSeconds?: number;
 }
 
