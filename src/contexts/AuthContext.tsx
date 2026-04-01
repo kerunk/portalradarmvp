@@ -412,6 +412,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     
     if (credential.password === password) {
+      // Check if it's an inactive company
+      try {
+        const companies = getCompanies();
+        const company = companies.find(c => c.adminEmail.toLowerCase() === email.toLowerCase());
+        if (company && company.active === false) {
+          return { success: false, inactive: true };
+        }
+      } catch {}
+      
       clearLoginAttempts(email);
       const profile = resolveUserProfile(email);
       if (!profile) return { success: false };
