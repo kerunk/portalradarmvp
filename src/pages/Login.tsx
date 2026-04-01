@@ -67,6 +67,12 @@ export default function Login() {
         description: "Login realizado com sucesso.",
       });
       navigate("/");
+    } else if (result.inactive) {
+      toast({
+        title: "Empresa inativa",
+        description: "Esta empresa está inativa. Entre em contato com o Administrador MVP.",
+        variant: "destructive",
+      });
     } else if (result.locked) {
       setLockoutSeconds(result.remainingSeconds || 300);
       toast({
