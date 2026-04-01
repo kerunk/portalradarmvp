@@ -138,7 +138,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
   const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
   
   const companies = useMemo(() => {
-    const all = getCompanies();
+    const all = getCompanies().filter(c => c.active !== false);
     if (adminRole === "gerente_conta" && user?.email) {
       return all.filter(c => c.ownerEmail?.toLowerCase() === user.email.toLowerCase());
     }

@@ -258,6 +258,8 @@ export interface PipelineStats {
 
 export function getPipelineStats(filterEmail?: string, filterRole?: string): PipelineStats {
   let companies = getCompanies();
+  // Filter out inactive companies
+  companies = companies.filter(c => c.active !== false);
   if (filterRole === "gerente_conta" && filterEmail) {
     companies = companies.filter(c => c.ownerEmail?.toLowerCase() === filterEmail.toLowerCase());
   }

@@ -15,7 +15,7 @@ export function CompaniesNeedingAction({ refreshKey }: Props) {
   const navigate = useNavigate();
 
   const companiesWithActions = useMemo(() => {
-    const companies = getCompanies();
+    const companies = getCompanies().filter(c => c.active !== false);
     return companies
       .map(c => ({
         company: c,
