@@ -28,8 +28,7 @@ export default function ChangePassword() {
 
   const passwordRequirements = [
     { label: "Mínimo 8 caracteres", met: newPassword.length >= 8 },
-    { label: "Pelo menos uma letra maiúscula", met: /[A-Z]/.test(newPassword) },
-    { label: "Pelo menos uma letra minúscula", met: /[a-z]/.test(newPassword) },
+    { label: "Pelo menos uma letra", met: /[a-zA-Z]/.test(newPassword) },
     { label: "Pelo menos um número", met: /[0-9]/.test(newPassword) },
   ];
 

@@ -22,13 +22,19 @@ export interface User {
   password?: string;
 }
 
+export interface LoginResult {
+  success: boolean;
+  locked?: boolean;
+  remainingSeconds?: number;
+}
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isAdminMVP: boolean;
   isCliente: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<LoginResult>;
   logout: () => void;
   switchRole: (role: UserRole) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
@@ -41,6 +47,47 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 const STORAGE_KEY = "mvp_portal_auth";
 const USERS_KEY = "mvp_portal_users";
+const LOGIN_ATTEMPTS_KEY = "mvp_login_attempts";
+
+// Login lockout config
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+
+interface LoginAttemptRecord {
+  count: number;
+  lockedUntil: number | null;
+}
+
+function getLoginAttempts(email: string): LoginAttemptRecord {
+  try {
+    const stored = localStorage.getItem(LOGIN_ATTEMPTS_KEY);
+    if (stored) {
+      const records = JSON.parse(stored);
+      return records[email.toLowerCase()] || { count: 0, lockedUntil: null };
+    }
+  } catch {}
+  return { count: 0, lockedUntil: null };
+}
+
+function setLoginAttempts(email: string, record: LoginAttemptRecord) {
+  try {
+    const stored = localStorage.getItem(LOGIN_ATTEMPTS_KEY);
+    const records = stored ? JSON.parse(stored) : {};
+    records[email.toLowerCase()] = record;
+    localStorage.setItem(LOGIN_ATTEMPTS_KEY, JSON.stringify(records));
+  } catch {}
+}
+
+function clearLoginAttempts(email: string) {
+  try {
+    const stored = localStorage.getItem(LOGIN_ATTEMPTS_KEY);
+    if (stored) {
+      const records = JSON.parse(stored);
+      delete records[email.toLowerCase()];
+      localStorage.setItem(LOGIN_ATTEMPTS_KEY, JSON.stringify(records));
+    }
+  } catch {}
+}
 
 // Fixed Admin MVP user
 const ADMIN_USER: User & { password: string } = {
@@ -50,7 +97,7 @@ const ADMIN_USER: User & { password: string } = {
   role: "admin_mvp",
   password: "admin123",
   mustChangePassword: false,
-  onboardingStatus: 'completed', // Admin doesn't need onboarding
+  onboardingStatus: 'completed',
 };
 
 // Get all users (demo + created from companies)
@@ -147,20 +194,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<{ success: boolean; locked?: boolean; remainingSeconds?: number }> => {
     await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Check lockout
+    const attempts = getLoginAttempts(email);
+    if (attempts.lockedUntil && Date.now() < attempts.lockedUntil) {
+      const remainingSeconds = Math.ceil((attempts.lockedUntil - Date.now()) / 1000);
+      return { success: false, locked: true, remainingSeconds };
+    }
+
+    // If lockout expired, reset
+    if (attempts.lockedUntil && Date.now() >= attempts.lockedUntil) {
+      clearLoginAttempts(email);
+    }
     
     const users = getAllUsers();
     const foundUser = users[email.toLowerCase()];
     
     if (foundUser && foundUser.password === password) {
+      clearLoginAttempts(email);
       const { password: _, ...userData } = foundUser;
-      // Set active company for scoped storage
       setActiveCompany(userData.role === 'cliente' ? userData.companyId || null : null);
       setUser(userData);
-      return true;
+      return { success: true };
     }
-    return false;
+
+    // Record failed attempt
+    const current = getLoginAttempts(email);
+    const newCount = current.count + 1;
+    if (newCount >= MAX_LOGIN_ATTEMPTS) {
+      setLoginAttempts(email, { count: newCount, lockedUntil: Date.now() + LOCKOUT_DURATION_MS });
+      return { success: false, locked: true, remainingSeconds: LOCKOUT_DURATION_MS / 1000 };
+    }
+    setLoginAttempts(email, { count: newCount, lockedUntil: null });
+    return { success: false };
   };
 
   const logout = () => {
