@@ -247,11 +247,12 @@ export default function Companies() {
   };
 
   // Stats
+  const activeCompanies = enriched.filter(e => e.company.active !== false);
   const totalCompanies = enriched.length;
-  const riskCt = enriched.filter(e => e.riskLevel === "risk").length;
-  const healthyCt = enriched.filter(e => e.riskLevel === "healthy").length;
-  const avgMat = enriched.length > 0
-    ? Math.round(enriched.reduce((s, e) => s + e.riskData.maturityScore, 0) / enriched.length) : 0;
+  const riskCt = activeCompanies.filter(e => e.riskLevel === "risk").length;
+  const healthyCt = activeCompanies.filter(e => e.riskLevel === "healthy").length;
+  const avgMat = activeCompanies.length > 0
+    ? Math.round(activeCompanies.reduce((s, e) => s + e.riskData.maturityScore, 0) / activeCompanies.length) : 0;
 
   return (
     <AppLayout title="Visão MVP" subtitle="Acompanhamento de todas as empresas">
