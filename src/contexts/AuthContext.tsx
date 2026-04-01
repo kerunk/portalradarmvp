@@ -501,6 +501,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user.onboardingStatus === 'not_started') {
       updateCompanyOnboardingStatus(user.companyId, 'in_progress');
       setUser({ ...user, onboardingStatus: 'in_progress' });
+      const company = getCompanyById(user.companyId);
+      if (company) emitOnboardingStarted(company.name, company.id);
     }
   };
 
@@ -510,6 +512,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (user.companyId) {
       updateCompanyOnboardingStatus(user.companyId, 'completed');
+      const company = getCompanyById(user.companyId);
+      if (company) emitOnboardingCompleted(company.name, company.id);
     }
     
     setUser({ ...user, onboardingStatus: 'completed' });
