@@ -155,7 +155,9 @@ export default function Companies() {
   const handleDeleteCompany = () => {
     if (!deleteCompany) return;
     const allCompanies = getCompanies();
-    const updated = allCompanies.filter(c => c.id !== deleteCompany.id);
+    const updated = allCompanies.map(c =>
+      c.id === deleteCompany.id ? { ...c, active: false, deleted: true } : c
+    );
     setCompanies(updated);
     try { localStorage.removeItem(`mvp_portal_company_${deleteCompany.id}`); } catch {}
     addOperationalEvent({
