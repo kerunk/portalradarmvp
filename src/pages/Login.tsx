@@ -20,12 +20,6 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
 
-  // If already authenticated, redirect
-  if (isAuthenticated) {
-    navigate("/");
-    return null;
-  }
-
   // Lockout countdown
   useEffect(() => {
     if (lockoutSeconds <= 0) return;
@@ -37,6 +31,17 @@ export default function Login() {
     }, 1000);
     return () => clearInterval(timer);
   }, [lockoutSeconds]);
+
+  // If already authenticated, redirect
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/");
+    }
+  }, [isAuthenticated, navigate]);
+
+  if (isAuthenticated) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
