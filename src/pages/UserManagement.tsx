@@ -59,7 +59,7 @@ interface ManagedUser {
 }
 
 const USERS_MGMT_KEY = "mvp_managed_users_v2";
-const USERS_KEY = "mvp_portal_users";
+const CREDENTIALS_KEY = "mvp_credentials";
 
 const adminRoleIcons: Record<AdminRole, React.ElementType> = {
   admin_master: Crown,
