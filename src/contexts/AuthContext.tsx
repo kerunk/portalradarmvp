@@ -45,8 +45,8 @@ const USERS_KEY = "mvp_portal_users";
 // Fixed Admin MVP user
 const ADMIN_USER: User & { password: string } = {
   id: "admin-1",
-  name: "Administrador MVP",
-  email: "admin@mvp.com",
+  name: "Administrador MVP Master",
+  email: "admin@radarmvp.com",
   role: "admin_mvp",
   password: "admin123",
   mustChangePassword: false,
