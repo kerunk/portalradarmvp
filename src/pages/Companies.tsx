@@ -52,6 +52,7 @@ export default function Companies() {
   const [filterRisk, setFilterRisk] = useState("all");
   const [filterStage, setFilterStage] = useState("all");
   const [filterOwner, setFilterOwner] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [sortBy, setSortBy] = useState<SortKey>("name");
   const [sortAsc, setSortAsc] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
