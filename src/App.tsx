@@ -96,6 +96,7 @@ const App = () => (
       </ReadOnlyProvider>
     </AuthProvider>
   </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
