@@ -19,6 +19,7 @@ import {
   Pencil,
   Trash2,
   Database,
+  LogOut,
 } from "lucide-react";
 import {
   type NucleoMember,
@@ -34,7 +35,12 @@ import logoMvp from "@/assets/logo-mvp.jpeg";
 export default function Onboarding() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, completeOnboarding, isAuthenticated } = useAuth();
+  const { user, completeOnboarding, logout, isAuthenticated } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -434,21 +440,32 @@ export default function Onboarding() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
-        <div className="flex items-center justify-center gap-2 mb-8">
-          {Array.from({ length: totalSteps }).map((_, index) => (
-            <div
-              key={index}
-              className={`h-2 rounded-full transition-all ${
-                index + 1 <= step ? "w-8 bg-primary" : "w-2 bg-muted"
-              }`}
-            />
-          ))}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-2 flex-1 justify-center">
+            {Array.from({ length: totalSteps }).map((_, index) => (
+              <div
+                key={index}
+                className={`h-2 rounded-full transition-all ${
+                  index + 1 <= step ? "w-8 bg-primary" : "w-2 bg-muted"
+                }`}
+              />
+            ))}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="text-muted-foreground hover:text-foreground ml-4"
+          >
+            <LogOut size={16} className="mr-1" />
+            Sair
+          </Button>
         </div>
         <Card className="p-8 shadow-elevated">
           {renderStep()}
         </Card>
         <p className="text-center text-xs text-muted-foreground mt-6">
-          Etapa {step} de {totalSteps}
+          Etapa {step} de {totalSteps} · <button onClick={handleLogout} className="underline hover:text-foreground">Sair da conta</button>
         </p>
       </div>
     </div>
