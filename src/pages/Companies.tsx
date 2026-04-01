@@ -67,6 +67,12 @@ export default function Companies() {
 
   const enriched = useMemo(() => getEnrichedCompanies(user?.email, adminRole), [refreshKey, user?.email, adminRole]);
 
+  // Available managers for reassignment
+  const availableManagers = useMemo(() => {
+    const assignments = getAdminRoleAssignments();
+    return assignments.filter(a => a.adminRole === "gerente_conta" || a.adminRole === "admin_mvp" || a.adminRole === "admin_master");
+  }, [refreshKey]);
+
   // Unique owners
   const owners = useMemo(() => {
     const set = new Set<string>();
@@ -75,6 +81,46 @@ export default function Companies() {
     });
     return Array.from(set).sort();
   }, [enriched]);
+
+  // Handle manager reassignment
+  const handleReassignManager = () => {
+    if (!reassignCompany || !selectedManager) return;
+    const manager = availableManagers.find(m => m.email === selectedManager);
+    if (!manager) return;
+
+    const allCompanies = getCompanies();
+    const updated = allCompanies.map(c =>
+      c.id === reassignCompany.id
+        ? { ...c, ownerEmail: manager.email, ownerName: manager.email === "admin@radarmvp.com" ? "Admin Master" : (availableManagers.find(m => m.email === manager.email)?.email || manager.email) }
+        : c
+    );
+    // Resolve name from managed users
+    let managerName = manager.email;
+    try {
+      const storedUsers = localStorage.getItem("mvp_managed_users_v2");
+      if (storedUsers) {
+        const managed = JSON.parse(storedUsers) as Array<{ name: string; email: string }>;
+        const found = managed.find(u => u.email.toLowerCase() === manager.email.toLowerCase());
+        if (found) managerName = found.name;
+      }
+    } catch {}
+    if (manager.email === "admin@radarmvp.com") managerName = "Admin Master";
+
+    const finalCompanies = updated.map(c =>
+      c.id === reassignCompany.id ? { ...c, ownerName: managerName } : c
+    );
+    setCompanies(finalCompanies);
+
+    emitManagerChanged(reassignCompany.name, reassignCompany.id, managerName, manager.email);
+
+    toast({
+      title: "Gerente alterado",
+      description: `${reassignCompany.name} agora é responsabilidade de ${managerName}.`,
+    });
+    setReassignCompany(null);
+    setSelectedManager("");
+    setRefreshKey(k => k + 1);
+  };
 
   // Filter
   const filtered = useMemo(() => {
