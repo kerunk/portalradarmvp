@@ -850,6 +850,46 @@ export default function Turmas() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Finalize Turma Confirmation Dialog */}
+      <Dialog open={!!finalizingTurmaId} onOpenChange={(open) => !open && setFinalizingTurmaId(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 size={20} className="text-success" />
+              Finalizar Turma
+            </DialogTitle>
+            <DialogDescription>
+              Ao finalizar, a turma será marcada como concluída e impactará nos critérios de encerramento do ciclo.
+            </DialogDescription>
+          </DialogHeader>
+          {finalizingTurmaId && (() => {
+            const turma = turmas.find(t => t.id === finalizingTurmaId);
+            if (!turma) return null;
+            const presentCount = turma.attendance ? Object.values(turma.attendance).filter(v => v === "present").length : 0;
+            return (
+              <div className="space-y-3">
+                <div className="p-3 bg-secondary/30 rounded-lg">
+                  <p className="text-sm font-medium">{turma.name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Ciclo {turma.cycleId} · {turma.participants.length} participantes · {presentCount} presenças
+                  </p>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Esta ação não pode ser desfeita. A turma ficará registrada como concluída nos indicadores do programa.
+                </p>
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFinalizingTurmaId(null)}>Cancelar</Button>
+            <Button onClick={confirmFinalizeTurma} className="gap-2 bg-success hover:bg-success/90 text-success-foreground">
+              <CheckCircle2 size={16} />
+              Confirmar Finalização
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
