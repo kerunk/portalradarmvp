@@ -4,33 +4,29 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Bell, AlertTriangle, TrendingDown, Milestone, Check,
-  Building2, Clock, Archive, Filter,
+  Bell, AlertTriangle, Check,
+  Building2, Clock, Archive, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  generateAdminNotifications,
   dismissAdminNotification,
-  dismissAllAdminNotifications,
-  type AdminNotification,
-  type AdminNotificationPriority,
 } from "@/lib/adminNotifications";
-import { generateSmartAlerts } from "@/lib/storage";
+import { dismissAlert } from "@/lib/storage";
+import { getVisibleAlertsForUser, type UnifiedAlert } from "@/lib/alertVisibility";
 
-const priorityStyles: Record<AdminNotificationPriority, string> = {
+const priorityStyles: Record<string, string> = {
   critical: "text-destructive bg-destructive/10",
   warning: "text-warning bg-warning/10",
-  insight: "text-primary bg-primary/10",
+  info: "text-primary bg-primary/10",
 };
 
-const priorityLabels: Record<AdminNotificationPriority, { emoji: string; label: string }> = {
+const priorityLabels: Record<string, { emoji: string; label: string }> = {
   critical: { emoji: "🔴", label: "Crítico" },
   warning: { emoji: "🟡", label: "Atenção" },
-  insight: { emoji: "🔵", label: "Insight" },
+  info: { emoji: "🔵", label: "Info" },
 };
 
 // Notification history storage
@@ -40,13 +36,13 @@ function getNotificationHistory(): { id: string; title: string; message: string;
   } catch { return []; }
 }
 
-function addToHistory(n: AdminNotification) {
+function addToHistory(n: UnifiedAlert) {
   const history = getNotificationHistory();
   history.unshift({
     id: n.id,
     title: n.title,
     message: n.message,
-    priority: n.priority,
+    priority: n.severity,
     companyName: n.companyName,
     dismissedAt: new Date().toISOString(),
   });
@@ -55,33 +51,33 @@ function addToHistory(n: AdminNotification) {
 
 export default function NotificationCenter() {
   const navigate = useNavigate();
-  const { isAdminMVP } = useAuth();
+  const { user, isCliente } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState("active");
 
-  const notifications = useMemo(() => generateAdminNotifications(), [refreshKey]);
+  const notifications = useMemo(() => getVisibleAlertsForUser(user), [refreshKey, user]);
   const history = useMemo(() => getNotificationHistory(), [refreshKey]);
 
-  const criticalCount = notifications.filter(n => n.priority === "critical").length;
-  const warningCount = notifications.filter(n => n.priority === "warning").length;
-  const insightCount = notifications.filter(n => n.priority === "insight").length;
+  const criticalCount = notifications.filter(n => n.severity === "critical").length;
+  const warningCount = notifications.filter(n => n.severity === "warning").length;
+  const infoCount = notifications.filter(n => n.severity === "info").length;
 
-  const handleDismiss = (notification: AdminNotification) => {
+  const handleDismiss = (notification: UnifiedAlert) => {
     addToHistory(notification);
-    dismissAdminNotification(notification.id);
+    if (notification.type === "smart") {
+      dismissAlert(notification.id.replace("smart-", ""));
+    } else {
+      dismissAdminNotification(notification.id);
+    }
     setRefreshKey(k => k + 1);
   };
 
   const handleDismissAll = () => {
-    notifications.forEach(n => addToHistory(n));
-    dismissAllAdminNotifications(notifications.map(n => n.id));
-    setRefreshKey(k => k + 1);
+    notifications.forEach(n => handleDismiss(n));
   };
 
-  const handleNavigate = (notification: AdminNotification) => {
-    if (notification.companyId) {
-      navigate(`/empresas/${notification.companyId}`);
-    } else if (notification.navigateTo) {
+  const handleNavigate = (notification: UnifiedAlert) => {
+    if (notification.navigateTo) {
       navigate(notification.navigateTo);
     }
   };
@@ -119,8 +115,8 @@ export default function NotificationCenter() {
                 <Bell size={20} className="text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">{insightCount}</p>
-                <p className="text-sm text-muted-foreground">Insights</p>
+                <p className="text-2xl font-bold text-foreground">{infoCount}</p>
+                <p className="text-sm text-muted-foreground">Informativos</p>
               </div>
             </div>
           </Card>
@@ -173,18 +169,18 @@ export default function NotificationCenter() {
                       className="flex items-start gap-4 p-4 hover:bg-muted/30 transition-colors cursor-pointer"
                       onClick={() => handleNavigate(n)}
                     >
-                      <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", priorityStyles[n.priority])}>
+                      <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", priorityStyles[n.severity])}>
                         <AlertTriangle size={18} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="text-sm font-semibold text-foreground">{n.title}</p>
-                          <Badge variant="outline" className={cn("text-[10px]", priorityStyles[n.priority])}>
-                            {priorityLabels[n.priority].emoji} {priorityLabels[n.priority].label}
+                          <Badge variant="outline" className={cn("text-[10px]", priorityStyles[n.severity])}>
+                            {priorityLabels[n.severity]?.emoji} {priorityLabels[n.severity]?.label}
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground">{n.message}</p>
-                        {n.companyName && (
+                        {n.companyName && !isCliente && (
                           <div className="flex items-center gap-1 mt-1.5">
                             <Building2 size={12} className="text-muted-foreground/60" />
                             <span className="text-xs text-muted-foreground/60">{n.companyName}</span>

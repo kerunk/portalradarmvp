@@ -305,6 +305,46 @@ export default function Turmas() {
     toast({ title: "Presença registrada!", description: "Os dados de presença foram salvos." });
   };
 
+  // Finalize turma
+  const [finalizingTurmaId, setFinalizingTurmaId] = useState<string | null>(null);
+
+  const handleFinalizeTurma = (turmaId: string) => {
+    const turma = turmas.find(t => t.id === turmaId);
+    if (!turma) return;
+
+    const hasAttendance = turma.attendance && Object.values(turma.attendance).some(v => v === "present");
+    if (!hasAttendance) {
+      toast({ title: "Erro", description: "Registre pelo menos 1 presença antes de finalizar.", variant: "destructive" });
+      return;
+    }
+
+    // Check future training date
+    if (turma.trainingDate) {
+      const trainingDate = new Date(turma.trainingDate);
+      trainingDate.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (trainingDate > today) {
+        if (!confirm("A data do treinamento é futura. Deseja finalizar mesmo assim?")) return;
+      }
+    }
+
+    setFinalizingTurmaId(turmaId);
+  };
+
+  const confirmFinalizeTurma = () => {
+    if (!finalizingTurmaId) return;
+    const updated = turmas.map(t =>
+      t.id === finalizingTurmaId
+        ? { ...t, status: "completed" as const, completedAt: new Date().toISOString() }
+        : t
+    );
+    setTurmasState(updated);
+    setTurmas(updated);
+    setFinalizingTurmaId(null);
+    toast({ title: "Turma finalizada!", description: "A turma foi marcada como concluída e os indicadores foram atualizados." });
+  };
+
   // Unique facilitators for list filter
   const uniqueFacilitators = useMemo(() => {
     const names = [...new Set(turmas.map(t => t.facilitator).filter(Boolean))];
@@ -679,6 +719,17 @@ export default function Turmas() {
                           >
                             <Trash2 size={14} />
                           </Button>
+                          {/* Finalize Button */}
+                          {turma.status !== "completed" && turma.attendance && Object.values(turma.attendance).some(v => v === "present") && (
+                            <Button
+                              size="sm"
+                              className="h-8 gap-1 bg-success hover:bg-success/90 text-success-foreground ml-1"
+                              onClick={() => handleFinalizeTurma(turma.id)}
+                            >
+                              <CheckCircle2 size={14} />
+                              Finalizar
+                            </Button>
+                          )}
                         </div>
                       </div>
 
@@ -795,6 +846,46 @@ export default function Turmas() {
             <Button onClick={saveAttendance} className="gap-2">
               <CheckCircle2 size={16} />
               Salvar Presença
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Finalize Turma Confirmation Dialog */}
+      <Dialog open={!!finalizingTurmaId} onOpenChange={(open) => !open && setFinalizingTurmaId(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 size={20} className="text-success" />
+              Finalizar Turma
+            </DialogTitle>
+            <DialogDescription>
+              Ao finalizar, a turma será marcada como concluída e impactará nos critérios de encerramento do ciclo.
+            </DialogDescription>
+          </DialogHeader>
+          {finalizingTurmaId && (() => {
+            const turma = turmas.find(t => t.id === finalizingTurmaId);
+            if (!turma) return null;
+            const presentCount = turma.attendance ? Object.values(turma.attendance).filter(v => v === "present").length : 0;
+            return (
+              <div className="space-y-3">
+                <div className="p-3 bg-secondary/30 rounded-lg">
+                  <p className="text-sm font-medium">{turma.name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Ciclo {turma.cycleId} · {turma.participants.length} participantes · {presentCount} presenças
+                  </p>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Esta ação não pode ser desfeita. A turma ficará registrada como concluída nos indicadores do programa.
+                </p>
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFinalizingTurmaId(null)}>Cancelar</Button>
+            <Button onClick={confirmFinalizeTurma} className="gap-2 bg-success hover:bg-success/90 text-success-foreground">
+              <CheckCircle2 size={16} />
+              Confirmar Finalização
             </Button>
           </DialogFooter>
         </DialogContent>
