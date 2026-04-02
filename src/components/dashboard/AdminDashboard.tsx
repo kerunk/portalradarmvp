@@ -145,6 +145,14 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
     return all;
   }, [refreshKey, adminRole, user?.email]);
 
+  const inactiveCompaniesCount = useMemo(() => {
+    const all = getCompanies().filter(c => c.active === false && !c.deleted);
+    if (adminRole === "gerente_conta" && user?.email) {
+      return all.filter(c => c.ownerEmail?.toLowerCase() === user.email.toLowerCase()).length;
+    }
+    return all.length;
+  }, [refreshKey, adminRole, user?.email]);
+
   const companiesCompleted = companies.filter(c => c.onboardingStatus === "completed").length;
   const companiesPending = companies.filter(c => c.onboardingStatus !== "completed").length;
 
