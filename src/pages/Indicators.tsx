@@ -178,8 +178,8 @@ export default function Indicators() {
 
   return (
     <AppLayout
-      title="Indicadores"
-      subtitle="Métricas consolidadas do programa baseadas em dados reais de governança"
+      title={isAdminContext ? "Indicadores — Visão Administrativa" : "Indicadores"}
+      subtitle={isAdminContext ? "Métricas consolidadas da carteira de implementação" : "Métricas consolidadas do programa baseadas em dados reais de governança"}
     >
       <div className="space-y-6 animate-fade-in">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
