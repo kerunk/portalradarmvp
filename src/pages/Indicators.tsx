@@ -194,7 +194,7 @@ export default function Indicators() {
           <TabsContent value="overview" className="space-y-6">
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              <Card className="p-5 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/ciclos")}>
+              <Card className="p-5 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate(isAdminContext ? "/ciclos-ativos" : "/ciclos")}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Total de Ações</p>
