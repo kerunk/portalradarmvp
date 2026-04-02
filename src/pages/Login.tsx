@@ -69,8 +69,8 @@ export default function Login() {
       navigate("/");
     } else if (result.inactive) {
       toast({
-        title: "Empresa inativa",
-        description: "Esta empresa está inativa. Entre em contato com o Administrador MVP.",
+        title: "Conta desativada",
+        description: "Conta desativada. Entre em contato com o Administrador MVP.",
         variant: "destructive",
       });
     } else if (result.locked) {
