@@ -811,6 +811,21 @@ export default function UserManagement() {
             )}
           </DialogContent>
         </Dialog>
+        <BulkTransferDialog
+          open={!!bulkTransferTarget}
+          onOpenChange={(open) => { if (!open) setBulkTransferTarget(null); }}
+          sourceUser={bulkTransferTarget}
+          allUsers={users}
+          currentUserEmail={currentUser?.email || ""}
+          currentUserName={currentUser?.name || "Admin"}
+          onTransferComplete={() => {
+            // After all companies transferred, allow deletion
+            if (bulkTransferTarget && getCompanyCountForManager(bulkTransferTarget.email) === 0) {
+              setDeleteTarget(bulkTransferTarget);
+              setBulkTransferTarget(null);
+            }
+          }}
+        />
       </div>
     </AppLayout>
   );
