@@ -8,18 +8,16 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Bell, AlertTriangle, TrendingDown, Milestone, Check,
-  Building2, Clock, Archive, Filter,
+  Building2, Clock, Archive, Filter, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  generateAdminNotifications,
   dismissAdminNotification,
   dismissAllAdminNotifications,
-  type AdminNotification,
-  type AdminNotificationPriority,
 } from "@/lib/adminNotifications";
-import { generateSmartAlerts } from "@/lib/storage";
+import { dismissAlert } from "@/lib/storage";
+import { getVisibleAlertsForUser, type UnifiedAlert } from "@/lib/alertVisibility";
 
 const priorityStyles: Record<AdminNotificationPriority, string> = {
   critical: "text-destructive bg-destructive/10",
