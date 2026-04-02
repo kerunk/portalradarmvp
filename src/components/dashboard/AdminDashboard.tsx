@@ -268,7 +268,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
       </div>
 
       {/* BLOCO 1 — KPIs da Carteira */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <MetricCard
           title="Empresas Ativas"
           value={companiesCompleted}
@@ -276,6 +276,15 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
           subtitle={`${companiesPending} em onboarding`}
           tooltip="Empresas com onboarding concluído"
           variant="default"
+          onClick={() => navigate("/empresas")}
+        />
+        <MetricCard
+          title="Empresas Inativas"
+          value={inactiveCompaniesCount}
+          icon={PowerOff}
+          subtitle="acesso bloqueado"
+          tooltip="Empresas inativadas — não impactam KPIs operacionais"
+          variant={inactiveCompaniesCount > 0 ? "warning" : "default"}
           onClick={() => navigate("/empresas")}
         />
         <MetricCard
