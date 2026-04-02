@@ -15,7 +15,7 @@ import {
   Building2, Users, TrendingUp, CheckCircle,
   AlertTriangle, BarChart3, Rocket, GraduationCap,
   ShieldAlert, ShieldCheck, AlertCircle, ArrowRight,
-  Layers, Clock,
+  Layers, Clock, PowerOff,
 } from "lucide-react";
 import { getCompanies, setActiveCompany, getState } from "@/lib/storage";
 import { getCompanyRiskData, type CompanyRiskData } from "@/lib/adminNotifications";
