@@ -455,6 +455,20 @@ export default function Companies() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Editar empresa"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditCompany(ec.company);
+                            }}
+                          >
+                            <Pencil size={14} className="text-muted-foreground" />
+                          </Button>
+                        )}
                         {canDelete && (
                           <>
                             <Button
