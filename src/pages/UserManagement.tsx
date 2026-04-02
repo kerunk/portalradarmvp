@@ -38,6 +38,7 @@ import { getCompanyCountForManager, getCompaniesForManager } from "@/lib/portfol
 import { addOperationalEvent } from "@/lib/operationalEvents";
 import { auditUserAction } from "@/lib/auditLog";
 import jsPDF from "jspdf";
+import { BulkTransferDialog } from "@/components/companies/BulkTransferDialog";
 import {
   type AdminRole,
   ADMIN_ROLE_LABELS,
