@@ -61,14 +61,23 @@ export default function Companies() {
   const [selectedManager, setSelectedManager] = useState("");
   const [deleteCompany, setDeleteCompany] = useState<CompanyState | null>(null);
   const [deactivateCompany, setDeactivateCompany] = useState<CompanyState | null>(null);
+  const [editCompany, setEditCompany] = useState<CompanyState | null>(null);
 
   const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
   const canReassign = adminRole === "admin_master" || adminRole === "admin_mvp";
   const canDelete = hasPermission(adminRole, "deleteCompanies");
+  const canEdit = adminRole === "admin_master" || adminRole === "admin_mvp";
 
   useEffect(() => {
     if (!createDialogOpen) setRefreshKey(k => k + 1);
   }, [createDialogOpen]);
+
+  // Listen for company changes from CreateCompanyDialog
+  useEffect(() => {
+    const handler = () => setRefreshKey(k => k + 1);
+    window.addEventListener("mvp_company_changed", handler);
+    return () => window.removeEventListener("mvp_company_changed", handler);
+  }, []);
 
   const enriched = useMemo(() => getEnrichedCompanies(user?.email, adminRole), [refreshKey, user?.email, adminRole]);
 

@@ -146,6 +146,9 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
     // Emit operational event
     emitCompanyCreated(company.name, company.id, user?.name, user?.email);
 
+    // Dispatch custom event to force refresh in Companies list
+    window.dispatchEvent(new CustomEvent("mvp_company_changed"));
+
     setSavedCompany(company);
     
     setCreatedData({
