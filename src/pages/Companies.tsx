@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CreateCompanyDialog } from "@/components/companies/CreateCompanyDialog";
+import { EditCompanyDialog } from "@/components/companies/EditCompanyDialog";
 import { getCompanies, setCompanies, type CompanyState } from "@/lib/storage";
 import { Badge } from "@/components/ui/badge";
 import {
