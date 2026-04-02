@@ -61,6 +61,8 @@ import {
 import { getAllCycleActions, recalculateActionStatuses } from "@/lib/storage";
 import { mvpCycles } from "@/data/mvpCycles";
 import { CYCLE_IDS, PHASE_COLORS } from "@/lib/constants";
+import { useAuth } from "@/contexts/AuthContext";
+import { useReadOnly } from "@/contexts/ReadOnlyContext";
 
 interface ActionData {
   cycleId: string;
