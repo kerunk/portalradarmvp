@@ -61,6 +61,8 @@ import {
 import { getAllCycleActions, recalculateActionStatuses } from "@/lib/storage";
 import { mvpCycles } from "@/data/mvpCycles";
 import { CYCLE_IDS, PHASE_COLORS } from "@/lib/constants";
+import { useAuth } from "@/contexts/AuthContext";
+import { useReadOnly } from "@/contexts/ReadOnlyContext";
 
 interface ActionData {
   cycleId: string;
@@ -80,6 +82,11 @@ export default function Indicators() {
   const initialTab = searchParams.get("tab") || "overview";
   const [activeTab, setActiveTab] = useState(initialTab);
   const [deadlineFilter, setDeadlineFilter] = useState("all");
+  const { isAdminMVP } = useAuth();
+  const { isReadOnly } = useReadOnly();
+  
+  // Admin context: not in mirror/read-only mode
+  const isAdminContext = isAdminMVP && !isReadOnly;
 
   // Recalculate on mount
   useEffect(() => {
@@ -171,8 +178,8 @@ export default function Indicators() {
 
   return (
     <AppLayout
-      title="Indicadores"
-      subtitle="Métricas consolidadas do programa baseadas em dados reais de governança"
+      title={isAdminContext ? "Indicadores — Visão Administrativa" : "Indicadores"}
+      subtitle={isAdminContext ? "Métricas consolidadas da carteira de implementação" : "Métricas consolidadas do programa baseadas em dados reais de governança"}
     >
       <div className="space-y-6 animate-fade-in">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -187,7 +194,7 @@ export default function Indicators() {
           <TabsContent value="overview" className="space-y-6">
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              <Card className="p-5 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/ciclos")}>
+              <Card className="p-5 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate(isAdminContext ? "/ciclos-ativos" : "/ciclos")}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Total de Ações</p>
@@ -220,7 +227,7 @@ export default function Indicators() {
                 </div>
               </Card>
 
-              <Card className="p-5 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/turmas")}>
+              <Card className="p-5 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate(isAdminContext ? "/admin-turmas" : "/turmas")}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Turmas</p>
@@ -405,7 +412,7 @@ export default function Indicators() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => navigate(`/ciclos?cycle=${stat.cycleId}`)}
+                          onClick={() => navigate(isAdminContext ? `/ciclos-ativos` : `/ciclos?cycle=${stat.cycleId}`)}
                         >
                           <Eye size={16} className="mr-1" />
                           Ver
@@ -543,7 +550,7 @@ export default function Indicators() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => navigate(`/ciclos?cycle=${action.cycleId}`)}
+                            onClick={() => navigate(isAdminContext ? `/ciclos-ativos` : `/ciclos?cycle=${action.cycleId}`)}
                           >
                             <Eye size={14} />
                           </Button>
