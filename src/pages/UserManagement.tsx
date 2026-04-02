@@ -406,6 +406,11 @@ export default function UserManagement() {
       toast({ title: check.reason || "Ação não permitida", variant: "destructive" });
       return;
     }
+    // If gerente with companies, open bulk transfer first
+    if (u.adminRole === "gerente_conta" && getCompanyCountForManager(u.email) > 0) {
+      setBulkTransferTarget(u);
+      return;
+    }
     setDeleteTarget(u);
     setTransferManagerEmail("");
   };
