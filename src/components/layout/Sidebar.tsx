@@ -96,7 +96,7 @@ function getAdminSections(adminRole: AdminRole): NavSection[] {
 // Navigation for Client Portal
 const clientNavigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Estrutura Organizacional", href: "/estrutura", icon: Layers },
+  { name: "Estrutura da Empresa", href: "/estrutura", icon: Layers },
   { name: "Base Populacional", href: "/base-populacional", icon: Database },
   { name: "Governança do Núcleo", href: "/nucleo", icon: ShieldCheck },
   { name: "Ciclos MVP", href: "/ciclos", icon: Rocket },

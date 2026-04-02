@@ -322,32 +322,53 @@ export function generatePopulationTemplate(): string {
 }
 
 // Parse CSV content into PopulationMember[]
+// Supports both old format (nome,setor,cargo,email,...) and new format (Nome Completo,Email,Cargo,Setor,...)
 export function parsePopulationCSV(csvContent: string): { members: Omit<PopulationMember, 'id' | 'active' | 'facilitator' | 'nucleo' | 'leadership'>[]; errors: string[] } {
   const lines = csvContent.trim().split('\n');
   const members: Omit<PopulationMember, 'id' | 'active' | 'facilitator' | 'nucleo' | 'leadership'>[] = [];
   const errors: string[] = [];
 
-  // Skip header
+  if (lines.length < 2) {
+    errors.push("Arquivo vazio ou sem dados");
+    return { members, errors };
+  }
+
+  // Detect format by header
+  const headerCols = lines[0].split(',').map(c => c.trim().toLowerCase());
+  const isNewFormat = headerCols[0]?.includes("nome") && headerCols[1]?.includes("email");
+
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(',').map(c => c.trim());
-    if (cols.length < 2) {
-      errors.push(`Linha ${i + 1}: dados insuficientes`);
-      continue;
-    }
+    if (cols.length < 2 || !cols.some(c => c.trim())) continue;
     const name = cols[0];
     if (!name) {
       errors.push(`Linha ${i + 1}: nome é obrigatório`);
       continue;
     }
-    members.push({
-      name,
-      sector: cols[1] || "",
-      role: cols[2] || "",
-      email: cols[3] || "",
-      unit: cols[4] || "",
-      shift: cols[5] || "",
-      admissionDate: cols[6] || "",
-    });
+
+    if (isNewFormat) {
+      // New format: Nome, Email, Cargo, Setor, Unidade, Turno, Data Admissão
+      members.push({
+        name,
+        email: cols[1] || "",
+        role: cols[2] || "",
+        sector: cols[3] || "",
+        unit: cols[4] || "",
+        shift: cols[5] || "",
+        admissionDate: cols[6] || "",
+      });
+    } else {
+      // Legacy format: nome, setor, cargo, email, unidade, turno, data_admissao
+      members.push({
+        name,
+        sector: cols[1] || "",
+        role: cols[2] || "",
+        email: cols[3] || "",
+        unit: cols[4] || "",
+        shift: cols[5] || "",
+        admissionDate: cols[6] || "",
+      });
+    }
   }
 
   return { members, errors };
