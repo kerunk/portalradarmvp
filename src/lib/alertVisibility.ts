@@ -92,7 +92,7 @@ function getAdminAlerts(user: User, adminRole: string): UnifiedAlert[] {
     id: n.id,
     title: n.title,
     message: n.message,
-    severity: n.priority,
+    severity: n.priority === "insight" ? "info" : n.priority,
     scope: n.companyId ? "COMPANY" as AlertScope : "GLOBAL" as AlertScope,
     companyId: n.companyId,
     companyName: n.companyName,
