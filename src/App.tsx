@@ -39,6 +39,7 @@ import CompanyMirror from "./pages/CompanyMirror";
 import ManagerPortfolio from "./pages/ManagerPortfolio";
 import DelayedActions from "./pages/DelayedActions";
 import ActiveCycles from "./pages/ActiveCycles";
+import AdminTurmas from "./pages/AdminTurmas";
 import NotificationCenter from "./pages/NotificationCenter";
 import NotFound from "./pages/NotFound";
 
