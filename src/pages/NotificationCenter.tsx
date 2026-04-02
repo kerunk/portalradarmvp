@@ -19,16 +19,16 @@ import {
 import { dismissAlert } from "@/lib/storage";
 import { getVisibleAlertsForUser, type UnifiedAlert } from "@/lib/alertVisibility";
 
-const priorityStyles: Record<AdminNotificationPriority, string> = {
+const priorityStyles: Record<string, string> = {
   critical: "text-destructive bg-destructive/10",
   warning: "text-warning bg-warning/10",
-  insight: "text-primary bg-primary/10",
+  info: "text-primary bg-primary/10",
 };
 
-const priorityLabels: Record<AdminNotificationPriority, { emoji: string; label: string }> = {
+const priorityLabels: Record<string, { emoji: string; label: string }> = {
   critical: { emoji: "🔴", label: "Crítico" },
   warning: { emoji: "🟡", label: "Atenção" },
-  insight: { emoji: "🔵", label: "Insight" },
+  info: { emoji: "🔵", label: "Info" },
 };
 
 // Notification history storage
