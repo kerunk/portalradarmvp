@@ -412,7 +412,7 @@ export default function Indicators() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => navigate(`/ciclos?cycle=${stat.cycleId}`)}
+                          onClick={() => navigate(isAdminContext ? `/ciclos-ativos` : `/ciclos?cycle=${stat.cycleId}`)}
                         >
                           <Eye size={16} className="mr-1" />
                           Ver
