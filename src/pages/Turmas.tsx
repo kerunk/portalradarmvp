@@ -305,6 +305,46 @@ export default function Turmas() {
     toast({ title: "Presença registrada!", description: "Os dados de presença foram salvos." });
   };
 
+  // Finalize turma
+  const [finalizingTurmaId, setFinalizingTurmaId] = useState<string | null>(null);
+
+  const handleFinalizeTurma = (turmaId: string) => {
+    const turma = turmas.find(t => t.id === turmaId);
+    if (!turma) return;
+
+    const hasAttendance = turma.attendance && Object.values(turma.attendance).some(v => v === "present");
+    if (!hasAttendance) {
+      toast({ title: "Erro", description: "Registre pelo menos 1 presença antes de finalizar.", variant: "destructive" });
+      return;
+    }
+
+    // Check future training date
+    if (turma.trainingDate) {
+      const trainingDate = new Date(turma.trainingDate);
+      trainingDate.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (trainingDate > today) {
+        if (!confirm("A data do treinamento é futura. Deseja finalizar mesmo assim?")) return;
+      }
+    }
+
+    setFinalizingTurmaId(turmaId);
+  };
+
+  const confirmFinalizeTurma = () => {
+    if (!finalizingTurmaId) return;
+    const updated = turmas.map(t =>
+      t.id === finalizingTurmaId
+        ? { ...t, status: "completed" as const, completedAt: new Date().toISOString() }
+        : t
+    );
+    setTurmasState(updated);
+    setTurmas(updated);
+    setFinalizingTurmaId(null);
+    toast({ title: "Turma finalizada!", description: "A turma foi marcada como concluída e os indicadores foram atualizados." });
+  };
+
   // Unique facilitators for list filter
   const uniqueFacilitators = useMemo(() => {
     const names = [...new Set(turmas.map(t => t.facilitator).filter(Boolean))];
