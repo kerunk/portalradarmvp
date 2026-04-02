@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -24,20 +23,29 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Building2,
   Plus,
   Pencil,
   Archive,
   ArchiveRestore,
-  GripVertical,
   Layers,
   Clock,
   Briefcase,
+  Users,
+  ChevronDown,
+  ChevronRight,
+  Info,
 } from "lucide-react";
 import {
   type OrgStructure,
   getOrgStructure,
   setOrgStructure,
+  getPopulation,
 } from "@/lib/companyStorage";
 
 type OrgCategory = "units" | "sectors" | "shifts" | "positions";
@@ -49,11 +57,11 @@ interface OrgItem {
   order: number;
 }
 
-const categoryConfig: Record<OrgCategory, { label: string; icon: any; description: string }> = {
-  units: { label: "Unidades", icon: Building2, description: "Unidades operacionais da empresa" },
-  sectors: { label: "Setores", icon: Layers, description: "Setores e departamentos" },
-  shifts: { label: "Turnos", icon: Clock, description: "Turnos de trabalho" },
-  positions: { label: "Cargos", icon: Briefcase, description: "Cargos e funções" },
+const categoryConfig: Record<OrgCategory, { label: string; singular: string; icon: any; description: string; populationField: string }> = {
+  units: { label: "Unidades", singular: "Unidade", icon: Building2, description: "Unidades operacionais da empresa", populationField: "unit" },
+  sectors: { label: "Setores", singular: "Setor", icon: Layers, description: "Setores e departamentos", populationField: "sector" },
+  shifts: { label: "Turnos", singular: "Turno", icon: Clock, description: "Turnos de trabalho", populationField: "shift" },
+  positions: { label: "Cargos", singular: "Cargo", icon: Briefcase, description: "Cargos e funções", populationField: "role" },
 };
 
 export default function OrgStructurePage() {
@@ -62,32 +70,77 @@ export default function OrgStructurePage() {
   const companyId = user?.companyId || "";
 
   const [refreshKey, setRefreshKey] = useState(0);
-  const [activeTab, setActiveTab] = useState<OrgCategory>("units");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<OrgCategory>("units");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formName, setFormName] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<OrgCategory, boolean>>({
+    units: true, sectors: true, shifts: false, positions: false,
+  });
 
   const orgStructure = useMemo(() => getOrgStructure(companyId), [companyId, refreshKey]);
+  const population = useMemo(() => getPopulation(companyId).filter(m => m.active), [companyId, refreshKey]);
 
   const refresh = () => setRefreshKey(k => k + 1);
 
-  const items = useMemo(() => {
-    const list = orgStructure[activeTab] || [];
-    return list
-      .filter(item => showArchived || !item.archived)
-      .sort((a, b) => a.order - b.order);
-  }, [orgStructure, activeTab, showArchived, refreshKey]);
+  // Build consolidated data: merge org structure items with population-derived values
+  const getConsolidatedItems = (cat: OrgCategory) => {
+    const config = categoryConfig[cat];
+    const field = config.populationField as keyof typeof population[0];
+    const orgItems = orgStructure[cat] || [];
 
-  const openAdd = () => {
+    // Collect unique values from population
+    const populationValues = new Set<string>();
+    population.forEach(m => {
+      const val = m[field];
+      if (typeof val === "string" && val.trim()) populationValues.add(val.trim());
+    });
+
+    // Count collaborators per value
+    const countMap: Record<string, number> = {};
+    population.forEach(m => {
+      const val = m[field];
+      if (typeof val === "string" && val.trim()) {
+        countMap[val.trim()] = (countMap[val.trim()] || 0) + 1;
+      }
+    });
+
+    // Merge: keep all org items + add any population values not yet in org
+    const existingNames = new Set(orgItems.map(i => i.name.toLowerCase()));
+    const autoItems: OrgItem[] = [];
+    populationValues.forEach(val => {
+      if (!existingNames.has(val.toLowerCase())) {
+        autoItems.push({
+          id: `auto-${cat}-${val}`,
+          name: val,
+          archived: false,
+          order: orgItems.length + autoItems.length,
+        });
+      }
+    });
+
+    const allItems = [...orgItems, ...autoItems];
+    return allItems
+      .filter(i => !i.archived)
+      .sort((a, b) => a.order - b.order)
+      .map(item => ({
+        ...item,
+        count: countMap[item.name] || 0,
+        isAuto: item.id.startsWith("auto-"),
+      }));
+  };
+
+  const openAdd = (cat: OrgCategory) => {
     setFormName("");
     setEditingId(null);
+    setEditingCategory(cat);
     setDialogOpen(true);
   };
 
-  const openEdit = (item: OrgItem) => {
+  const openEdit = (cat: OrgCategory, item: OrgItem) => {
     setFormName(item.name);
     setEditingId(item.id);
+    setEditingCategory(cat);
     setDialogOpen(true);
   };
 
@@ -98,9 +151,8 @@ export default function OrgStructurePage() {
     }
 
     const structure = getOrgStructure(companyId);
-    const list = [...(structure[activeTab] || [])];
+    const list = [...(structure[editingCategory] || [])];
 
-    // Check duplicates
     const duplicate = list.find(
       i => i.name.toLowerCase() === formName.trim().toLowerCase() && i.id !== editingId
     );
@@ -115,7 +167,7 @@ export default function OrgStructurePage() {
       toast({ title: "Atualizado!" });
     } else {
       list.push({
-        id: `org-${activeTab}-${Date.now()}`,
+        id: `org-${editingCategory}-${Date.now()}`,
         name: formName.trim(),
         archived: false,
         order: list.length,
@@ -123,34 +175,58 @@ export default function OrgStructurePage() {
       toast({ title: "Adicionado!" });
     }
 
-    structure[activeTab] = list;
+    structure[editingCategory] = list;
     setOrgStructure(companyId, structure);
     setDialogOpen(false);
     refresh();
   };
 
-  const toggleArchive = (item: OrgItem) => {
+  const toggleArchive = (cat: OrgCategory, item: OrgItem) => {
     const structure = getOrgStructure(companyId);
-    const list = structure[activeTab].map(i =>
+    const list = structure[cat].map(i =>
       i.id === item.id ? { ...i, archived: !i.archived } : i
     );
-    structure[activeTab] = list;
+    structure[cat] = list;
     setOrgStructure(companyId, structure);
     toast({ title: item.archived ? "Restaurado" : "Arquivado" });
     refresh();
   };
 
-  const config = categoryConfig[activeTab];
-  const totalActive = (orgStructure[activeTab] || []).filter(i => !i.archived).length;
-  const totalArchived = (orgStructure[activeTab] || []).filter(i => i.archived).length;
+  const toggleSection = (cat: OrgCategory) => {
+    setOpenSections(prev => ({ ...prev, [cat]: !prev[cat] }));
+  };
+
+  // Global stats
+  const totalColaboradores = population.length;
 
   return (
-    <AppLayout title="Estrutura Organizacional" subtitle={`Configuração da estrutura — ${user?.companyName || "Empresa"}`}>
+    <AppLayout title="Estrutura da Empresa" subtitle={`Visão consolidada — ${user?.companyName || "Empresa"}`}>
       <div className="space-y-6 animate-fade-in">
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Explanation banner */}
+        <Card className="p-4 bg-primary/5 border-primary/20">
+          <div className="flex items-start gap-3">
+            <Info size={18} className="text-primary mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Visão consolidada da sua estrutura organizacional</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Esta área reúne automaticamente as unidades, setores, turnos e cargos identificados na sua base de colaboradores.
+                Você também pode adicionar ou editar itens manualmente. Os dados são atualizados conforme novos colaboradores são cadastrados.
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Summary stats */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <Card className="p-4">
+            <div className="flex items-center gap-2">
+              <Users size={16} className="text-primary" />
+              <p className="text-xs text-muted-foreground">Colaboradores Ativos</p>
+            </div>
+            <p className="text-2xl font-bold text-foreground mt-1">{totalColaboradores}</p>
+          </Card>
           {(Object.keys(categoryConfig) as OrgCategory[]).map(cat => {
-            const count = (orgStructure[cat] || []).filter(i => !i.archived).length;
+            const items = getConsolidatedItems(cat);
             const Icon = categoryConfig[cat].icon;
             return (
               <Card key={cat} className="p-4">
@@ -158,100 +234,127 @@ export default function OrgStructurePage() {
                   <Icon size={16} className="text-primary" />
                   <p className="text-xs text-muted-foreground">{categoryConfig[cat].label}</p>
                 </div>
-                <p className="text-2xl font-bold text-foreground mt-1">{count}</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{items.length}</p>
               </Card>
             );
           })}
         </div>
 
-        <Tabs value={activeTab} onValueChange={v => setActiveTab(v as OrgCategory)}>
-          <TabsList className="grid grid-cols-4 w-full">
-            {(Object.keys(categoryConfig) as OrgCategory[]).map(cat => (
-              <TabsTrigger key={cat} value={cat}>{categoryConfig[cat].label}</TabsTrigger>
-            ))}
-          </TabsList>
+        {/* Collapsible sections for each category */}
+        <div className="space-y-3">
+          {(Object.keys(categoryConfig) as OrgCategory[]).map(cat => {
+            const config = categoryConfig[cat];
+            const items = getConsolidatedItems(cat);
+            const Icon = config.icon;
+            const isOpen = openSections[cat];
+            const archivedCount = (orgStructure[cat] || []).filter(i => i.archived).length;
 
-          <TabsContent value={activeTab} className="mt-4">
-            <Card>
-              <div className="p-4 border-b border-border flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-foreground">{config.label}</h3>
-                  <p className="text-xs text-muted-foreground">{config.description}</p>
-                </div>
-                <div className="flex gap-2">
-                  {totalArchived > 0 && (
-                    <Button variant="outline" size="sm" onClick={() => setShowArchived(!showArchived)}>
-                      <Archive size={14} className="mr-1" />
-                      {showArchived ? "Ocultar arquivados" : `${totalArchived} arquivados`}
-                    </Button>
-                  )}
-                  <Button size="sm" onClick={openAdd}>
-                    <Plus size={14} className="mr-1" /> Adicionar
-                  </Button>
-                </div>
-              </div>
-
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">#</TableHead>
-                    <TableHead>Nome</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                        Nenhum item cadastrado. Clique em "Adicionar" para começar.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {items.map((item, idx) => (
-                    <TableRow key={item.id} className={item.archived ? "opacity-50" : ""}>
-                      <TableCell className="text-muted-foreground">
-                        <GripVertical size={14} className="inline mr-1" />
-                        {idx + 1}
-                      </TableCell>
-                      <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell className="text-center">
-                        {item.archived ? (
-                          <Badge variant="outline" className="text-muted-foreground">Arquivado</Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">Ativo</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => openEdit(item)}>
-                            <Pencil size={14} />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => toggleArchive(item)}>
-                            {item.archived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
-                          </Button>
+            return (
+              <Card key={cat} className="overflow-hidden">
+                <Collapsible open={isOpen} onOpenChange={() => toggleSection(cat)}>
+                  <CollapsibleTrigger asChild>
+                    <button className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors text-left">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Icon size={18} className="text-primary" />
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              <div className="p-3 border-t border-border">
-                <p className="text-xs text-muted-foreground">
-                  {totalActive} ativos{totalArchived > 0 && ` · ${totalArchived} arquivados`}
-                </p>
-              </div>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                        <div>
+                          <h3 className="font-semibold text-foreground">{config.label}</h3>
+                          <p className="text-xs text-muted-foreground">{config.description}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
+                          {items.length} {items.length === 1 ? "item" : "itens"}
+                        </Badge>
+                        {archivedCount > 0 && (
+                          <Badge variant="outline" className="text-muted-foreground">
+                            {archivedCount} arquivados
+                          </Badge>
+                        )}
+                        {isOpen ? <ChevronDown size={18} className="text-muted-foreground" /> : <ChevronRight size={18} className="text-muted-foreground" />}
+                      </div>
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="border-t border-border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nome</TableHead>
+                            <TableHead className="text-center w-32">Colaboradores</TableHead>
+                            <TableHead className="text-center w-28">Origem</TableHead>
+                            <TableHead className="text-right w-24">Ações</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {items.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
+                                Nenhum item encontrado. Cadastre colaboradores ou adicione manualmente.
+                              </TableCell>
+                            </TableRow>
+                          )}
+                          {items.map(item => (
+                            <TableRow key={item.id}>
+                              <TableCell className="font-medium">{item.name}</TableCell>
+                              <TableCell className="text-center">
+                                {item.count > 0 ? (
+                                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
+                                    {item.count}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant="outline" className={item.isAuto
+                                  ? "bg-blue-500/10 text-blue-600 border-blue-500/30 text-xs"
+                                  : "text-muted-foreground text-xs"
+                                }>
+                                  {item.isAuto ? "Automático" : "Manual"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-1">
+                                  {!item.isAuto && (
+                                    <>
+                                      <Button variant="ghost" size="sm" onClick={() => openEdit(cat, item)}>
+                                        <Pencil size={14} />
+                                      </Button>
+                                      <Button variant="ghost" size="sm" onClick={() => toggleArchive(cat, item)}>
+                                        <Archive size={14} />
+                                      </Button>
+                                    </>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      <div className="p-3 border-t border-border flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">
+                          {items.length} ativos{archivedCount > 0 && ` · ${archivedCount} arquivados`}
+                        </p>
+                        <Button size="sm" variant="outline" onClick={() => openAdd(cat)}>
+                          <Plus size={14} className="mr-1" /> Adicionar {config.singular}
+                        </Button>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </Card>
+            );
+          })}
+        </div>
       </div>
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar" : "Adicionar"} {config.label.slice(0, -1)}</DialogTitle>
+            <DialogTitle>{editingId ? "Editar" : "Adicionar"} {categoryConfig[editingCategory].singular}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1">
@@ -259,7 +362,7 @@ export default function OrgStructurePage() {
               <Input
                 value={formName}
                 onChange={e => setFormName(e.target.value)}
-                placeholder={`Nome do(a) ${config.label.slice(0, -1).toLowerCase()}`}
+                placeholder={`Nome do(a) ${categoryConfig[editingCategory].singular.toLowerCase()}`}
                 onKeyDown={e => e.key === "Enter" && handleSave()}
               />
             </div>
