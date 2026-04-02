@@ -82,7 +82,7 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSaved }: Edit
 
     auditCompanyAction(
       user?.email || "", user?.name || "Admin",
-      "company_edited", company.id, name.trim(),
+      "company_updated", company.id, name.trim(),
       `Dados cadastrais atualizados`,
       { name: before.name, sector: before.sector },
       { name: name.trim(), sector }
