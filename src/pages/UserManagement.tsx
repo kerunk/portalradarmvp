@@ -28,7 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Search, ShieldCheck, Crown, Briefcase, ChevronRight, Download, CheckCircle2, Copy, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Search, ShieldCheck, Crown, Briefcase, ChevronRight, Download, CheckCircle2, Copy, Trash2, AlertTriangle, ArrowRightLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { getCompanies, setCompanies } from "@/lib/storage";
