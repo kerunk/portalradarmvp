@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,9 @@ import {
   Calendar,
   Users,
   FileText,
-  ArrowRight
+  ArrowRight,
+  ExternalLink,
+  ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NEXT_CYCLE, type CycleId } from "@/lib/constants";
@@ -48,11 +51,11 @@ export function CycleClosureDialog({
   onCycleClosed,
   onExportPDF,
 }: CycleClosureDialogProps) {
+  const navigate = useNavigate();
   const [notes, setNotes] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Evaluate cycle using governance layer
   const evaluation: CycleEvaluationResult = avaliarEncerramentoDeCiclo(cycleId);
   const nextCycle = NEXT_CYCLE[cycleId as CycleId];
 
@@ -74,6 +77,11 @@ export function CycleClosureDialog({
     }
   };
 
+  const handleNavigateTo = (path: string) => {
+    onClose();
+    navigate(path);
+  };
+
   const criteriaItems = [
     {
       label: "Ações concluídas",
@@ -81,7 +89,11 @@ export function CycleClosureDialog({
       required: evaluation.criteria.minActionCompletionRequired,
       unit: "%",
       met: evaluation.criteria.actionCompletionPercent >= evaluation.criteria.minActionCompletionRequired,
-      icon: CheckCircle2,
+      icon: ListChecks,
+      isBlocker: true,
+      helpText: "Marque ações como 'Concluído' nos Fatores de Sucesso deste ciclo.",
+      navigateTo: `/ciclos?cycle=${cycleId}`,
+      navigateLabel: "Ir para Ações",
     },
     {
       label: "Turmas concluídas",
@@ -90,6 +102,10 @@ export function CycleClosureDialog({
       unit: "",
       met: evaluation.criteria.completedTurmas >= evaluation.criteria.minTurmasRequired,
       icon: Users,
+      isBlocker: true,
+      helpText: "Finalize pelo menos 1 turma vinculada a este ciclo na tela de Turmas.",
+      navigateTo: "/turmas",
+      navigateLabel: "Ir para Turmas",
     },
     {
       label: "Decisão/validação registrada",
@@ -98,7 +114,10 @@ export function CycleClosureDialog({
       unit: "",
       met: evaluation.criteria.hasDecisionOrValidation,
       icon: FileText,
-      isWarning: !evaluation.criteria.hasDecisionOrValidation,
+      isBlocker: false,
+      helpText: "Registre uma decisão ou validação na tela de Registros, vinculando ao ciclo.",
+      navigateTo: `/registros?cycleId=${cycleId}`,
+      navigateLabel: "Ir para Registros",
     },
   ];
 
@@ -124,31 +143,52 @@ export function CycleClosureDialog({
             </h4>
             
             {criteriaItems.map((item, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30">
-                <div className="flex items-center gap-2">
-                  {item.met ? (
-                    <CheckCircle2 className="h-4 w-4 text-success" />
-                  ) : item.isWarning ? (
-                    <AlertTriangle className="h-4 w-4 text-warning" />
-                  ) : (
-                    <AlertTriangle className="h-4 w-4 text-destructive" />
-                  )}
-                  <span className="text-sm">{item.label}</span>
+              <div key={i} className="p-3 rounded-lg bg-secondary/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {item.met ? (
+                      <CheckCircle2 className="h-4 w-4 text-success" />
+                    ) : item.isBlocker ? (
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4 text-warning" />
+                    )}
+                    <span className="text-sm">{item.label}</span>
+                    {!item.isBlocker && !item.met && (
+                      <Badge variant="outline" className="text-xs">Opcional</Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className={cn(
+                      item.met 
+                        ? "bg-success/10 text-success" 
+                        : item.isBlocker
+                          ? "bg-destructive/10 text-destructive"
+                          : "bg-warning/10 text-warning"
+                    )}>
+                      {item.current}{item.unit}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      / {item.required}{item.unit}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge className={cn(
-                    item.met 
-                      ? "bg-success/10 text-success" 
-                      : item.isWarning 
-                        ? "bg-warning/10 text-warning"
-                        : "bg-destructive/10 text-destructive"
-                  )}>
-                    {item.current}{item.unit}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    / {item.required}{item.unit}
-                  </span>
-                </div>
+
+                {/* Actionable guidance when criteria not met */}
+                {!item.met && (
+                  <div className="flex items-center justify-between pl-6">
+                    <span className="text-xs text-muted-foreground">{item.helpText}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-xs gap-1 text-primary"
+                      onClick={() => handleNavigateTo(item.navigateTo)}
+                    >
+                      {item.navigateLabel}
+                      <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -183,7 +223,7 @@ export function CycleClosureDialog({
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                <p className="font-medium mb-1">Critérios não atingidos:</p>
+                <p className="font-medium mb-1">Resolva os itens acima para liberar o encerramento:</p>
                 <ul className="text-sm space-y-1">
                   {evaluation.blockers.map((blocker, i) => (
                     <li key={i}>• {blocker}</li>
