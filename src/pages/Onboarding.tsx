@@ -323,34 +323,57 @@ export default function Onboarding() {
       <div className="text-center space-y-2">
         <Database className="h-10 w-10 text-primary mx-auto" />
         <h2 className="text-2xl font-display font-bold text-foreground">Base Populacional</h2>
-        <p className="text-sm text-muted-foreground">Cadastre todos os colaboradores da empresa.</p>
+        <p className="text-sm text-muted-foreground">Cadastre todos os colaboradores da empresa. Esses dados alimentarão automaticamente a estrutura organizacional.</p>
       </div>
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" className="flex-1" onClick={handleDownloadTemplate}>
-          <Download size={14} className="mr-1" /> Baixar Modelo CSV
-        </Button>
-        <Button variant="outline" size="sm" className="flex-1" onClick={() => fileInputRef.current?.click()}>
-          <Upload size={14} className="mr-1" /> Importar Planilha
-        </Button>
-        <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
-      </div>
+
+      {/* Import section with explanation */}
+      <Card className="p-4 space-y-3 bg-primary/5 border-primary/20">
+        <p className="text-xs font-medium text-foreground">📋 Importação via Planilha</p>
+        <p className="text-xs text-muted-foreground">
+          Baixe o modelo CSV, preencha com os dados dos colaboradores (nome, email, cargo, setor, unidade, turno e data de admissão) e importe o arquivo preenchido. Os campos preenchidos serão usados para montar a estrutura da empresa automaticamente.
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="flex-1" onClick={handleDownloadTemplate}>
+            <Download size={14} className="mr-1" /> Baixar Modelo CSV
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1" onClick={() => fileInputRef.current?.click()}>
+            <Upload size={14} className="mr-1" /> Importar Planilha
+          </Button>
+          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
+        </div>
+      </Card>
+
+      {/* Manual add form */}
       <Card className="p-4 space-y-3">
+        <p className="text-xs font-medium text-muted-foreground">Ou cadastre manualmente:</p>
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2 space-y-1">
             <Label>Nome *</Label>
             <Input placeholder="Nome completo" value={popForm.name} onChange={e => setPopForm(f => ({ ...f, name: e.target.value }))} />
           </div>
           <div className="space-y-1">
+            <Label>Email</Label>
+            <Input type="email" placeholder="email@empresa.com" value={popForm.email} onChange={e => setPopForm(f => ({ ...f, email: e.target.value }))} />
+          </div>
+          <div className="space-y-1">
+            <Label>Cargo / Função</Label>
+            <Input placeholder="Ex: Operador" value={popForm.role} onChange={e => setPopForm(f => ({ ...f, role: e.target.value }))} />
+          </div>
+          <div className="space-y-1">
             <Label>Setor *</Label>
             <Input placeholder="Ex: Produção" value={popForm.sector} onChange={e => setPopForm(f => ({ ...f, sector: e.target.value }))} />
           </div>
           <div className="space-y-1">
-            <Label>Cargo/Função</Label>
-            <Input placeholder="Ex: Operador" value={popForm.role} onChange={e => setPopForm(f => ({ ...f, role: e.target.value }))} />
+            <Label>Unidade</Label>
+            <Input placeholder="Ex: Planta Industrial" value={popForm.unit || ""} onChange={e => setPopForm(f => ({ ...f, unit: e.target.value }))} />
           </div>
-          <div className="col-span-2 space-y-1">
-            <Label>Email</Label>
-            <Input type="email" placeholder="email@empresa.com" value={popForm.email} onChange={e => setPopForm(f => ({ ...f, email: e.target.value }))} />
+          <div className="space-y-1">
+            <Label>Turno</Label>
+            <Input placeholder="Ex: Turno A" value={popForm.shift || ""} onChange={e => setPopForm(f => ({ ...f, shift: e.target.value }))} />
+          </div>
+          <div className="space-y-1">
+            <Label>Data de Admissão</Label>
+            <Input type="date" value={popForm.admissionDate || ""} onChange={e => setPopForm(f => ({ ...f, admissionDate: e.target.value }))} />
           </div>
         </div>
         <Button type="button" variant="outline" className="w-full" onClick={handleAddPop}>
@@ -369,7 +392,9 @@ export default function Onboarding() {
               <div key={member.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div>
                   <p className="text-sm font-medium">{member.name}</p>
-                  <p className="text-xs text-muted-foreground">{member.sector}{member.role && ` · ${member.role}`}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {[member.sector, member.role, member.unit].filter(Boolean).join(" · ")}
+                  </p>
                 </div>
                 <div className="flex gap-1">
                   <Button variant="ghost" size="sm" onClick={() => handleEditPop(member)}><Pencil size={14} /></Button>
