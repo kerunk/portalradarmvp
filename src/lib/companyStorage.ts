@@ -314,7 +314,11 @@ export function isEmailUsedInCompany(companyId: string, email: string, excludeId
 
 // Generate CSV template for population import
 export function generatePopulationTemplate(): string {
-  return "nome,setor,cargo,email,unidade,turno,data_admissao\nExemplo Silva,Operações,Técnico,exemplo@empresa.com,Planta Industrial,A,2020-01-15\nMaria Santos,RH,Coordenadora,maria@empresa.com,Sede,Administrativo,2019-06-01";
+  const header = "Nome Completo,Email,Cargo / Função,Setor,Unidade,Turno,Data de Admissão";
+  const example1 = "João Exemplo Silva,joao.silva@empresa.com,Técnico de Segurança,Operações,Planta Industrial,Turno A,2020-01-15";
+  const example2 = "Maria Santos Costa,maria.santos@empresa.com,Coordenadora de RH,Recursos Humanos,Sede Administrativa,Administrativo,2019-06-01";
+  const example3 = "Carlos Oliveira,carlos.oliveira@empresa.com,Operador de Máquinas,Produção,Fábrica 02,Turno B,2021-03-10";
+  return [header, example1, example2, example3].join("\n");
 }
 
 // Parse CSV content into PopulationMember[]
