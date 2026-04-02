@@ -719,6 +719,17 @@ export default function Turmas() {
                           >
                             <Trash2 size={14} />
                           </Button>
+                          {/* Finalize Button */}
+                          {turma.status !== "completed" && turma.attendance && Object.values(turma.attendance).some(v => v === "present") && (
+                            <Button
+                              size="sm"
+                              className="h-8 gap-1 bg-success hover:bg-success/90 text-success-foreground ml-1"
+                              onClick={() => handleFinalizeTurma(turma.id)}
+                            >
+                              <CheckCircle2 size={14} />
+                              Finalizar
+                            </Button>
+                          )}
                         </div>
                       </div>
 
