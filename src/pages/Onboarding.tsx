@@ -138,7 +138,7 @@ export default function Onboarding() {
   };
 
   const handleEditPop = (member: PopulationMember) => {
-    setPopForm({ name: member.name, email: member.email, sector: member.sector, role: member.role });
+    setPopForm({ name: member.name, email: member.email, sector: member.sector, role: member.role, unit: member.unit || "", shift: member.shift || "", admissionDate: member.admissionDate || "" });
     setEditingPopId(member.id);
   };
 
