@@ -217,7 +217,7 @@ export default function AdminTurmas() {
                 filteredRows.map(row => {
                   const sc = statusConfig[row.turma.status] || statusConfig.planned;
                   const StatusIcon = sc.icon;
-                  const presences = row.turma.attendance?.filter(a => a.present).length || 0;
+                  const presences = row.turma.attendance ? Object.values(row.turma.attendance).filter(v => v === "present").length : 0;
                   return (
                     <TableRow key={`${row.companyId}-${row.turma.id}`}>
                       <TableCell>
