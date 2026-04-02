@@ -58,7 +58,7 @@ export default function AdminTurmas() {
       inProgress: rows.filter(r => r.turma.status === "in_progress").length,
       completed: rows.filter(r => r.turma.status === "completed").length,
       totalParticipants: rows.reduce((s, r) => s + (r.turma.participants?.length || 0), 0),
-      totalPresent: rows.reduce((s, r) => s + (r.turma.attendance?.filter(a => a.present).length || 0), 0),
+      totalPresent: rows.reduce((s, r) => s + (r.turma.attendance ? Object.values(r.turma.attendance).filter(v => v === "present").length : 0), 0),
     };
 
     return { rows, companies: filtered, totals };
