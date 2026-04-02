@@ -82,6 +82,11 @@ export default function Indicators() {
   const initialTab = searchParams.get("tab") || "overview";
   const [activeTab, setActiveTab] = useState(initialTab);
   const [deadlineFilter, setDeadlineFilter] = useState("all");
+  const { isAdminMVP } = useAuth();
+  const { isReadOnly } = useReadOnly();
+  
+  // Admin context: not in mirror/read-only mode
+  const isAdminContext = isAdminMVP && !isReadOnly;
 
   // Recalculate on mount
   useEffect(() => {
