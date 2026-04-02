@@ -258,6 +258,7 @@ export default function Companies() {
 
   // Stats
   const activeCompanies = enriched.filter(e => e.company.active !== false);
+  const inactiveCompanies = enriched.filter(e => e.company.active === false);
   const totalCompanies = enriched.length;
   const riskCt = activeCompanies.filter(e => e.riskLevel === "risk").length;
   const healthyCt = activeCompanies.filter(e => e.riskLevel === "healthy").length;
