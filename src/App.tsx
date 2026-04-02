@@ -88,6 +88,7 @@ const App = () => (
             <Route path="/carteira/:userId" element={<ProtectedRoute requireAdmin><ManagerPortfolio /></ProtectedRoute>} />
             <Route path="/acoes-atrasadas" element={<ProtectedRoute requireAdmin><DelayedActions /></ProtectedRoute>} />
             <Route path="/ciclos-ativos" element={<ProtectedRoute requireAdmin><ActiveCycles /></ProtectedRoute>} />
+            <Route path="/admin-turmas" element={<ProtectedRoute requireAdmin><AdminTurmas /></ProtectedRoute>} />
             <Route path="/notificacoes" element={<ProtectedRoute><NotificationCenter /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
