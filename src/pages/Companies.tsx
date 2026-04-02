@@ -269,7 +269,7 @@ export default function Companies() {
     <AppLayout title="Visão MVP" subtitle="Acompanhamento de todas as empresas">
       <div className="space-y-6 animate-fade-in">
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -300,6 +300,17 @@ export default function Companies() {
               <div>
                 <p className="text-2xl font-bold text-foreground">{riskCt}</p>
                 <p className="text-sm text-muted-foreground">Em Risco</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                <PowerOff size={20} className="text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{inactiveCompanies.length}</p>
+                <p className="text-sm text-muted-foreground">Inativas</p>
               </div>
             </div>
           </Card>
