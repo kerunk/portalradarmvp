@@ -227,7 +227,7 @@ export default function Indicators() {
                 </div>
               </Card>
 
-              <Card className="p-5 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/turmas")}>
+              <Card className="p-5 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate(isAdminContext ? "/admin-turmas" : "/turmas")}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Turmas</p>
