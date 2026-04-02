@@ -550,7 +550,7 @@ export default function Indicators() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => navigate(`/ciclos?cycle=${action.cycleId}`)}
+                            onClick={() => navigate(isAdminContext ? `/ciclos-ativos` : `/ciclos?cycle=${action.cycleId}`)}
                           >
                             <Eye size={14} />
                           </Button>
