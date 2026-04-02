@@ -543,6 +543,12 @@ export default function Companies() {
         </Card>
 
         <CreateCompanyDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+        <EditCompanyDialog
+          company={editCompany}
+          open={!!editCompany}
+          onOpenChange={(open) => { if (!open) setEditCompany(null); }}
+          onSaved={() => setRefreshKey(k => k + 1)}
+        />
 
         {/* Manager Reassignment Dialog */}
         <Dialog open={!!reassignCompany} onOpenChange={(open) => { if (!open) { setReassignCompany(null); setSelectedManager(""); } }}>
