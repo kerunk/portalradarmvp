@@ -15,7 +15,7 @@ import {
   Building2, Users, TrendingUp, CheckCircle,
   AlertTriangle, BarChart3, Rocket, GraduationCap,
   ShieldAlert, ShieldCheck, AlertCircle, ArrowRight,
-  Layers, Clock,
+  Layers, Clock, PowerOff,
 } from "lucide-react";
 import { getCompanies, setActiveCompany, getState } from "@/lib/storage";
 import { getCompanyRiskData, type CompanyRiskData } from "@/lib/adminNotifications";
@@ -145,6 +145,14 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
     return all;
   }, [refreshKey, adminRole, user?.email]);
 
+  const inactiveCompaniesCount = useMemo(() => {
+    const all = getCompanies().filter(c => c.active === false && !c.deleted);
+    if (adminRole === "gerente_conta" && user?.email) {
+      return all.filter(c => c.ownerEmail?.toLowerCase() === user.email.toLowerCase()).length;
+    }
+    return all.length;
+  }, [refreshKey, adminRole, user?.email]);
+
   const companiesCompleted = companies.filter(c => c.onboardingStatus === "completed").length;
   const companiesPending = companies.filter(c => c.onboardingStatus !== "completed").length;
 
@@ -260,7 +268,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
       </div>
 
       {/* BLOCO 1 — KPIs da Carteira */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <MetricCard
           title="Empresas Ativas"
           value={companiesCompleted}
@@ -268,6 +276,15 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
           subtitle={`${companiesPending} em onboarding`}
           tooltip="Empresas com onboarding concluído"
           variant="default"
+          onClick={() => navigate("/empresas")}
+        />
+        <MetricCard
+          title="Empresas Inativas"
+          value={inactiveCompaniesCount}
+          icon={PowerOff}
+          subtitle="acesso bloqueado"
+          tooltip="Empresas inativadas — não impactam KPIs operacionais"
+          variant={inactiveCompaniesCount > 0 ? "warning" : "default"}
           onClick={() => navigate("/empresas")}
         />
         <MetricCard

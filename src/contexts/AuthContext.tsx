@@ -364,6 +364,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (attempts.lockedUntil && Date.now() >= attempts.lockedUntil) {
       clearLoginAttempts(email);
     }
+
+    // Check if admin user is inactive (before credential check to avoid enumeration)
+    try {
+      const storedUsers = localStorage.getItem("mvp_managed_users_v2");
+      if (storedUsers) {
+        const managed = JSON.parse(storedUsers) as Array<{ email: string; active: boolean }>;
+        const foundUser = managed.find(u => u.email.toLowerCase() === email.toLowerCase());
+        if (foundUser && foundUser.active === false) {
+          return { success: false, inactive: true };
+        }
+      }
+    } catch {}
     
     // Resolve credential
     const credential = getEffectiveCredential(email);

@@ -21,10 +21,11 @@ import { Label } from "@/components/ui/label";
 import {
   Search, Building2, TrendingUp, AlertTriangle,
   ChevronRight, Plus, ShieldCheck, ShieldAlert,
-  ArrowUpDown, UserCog, Trash2, PowerOff, Power,
+  ArrowUpDown, UserCog, Trash2, PowerOff, Power, Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CreateCompanyDialog } from "@/components/companies/CreateCompanyDialog";
+import { EditCompanyDialog } from "@/components/companies/EditCompanyDialog";
 import { getCompanies, setCompanies, type CompanyState } from "@/lib/storage";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -61,14 +62,23 @@ export default function Companies() {
   const [selectedManager, setSelectedManager] = useState("");
   const [deleteCompany, setDeleteCompany] = useState<CompanyState | null>(null);
   const [deactivateCompany, setDeactivateCompany] = useState<CompanyState | null>(null);
+  const [editCompany, setEditCompany] = useState<CompanyState | null>(null);
 
   const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
   const canReassign = adminRole === "admin_master" || adminRole === "admin_mvp";
   const canDelete = hasPermission(adminRole, "deleteCompanies");
+  const canEdit = adminRole === "admin_master" || adminRole === "admin_mvp";
 
   useEffect(() => {
     if (!createDialogOpen) setRefreshKey(k => k + 1);
   }, [createDialogOpen]);
+
+  // Listen for company changes from CreateCompanyDialog
+  useEffect(() => {
+    const handler = () => setRefreshKey(k => k + 1);
+    window.addEventListener("mvp_company_changed", handler);
+    return () => window.removeEventListener("mvp_company_changed", handler);
+  }, []);
 
   const enriched = useMemo(() => getEnrichedCompanies(user?.email, adminRole), [refreshKey, user?.email, adminRole]);
 
@@ -248,6 +258,7 @@ export default function Companies() {
 
   // Stats
   const activeCompanies = enriched.filter(e => e.company.active !== false);
+  const inactiveCompanies = enriched.filter(e => e.company.active === false);
   const totalCompanies = enriched.length;
   const riskCt = activeCompanies.filter(e => e.riskLevel === "risk").length;
   const healthyCt = activeCompanies.filter(e => e.riskLevel === "healthy").length;
@@ -258,7 +269,7 @@ export default function Companies() {
     <AppLayout title="Visão MVP" subtitle="Acompanhamento de todas as empresas">
       <div className="space-y-6 animate-fade-in">
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -289,6 +300,17 @@ export default function Companies() {
               <div>
                 <p className="text-2xl font-bold text-foreground">{riskCt}</p>
                 <p className="text-sm text-muted-foreground">Em Risco</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                <PowerOff size={20} className="text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{inactiveCompanies.length}</p>
+                <p className="text-sm text-muted-foreground">Inativas</p>
               </div>
             </div>
           </Card>
@@ -445,6 +467,20 @@ export default function Companies() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Editar empresa"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditCompany(ec.company);
+                            }}
+                          >
+                            <Pencil size={14} className="text-muted-foreground" />
+                          </Button>
+                        )}
                         {canDelete && (
                           <>
                             <Button
@@ -519,6 +555,12 @@ export default function Companies() {
         </Card>
 
         <CreateCompanyDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+        <EditCompanyDialog
+          company={editCompany}
+          open={!!editCompany}
+          onOpenChange={(open) => { if (!open) setEditCompany(null); }}
+          onSaved={() => setRefreshKey(k => k + 1)}
+        />
 
         {/* Manager Reassignment Dialog */}
         <Dialog open={!!reassignCompany} onOpenChange={(open) => { if (!open) { setReassignCompany(null); setSelectedManager(""); } }}>

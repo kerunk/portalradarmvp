@@ -28,7 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Search, ShieldCheck, Crown, Briefcase, ChevronRight, Download, CheckCircle2, Copy, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Search, ShieldCheck, Crown, Briefcase, ChevronRight, Download, CheckCircle2, Copy, Trash2, AlertTriangle, ArrowRightLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { getCompanies, setCompanies } from "@/lib/storage";
@@ -38,6 +38,7 @@ import { getCompanyCountForManager, getCompaniesForManager } from "@/lib/portfol
 import { addOperationalEvent } from "@/lib/operationalEvents";
 import { auditUserAction } from "@/lib/auditLog";
 import jsPDF from "jspdf";
+import { BulkTransferDialog } from "@/components/companies/BulkTransferDialog";
 import {
   type AdminRole,
   ADMIN_ROLE_LABELS,
@@ -237,6 +238,7 @@ export default function UserManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ManagedUser | null>(null);
+  const [bulkTransferTarget, setBulkTransferTarget] = useState<ManagedUser | null>(null);
   const [transferManagerEmail, setTransferManagerEmail] = useState("");
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
@@ -402,6 +404,11 @@ export default function UserManagement() {
     const check = canDeleteUser(u);
     if (!check.allowed) {
       toast({ title: check.reason || "Ação não permitida", variant: "destructive" });
+      return;
+    }
+    // If gerente with companies, open bulk transfer first
+    if (u.adminRole === "gerente_conta" && getCompanyCountForManager(u.email) > 0) {
+      setBulkTransferTarget(u);
       return;
     }
     setDeleteTarget(u);
@@ -804,6 +811,21 @@ export default function UserManagement() {
             )}
           </DialogContent>
         </Dialog>
+        <BulkTransferDialog
+          open={!!bulkTransferTarget}
+          onOpenChange={(open) => { if (!open) setBulkTransferTarget(null); }}
+          sourceUser={bulkTransferTarget}
+          allUsers={users}
+          currentUserEmail={currentUser?.email || ""}
+          currentUserName={currentUser?.name || "Admin"}
+          onTransferComplete={() => {
+            // After all companies transferred, allow deletion
+            if (bulkTransferTarget && getCompanyCountForManager(bulkTransferTarget.email) === 0) {
+              setDeleteTarget(bulkTransferTarget);
+              setBulkTransferTarget(null);
+            }
+          }}
+        />
       </div>
     </AppLayout>
   );
