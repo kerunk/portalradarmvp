@@ -101,7 +101,7 @@ export default function Onboarding() {
 
   // ========== POPULATION HANDLERS ==========
   const resetPopForm = () => {
-    setPopForm({ name: "", email: "", sector: "", role: "" });
+    setPopForm({ name: "", email: "", sector: "", role: "", unit: "", shift: "", admissionDate: "" });
     setEditingPopId(null);
   };
 
