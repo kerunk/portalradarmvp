@@ -72,7 +72,10 @@ function getAdminSections(adminRole: AdminRole): NavSection[] {
   // System admin section (only for roles with edit permissions)
   if (perms.editGlobalShelf || perms.editPlatformSettings) {
     const sysItems: NavSection["items"] = [];
-    if (perms.editGlobalShelf) sysItems.push({ name: "Prateleira Global", href: "/praticas", icon: BookOpen });
+    if (perms.editGlobalShelf) {
+      sysItems.push({ name: "Fatores de Sucesso", href: "/fatores-globais", icon: Layers });
+      sysItems.push({ name: "Prateleira de Práticas", href: "/praticas", icon: BookOpen });
+    }
     if (perms.editGlobalManual) sysItems.push({ name: "Manual Global MVP", href: "/manual-editor", icon: BookMarked });
     if (perms.editIndicatorSettings) sysItems.push({ name: "Config. Indicadores", href: "/config-indicadores", icon: SlidersHorizontal });
     if (perms.editAdminHelp) sysItems.push({ name: "Ajuda da Plataforma", href: "/admin-ajuda", icon: HelpCircle });

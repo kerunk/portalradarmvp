@@ -41,7 +41,8 @@ import {
 } from "@/components/ui/select";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { mvpCycles, type MVPCycle, getModuleNumber } from "@/data/mvpCycles";
+import { mvpCycles, type MVPCycle, getModuleNumber, SUCCESS_FACTOR_DESCRIPTIONS } from "@/data/mvpCycles";
+import { getNucleoMembers } from "@/lib/companyStorage";
 import {
   getState,
   setState,
@@ -207,6 +208,12 @@ export default function MVPCycles() {
   const totalEmployees = useMemo(() => {
     if (!companyId) return 0;
     return getPopulation(companyId).filter(m => m.active).length;
+  }, [companyId, refreshKey]);
+
+  // Nucleus members for responsible selector
+  const nucleoMembersList = useMemo(() => {
+    if (!companyId) return [];
+    return getNucleoMembers(companyId);
   }, [companyId, refreshKey]);
 
   const nextCycleId = NEXT_CYCLE[selectedCycleId as CycleId];
@@ -911,6 +918,9 @@ export default function MVPCycles() {
                         </div>
                         <div className="text-left">
                           <span className="font-medium text-foreground">{factor.name}</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {SUCCESS_FACTOR_DESCRIPTIONS[factor.id] || ""}
+                          </p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <Badge variant={totalTreated === factorState.actions.length ? "default" : "secondary"} className="text-xs">
                               {totalTreated}/{factorState.actions.length} tratadas
@@ -989,14 +999,28 @@ export default function MVPCycles() {
                                 <div>
                                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Responsável</label>
                                   <div className="relative">
-                                    <User size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                                    <Input
-                                      placeholder="Nome do responsável"
-                                      value={actionState.responsible}
-                                      onChange={e => handleUpdateAction(factor.id, actionDef.id, { responsible: e.target.value })}
-                                      className="pl-8 h-9"
+                                    <User size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
+                                    <Select
+                                      value={actionState.responsible || ""}
+                                      onValueChange={(value) => handleUpdateAction(factor.id, actionDef.id, { responsible: value })}
                                       disabled={isCycleLocked}
-                                    />
+                                    >
+                                      <SelectTrigger className="pl-8 h-9">
+                                        <SelectValue placeholder="Selecione o responsável" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {nucleoMembersList.map(member => (
+                                          <SelectItem key={member.id} value={member.name}>
+                                            {member.name} — {member.role || member.sector || "Núcleo"}
+                                          </SelectItem>
+                                        ))}
+                                        {nucleoMembersList.length === 0 && (
+                                          <SelectItem value="__empty" disabled>
+                                            Nenhum integrante do núcleo cadastrado
+                                          </SelectItem>
+                                        )}
+                                      </SelectContent>
+                                    </Select>
                                   </div>
                                 </div>
                                 <div>

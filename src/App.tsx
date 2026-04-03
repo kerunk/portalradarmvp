@@ -25,6 +25,7 @@ import MVPCycles from "./pages/MVPCycles";
 import Turmas from "./pages/Turmas";
 import SuccessFactors from "./pages/SuccessFactors";
 import BestPracticesGlobal from "./pages/BestPracticesGlobal";
+import SuccessFactorsGlobal from "./pages/SuccessFactorsGlobal";
 import Settings from "./pages/Settings";
 import BasePopulacional from "./pages/BasePopulacional";
 import OrgStructure from "./pages/OrgStructure";
@@ -81,6 +82,7 @@ const App = () => (
             <Route path="/empresas" element={<ProtectedRoute requireAdmin><Companies /></ProtectedRoute>} />
             <Route path="/empresas/:companyId" element={<ProtectedRoute requireAdmin><CompanyMirror /></ProtectedRoute>} />
             <Route path="/praticas" element={<ProtectedRoute requireAdmin><BestPracticesGlobal /></ProtectedRoute>} />
+            <Route path="/fatores-globais" element={<ProtectedRoute requireAdmin requirePermission="editGlobalShelf"><SuccessFactorsGlobal /></ProtectedRoute>} />
             <Route path="/usuarios" element={<ProtectedRoute requireAdmin requirePermission="manageAdminUsers"><UserManagement /></ProtectedRoute>} />
             <Route path="/manual-editor" element={<ProtectedRoute requireAdmin requirePermission="editGlobalManual"><ManualEditor /></ProtectedRoute>} />
             <Route path="/config-indicadores" element={<ProtectedRoute requireAdmin requirePermission="editIndicatorSettings"><IndicatorSettings /></ProtectedRoute>} />

@@ -1,6 +1,20 @@
 // MVP Official Cycles Data
 // Source of truth for MVP methodology cycles
 
+export interface MVPSuccessFactorDescription {
+  id: string;
+  description: string;
+}
+
+// Standard factor descriptions — used across all cycles
+export const SUCCESS_FACTOR_DESCRIPTIONS: Record<string, string> = {
+  communication: "Ações para gerar entendimento, engajamento e alinhamento sobre o módulo.",
+  structure: "Ações de coordenação, acompanhamento e sustentação prática do ciclo.",
+  leadership: "Ações para garantir envolvimento ativo das lideranças na aplicação do ciclo.",
+  practice: "Ações para incorporar os conceitos do módulo na rotina operacional.",
+  indicators: "Ações de monitoramento, checagem de avanço e consolidação do ciclo.",
+};
+
 export interface MVPCycle {
   id: string;
   phase: "M" | "V" | "P";
