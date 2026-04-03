@@ -341,6 +341,7 @@ export default function SuccessFactorsGlobal() {
                             title: "",
                             description: "",
                             bestPractice: "",
+                            imageUrl: "",
                           })
                         }
                       >
