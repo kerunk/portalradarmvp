@@ -246,12 +246,24 @@ export function CycleProgressHeader({
         </div>
       </div>
 
-      {/* Breakdown cards */}
+      {/* Breakdown cards - clickable shortcuts */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/15 space-y-1">
-          <div className="flex items-center gap-2 text-xs font-medium text-blue-600">
-            <Users className="h-3.5 w-3.5" />
-            Treinamento (peso 70%)
+        <div
+          onClick={onNavigateTraining}
+          className={cn(
+            "p-3 rounded-lg bg-blue-500/5 border border-blue-500/15 space-y-1 transition-all",
+            onNavigateTraining && "cursor-pointer hover:bg-blue-500/10 hover:border-blue-500/30 hover:shadow-sm active:scale-[0.98]"
+          )}
+          role={onNavigateTraining ? "button" : undefined}
+          tabIndex={onNavigateTraining ? 0 : undefined}
+          onKeyDown={onNavigateTraining ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigateTraining(); } } : undefined}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-medium text-blue-600">
+              <Users className="h-3.5 w-3.5" />
+              Treinamento (peso 70%)
+            </div>
+            {onNavigateTraining && <ChevronRight className="h-3.5 w-3.5 text-blue-400" />}
           </div>
           <div className="flex items-center justify-between">
             <span className="text-lg font-bold text-foreground">{progress.training}%</span>
@@ -262,10 +274,22 @@ export function CycleProgressHeader({
           <Progress value={progress.training} className="h-1.5" />
         </div>
 
-        <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/15 space-y-1">
-          <div className="flex items-center gap-2 text-xs font-medium text-amber-600">
-            <Sparkles className="h-3.5 w-3.5" />
-            Práticas (peso 20%)
+        <div
+          onClick={onNavigatePractices}
+          className={cn(
+            "p-3 rounded-lg bg-amber-500/5 border border-amber-500/15 space-y-1 transition-all",
+            onNavigatePractices && "cursor-pointer hover:bg-amber-500/10 hover:border-amber-500/30 hover:shadow-sm active:scale-[0.98]"
+          )}
+          role={onNavigatePractices ? "button" : undefined}
+          tabIndex={onNavigatePractices ? 0 : undefined}
+          onKeyDown={onNavigatePractices ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigatePractices(); } } : undefined}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-medium text-amber-600">
+              <Sparkles className="h-3.5 w-3.5" />
+              Práticas (peso 20%)
+            </div>
+            {onNavigatePractices && <ChevronRight className="h-3.5 w-3.5 text-amber-400" />}
           </div>
           <div className="flex items-center justify-between">
             <span className="text-lg font-bold text-foreground">{progress.practices}%</span>
@@ -276,10 +300,22 @@ export function CycleProgressHeader({
           <Progress value={progress.practices} className="h-1.5" />
         </div>
 
-        <div className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/15 space-y-1">
-          <div className="flex items-center gap-2 text-xs font-medium text-emerald-600">
-            <ListChecks className="h-3.5 w-3.5" />
-            Ações (peso 10%)
+        <div
+          onClick={onNavigateActions}
+          className={cn(
+            "p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/15 space-y-1 transition-all",
+            onNavigateActions && "cursor-pointer hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:shadow-sm active:scale-[0.98]"
+          )}
+          role={onNavigateActions ? "button" : undefined}
+          tabIndex={onNavigateActions ? 0 : undefined}
+          onKeyDown={onNavigateActions ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigateActions(); } } : undefined}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-medium text-emerald-600">
+              <ListChecks className="h-3.5 w-3.5" />
+              Ações (peso 10%)
+            </div>
+            {onNavigateActions && <ChevronRight className="h-3.5 w-3.5 text-emerald-400" />}
           </div>
           <div className="flex items-center justify-between">
             <span className="text-lg font-bold text-foreground">{progress.actions}%</span>
