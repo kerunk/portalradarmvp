@@ -11,7 +11,7 @@ import { CycleProgressHeader } from "@/components/cycles/CycleProgressHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPopulation } from "@/lib/companyStorage";
 import { AdvanceCycleDialog } from "@/components/cycles/AdvanceCycleDialog";
-import { BestPracticesShelf } from "@/components/cycles/BestPracticesShelf";
+// BestPracticesShelf removed from client view — content integrated into Success Factors
 import { PendingDecisions } from "@/components/cycles/PendingDecisions";
 import { 
   CreateActionFromTemplateDialog,
@@ -86,7 +86,6 @@ import {
   FileDown,
   Lock,
   LockOpen,
-  BookOpen,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
@@ -998,9 +997,18 @@ export default function MVPCycles() {
                               )}
                             </div>
 
-                            <div className="flex items-start gap-2 text-sm text-muted-foreground bg-secondary/30 p-2 rounded mb-3">
-                              <Lightbulb size={14} className="text-warning mt-0.5" />
-                              <span>{actionDef.bestPractice}</span>
+                            {/* Description — what to do */}
+                            {actionDef.description && (
+                              <div className="text-sm text-muted-foreground bg-secondary/20 p-3 rounded mb-2 border border-border/50">
+                                <p className="font-medium text-foreground/80 text-xs uppercase tracking-wide mb-1">O que fazer</p>
+                                <p>{actionDef.description}</p>
+                              </div>
+                            )}
+
+                            {/* Best practice tip */}
+                            <div className="flex items-start gap-2 text-sm text-muted-foreground bg-amber-500/5 border border-amber-500/10 p-2 rounded mb-3">
+                              <Lightbulb size={14} className="text-warning mt-0.5 flex-shrink-0" />
+                              <span><strong className="text-foreground/70">Dica:</strong> {actionDef.bestPractice}</span>
                             </div>
 
                             {actionState.enabled ? (
@@ -1102,13 +1110,7 @@ export default function MVPCycles() {
           isLocked={isCycleLocked}
         />
 
-        {/* Block 6: Best Practices — Reference library (secondary) */}
-        <div id="practices-section">
-          <BestPracticesShelf 
-            cycleId={selectedCycleId}
-            onCreateAction={handleCreateActionFromTemplate}
-          />
-        </div>
+        {/* Best Practices library removed from client view — content integrated into Success Factors */}
 
         {/* Next cycle advance button */}
         {nextCycleId && cycleGovernance?.status !== 'closed' && (

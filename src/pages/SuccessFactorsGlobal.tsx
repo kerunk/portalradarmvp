@@ -64,6 +64,7 @@ export default function SuccessFactorsGlobal() {
     factorId: string;
     actionId: string | null;
     title: string;
+    description: string;
     bestPractice: string;
   } | null>(null);
 
@@ -94,7 +95,7 @@ export default function SuccessFactorsGlobal() {
       selectedCycleId,
       editingAction.factorId,
       editingAction.actionId,
-      { title: editingAction.title, bestPractice: editingAction.bestPractice }
+      { title: editingAction.title, description: editingAction.description, bestPractice: editingAction.bestPractice }
     );
 
     if (!result.success) {
@@ -286,12 +287,17 @@ export default function SuccessFactorsGlobal() {
                           className="flex items-start justify-between p-3 rounded-lg border bg-card hover:bg-secondary/20 transition-colors"
                         >
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground text-sm">
-                              {action.title}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              💡 {action.bestPractice}
-                            </p>
+                             <p className="font-medium text-foreground text-sm">
+                               {action.title}
+                             </p>
+                             {action.description && (
+                               <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                                 {action.description}
+                               </p>
+                             )}
+                             <p className="text-xs text-muted-foreground mt-1">
+                               💡 {action.bestPractice}
+                             </p>
                           </div>
                           <div className="flex items-center gap-1 ml-3">
                             <Button
@@ -303,6 +309,7 @@ export default function SuccessFactorsGlobal() {
                                   factorId: factor.id,
                                   actionId: action.id,
                                   title: action.title,
+                                  description: action.description || "",
                                   bestPractice: action.bestPractice,
                                 })
                               }
@@ -330,6 +337,7 @@ export default function SuccessFactorsGlobal() {
                             factorId: factor.id,
                             actionId: null,
                             title: "",
+                            description: "",
                             bestPractice: "",
                           })
                         }
@@ -384,6 +392,22 @@ export default function SuccessFactorsGlobal() {
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">
+                  O que deve ser feito (orientação para o cliente)
+                </label>
+                <Textarea
+                  value={editingAction.description}
+                  onChange={e =>
+                    setEditingAction({
+                      ...editingAction,
+                      description: e.target.value,
+                    })
+                  }
+                  placeholder="Ex: Realizar reunião curta e objetiva com o núcleo para acompanhar o andamento do ciclo..."
+                  className="min-h-[80px]"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
                   Dica de Boa Prática
                 </label>
                 <Textarea
@@ -395,7 +419,7 @@ export default function SuccessFactorsGlobal() {
                     })
                   }
                   placeholder="Ex: Máximo 30 min, pauta fixa"
-                  className="min-h-[80px]"
+                  className="min-h-[60px]"
                 />
               </div>
             </div>
