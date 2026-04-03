@@ -728,6 +728,15 @@ export default function MVPCycles() {
           onStartCycle={handleStartCycle}
           onCloseCycle={() => setIsClosureDialogOpen(true)}
           isCycleLocked={!!isCycleLocked}
+          onNavigateTraining={() => navigate(`/turmas?cycle=${selectedCycleId}`)}
+          onNavigatePractices={() => {
+            const el = document.getElementById("practices-section");
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+          onNavigateActions={() => {
+            const el = document.getElementById("actions-section");
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
         />
 
         {/* Cycle Header with export actions */}
@@ -816,10 +825,12 @@ export default function MVPCycles() {
         />
 
         {/* Best Practices Shelf */}
-        <BestPracticesShelf 
-          cycleId={selectedCycleId}
-          onCreateAction={handleCreateActionFromTemplate}
-        />
+        <div id="practices-section">
+          <BestPracticesShelf 
+            cycleId={selectedCycleId}
+            onCreateAction={handleCreateActionFromTemplate}
+          />
+        </div>
 
         {/* Pending Decisions */}
         <PendingDecisions
@@ -983,7 +994,7 @@ export default function MVPCycles() {
         </Card>
 
         {/* Block 5: Active Actions */}
-        <Card className="p-6">
+        <Card id="actions-section" className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-display font-semibold text-foreground flex items-center gap-2">
               <ListChecks size={20} className="text-primary" />
