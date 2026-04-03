@@ -43,7 +43,9 @@ export interface MVPSuccessFactor {
 export interface MVPSuggestedAction {
   id: string;
   title: string;
+  description?: string; // What to do — guidance text
   bestPractice: string;
+  imageUrl?: string; // Optional illustrative image
 }
 
 // Standard success factors template
