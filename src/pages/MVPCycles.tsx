@@ -210,10 +210,11 @@ export default function MVPCycles() {
   }, [companyId, refreshKey]);
   
   const totalPracticesData = useMemo(() => {
+    const shelfPractices = getBestPracticesByCycle(selectedCycleId);
+    const available = shelfPractices.length;
     const records = getRecords().filter(r => r.cycleId === selectedCycleId && r.tags?.includes("melhor-prática"));
-    const available = currentCycle?.successFactors?.reduce((sum, f) => sum + f.actions.length, 0) || 1;
-    return { used: records.length, available: Math.max(available, 1) };
-  }, [selectedCycleId, currentCycle, refreshKey]);
+    return { used: Math.min(records.length, available), available };
+  }, [selectedCycleId, refreshKey]);
 
   const nextCycleId = NEXT_CYCLE[selectedCycleId as CycleId];
 
