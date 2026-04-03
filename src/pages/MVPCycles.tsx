@@ -161,6 +161,7 @@ export default function MVPCycles() {
   const [turmas, setTurmasState] = useState<TurmaState[]>([]);
   const [openFactors, setOpenFactors] = useState<string[]>([]);
   const [isClosureDialogOpen, setIsClosureDialogOpen] = useState(false);
+  const [isAdvanceDialogOpen, setIsAdvanceDialogOpen] = useState(false);
   const [cycleGovernance, setCycleGovernance] = useState<CycleGovernance | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [highlightedId, setHighlightedId] = useState<string | null>(highlightActionId);
