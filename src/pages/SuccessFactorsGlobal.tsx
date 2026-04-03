@@ -66,6 +66,7 @@ export default function SuccessFactorsGlobal() {
     title: string;
     description: string;
     bestPractice: string;
+    imageUrl: string;
   } | null>(null);
 
   // Read effective factors (defaults merged with overrides) — re-reads on refreshKey change
