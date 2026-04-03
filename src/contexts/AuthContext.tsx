@@ -143,11 +143,12 @@ function getCredential(email: string): UserCredential | null {
 
 // ============================================================
 // Default credentials (hardcoded fallbacks)
+// Only the platform master admin has a default credential.
+// All other users are created dynamically via the admin UI.
 // ============================================================
 
 const DEFAULT_CREDENTIALS: Record<string, { password: string; mustChangePassword: boolean }> = {
   "admin@radarmvp.com": { password: "admin123", mustChangePassword: true },
-  "admin@alpha.com": { password: "cliente123", mustChangePassword: true },
 };
 
 // Get effective credential: saved overrides defaults
@@ -209,19 +210,6 @@ function resolveUserProfile(email: string): UserProfile | null {
       }
     }
   } catch {}
-
-  // Demo client
-  if (lower === "admin@alpha.com") {
-    return {
-      id: "cliente-1",
-      name: "Carlos Silva",
-      email: "admin@alpha.com",
-      role: "cliente",
-      companyId: "company-1",
-      companyName: "Empresa Alpha",
-      onboardingStatus: "completed",
-    };
-  }
 
   // Company admin users
   try {
@@ -478,17 +466,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: "admin@radarmvp.com",
         role: "admin_mvp",
       });
-    } else {
-      setActiveCompany("company-1");
-      setUser({
-        id: "cliente-1",
-        name: "Carlos Silva",
-        email: "admin@alpha.com",
-        role: "cliente",
-        companyId: "company-1",
-        companyName: "Empresa Alpha",
-      });
     }
+    // Client role switching is not supported in production —
+    // clients must log in with their own credentials.
   };
 
   const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {

@@ -188,66 +188,11 @@ const getDefaultState = (forCompany: boolean = false): PortalState => ({
   turmas: [],
   records: [],
   planActions: [],
-  employees: forCompany ? [] : getDefaultEmployees(),
-  facilitators: forCompany ? [] : getDefaultFacilitators(),
-  companies: forCompany ? [] : getDefaultCompanies(),
+  employees: [],
+  facilitators: [],
+  companies: [],
   dismissedAlerts: [],
 });
-
-// Default employees
-function getDefaultEmployees(): EmployeeState[] {
-  return [
-    { id: "emp-1", name: "Pedro Almeida", email: "pedro@empresa.com", sector: "Operações", role: "Técnico", active: true },
-    { id: "emp-2", name: "Juliana Lima", email: "juliana@empresa.com", sector: "Operações", role: "Supervisor", active: true },
-    { id: "emp-3", name: "Roberto Souza", email: "roberto@empresa.com", sector: "Manutenção", role: "Técnico", active: true },
-    { id: "emp-4", name: "Carla Mendes", email: "carla@empresa.com", sector: "Manutenção", role: "Coordenador", active: true },
-    { id: "emp-5", name: "Lucas Ferreira", email: "lucas@empresa.com", sector: "Administrativo", role: "Analista", active: true },
-    { id: "emp-6", name: "Mariana Costa", email: "mariana@empresa.com", sector: "Segurança", role: "Técnico", active: true },
-    { id: "emp-7", name: "André Santos", email: "andre@empresa.com", sector: "Produção", role: "Operador", active: true },
-    { id: "emp-8", name: "Patricia Rocha", email: "patricia@empresa.com", sector: "Produção", role: "Líder", active: true },
-    { id: "emp-9", name: "Fernando Dias", email: "fernando@empresa.com", sector: "Qualidade", role: "Analista", active: true },
-    { id: "emp-10", name: "Claudia Martins", email: "claudia@empresa.com", sector: "RH", role: "Coordenador", active: true },
-  ];
-}
-
-// Default facilitators
-function getDefaultFacilitators(): FacilitatorState[] {
-  return [
-    { id: "fac-1", name: "Maria Silva", email: "maria.silva@mvp.com" },
-    { id: "fac-2", name: "João Santos", email: "joao.santos@mvp.com" },
-    { id: "fac-3", name: "Ana Oliveira", email: "ana.oliveira@mvp.com" },
-    { id: "fac-4", name: "Carlos Pereira", email: "carlos.pereira@mvp.com" },
-    { id: "fac-5", name: "Fernanda Costa", email: "fernanda.costa@mvp.com" },
-  ];
-}
-
-// Default companies
-function getDefaultCompanies(): CompanyState[] {
-  return [
-    {
-      id: "company-1",
-      name: "Empresa Alpha",
-      sector: "Indústria",
-      employees: 320,
-      adminName: "Carlos Silva",
-      adminEmail: "admin@alpha.com",
-      tempPassword: "Alpha2024!",
-      createdAt: "2024-01-15",
-      onboardingStatus: "completed", // Demo company already onboarded
-    },
-    {
-      id: "company-2",
-      name: "Tech Solutions",
-      sector: "Tecnologia",
-      employees: 150,
-      adminName: "Ana Martins",
-      adminEmail: "admin@techsolutions.com",
-      tempPassword: "Tech2024!",
-      createdAt: "2024-02-20",
-      onboardingStatus: "not_started",
-    },
-  ];
-}
 
 // Update company onboarding status
 export function updateCompanyOnboardingStatus(companyId: string, status: OnboardingStatus): void {

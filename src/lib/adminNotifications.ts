@@ -5,6 +5,7 @@ import { getCompanies, getState, setActiveCompany, type CompanyState } from './s
 import { CYCLE_IDS } from './constants';
 import { mvpCycles } from '@/data/mvpCycles';
 import { getActiveOperationalEvents, type OperationalEvent } from './operationalEvents';
+import { getPopulation } from './companyStorage';
 
 export type AdminNotificationPriority = 'critical' | 'warning' | 'insight';
 export type AdminNotificationType = 'risk' | 'opportunity' | 'milestone';
@@ -98,8 +99,9 @@ export function getCompanyRiskData(company: CompanyState): CompanyRiskData {
   const totalTurmas = state.turmas.length;
   const activeTurmas = state.turmas.filter(t => t.status === 'in_progress' || t.status === 'planned').length;
 
-  // Coverage
-  const totalEmployees = state.employees.length;
+  // Coverage — use companyStorage population (source of truth for employees)
+  const population = getPopulation(company.id);
+  const totalEmployees = population.filter(m => m.active).length;
   const trainedIds = new Set<string>();
   state.turmas.forEach(t => {
     if (t.attendance) {
