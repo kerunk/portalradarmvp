@@ -394,6 +394,22 @@ export default function SuccessFactorsGlobal() {
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">
+                  O que deve ser feito (orientação para o cliente)
+                </label>
+                <Textarea
+                  value={editingAction.description}
+                  onChange={e =>
+                    setEditingAction({
+                      ...editingAction,
+                      description: e.target.value,
+                    })
+                  }
+                  placeholder="Ex: Realizar reunião curta e objetiva com o núcleo para acompanhar o andamento do ciclo..."
+                  className="min-h-[80px]"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
                   Dica de Boa Prática
                 </label>
                 <Textarea
@@ -405,7 +421,7 @@ export default function SuccessFactorsGlobal() {
                     })
                   }
                   placeholder="Ex: Máximo 30 min, pauta fixa"
-                  className="min-h-[80px]"
+                  className="min-h-[60px]"
                 />
               </div>
             </div>
