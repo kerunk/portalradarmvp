@@ -99,8 +99,9 @@ export function getCompanyRiskData(company: CompanyState): CompanyRiskData {
   const totalTurmas = state.turmas.length;
   const activeTurmas = state.turmas.filter(t => t.status === 'in_progress' || t.status === 'planned').length;
 
-  // Coverage
-  const totalEmployees = state.employees.length;
+  // Coverage — use companyStorage population (source of truth for employees)
+  const population = getPopulation(company.id);
+  const totalEmployees = population.filter(m => m.active).length;
   const trainedIds = new Set<string>();
   state.turmas.forEach(t => {
     if (t.attendance) {
