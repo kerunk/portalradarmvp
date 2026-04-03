@@ -11,7 +11,7 @@ import { CycleProgressHeader } from "@/components/cycles/CycleProgressHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPopulation } from "@/lib/companyStorage";
 import { AdvanceCycleDialog } from "@/components/cycles/AdvanceCycleDialog";
-import { BestPracticesShelf } from "@/components/cycles/BestPracticesShelf";
+// BestPracticesShelf removed from client view — content integrated into Success Factors
 import { PendingDecisions } from "@/components/cycles/PendingDecisions";
 import { 
   CreateActionFromTemplateDialog,
