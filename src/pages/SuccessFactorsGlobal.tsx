@@ -30,7 +30,7 @@ import {
   Settings2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SUCCESS_FACTOR_DESCRIPTIONS } from "@/data/mvpCycles";
+import { mvpCycles, SUCCESS_FACTOR_DESCRIPTIONS } from "@/data/mvpCycles";
 import {
   getEffectiveSuccessFactors,
   saveGlobalAction,
