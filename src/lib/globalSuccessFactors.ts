@@ -85,7 +85,7 @@ export function saveGlobalAction(
   if (actionId) {
     // Update existing
     updatedActions = factor.actions.map(a =>
-      a.id === actionId ? { ...a, title: data.title, description: data.description, bestPractice: data.bestPractice } : a
+      a.id === actionId ? { ...a, title: data.title, description: data.description, bestPractice: data.bestPractice, imageUrl: data.imageUrl } : a
     );
   } else {
     // Create new
