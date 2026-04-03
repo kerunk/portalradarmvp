@@ -3,9 +3,9 @@ import { Card } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   BookOpen, Layers, Database, ShieldCheck, Rocket, Users, Target,
-  FileText, BarChart3, HelpCircle, TrendingUp, Gauge, Radar, LineChart, Zap,
-  ArrowDown, CheckCircle2, AlertTriangle, Lightbulb, GraduationCap, Activity,
-  ArrowRight, Star, Info
+  FileText, BarChart3, HelpCircle, TrendingUp, Gauge, LineChart, Zap,
+  CheckCircle2, AlertTriangle, Lightbulb, GraduationCap, Activity,
+  ArrowRight, Star, Info, Settings, Bell, Lock, ToggleLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -13,9 +13,9 @@ import { cn } from "@/lib/utils";
 const introContent = {
   title: "O que é o Programa MVP?",
   paragraphs: [
-    "O Programa MVP (Mudança, Validação e Perpetuação) é uma metodologia estruturada para transformação cultural nas organizações. O programa é dividido em três fases — Monitorar, Validar e Perpetuar — cada uma com ciclos específicos de atividades que promovem a evolução comportamental e cultural dos colaboradores.",
-    "A plataforma MVP é o sistema digital que apoia toda a execução do programa. Através dela você cadastra a estrutura da empresa, registra atividades, acompanha turmas de treinamento e monitora indicadores estratégicos em tempo real.",
-    "Todos os dados que você registra no sistema — presenças em turmas, conclusão de ações, encerramento de ciclos — alimentam automaticamente os indicadores do Dashboard. Isso significa que quanto mais completo e atualizado for o registro, mais precisos serão os indicadores estratégicos da sua organização.",
+    "O Programa MVP (Mudança, Validação e Perpetuação) é uma metodologia estruturada para transformação cultural nas organizações. O programa é dividido em três fases — Monitorar, Validar e Perpetuar — cada uma com ciclos específicos que promovem a evolução comportamental e cultural dos colaboradores.",
+    "A plataforma MVP é o sistema digital que apoia toda a execução do programa. Através dela você cadastra a estrutura da empresa, registra atividades, acompanha turmas de treinamento, gerencia fatores de sucesso e monitora indicadores estratégicos em tempo real.",
+    "Todos os dados que você registra — presenças em turmas, conclusão de ações, encerramento de ciclos — alimentam automaticamente os indicadores do Dashboard. Quanto mais completo e atualizado for o registro, mais precisos serão os indicadores da sua organização.",
   ],
   highlights: [
     { icon: Target, text: "Metodologia comprovada para transformação cultural" },
@@ -31,17 +31,36 @@ const manualSections = [
     title: "Como usar o Portal",
     icon: HelpCircle,
     content: [
-      "O portal MVP é sua central de gestão do programa. Use o menu lateral para navegar entre as seções.",
-      "• **Dashboard** — Visão geral com todos os indicadores estratégicos",
-      "• **Estrutura Organizacional** — Cadastro de setores e unidades",
-      "• **Base Populacional** — Cadastro de colaboradores",
-      "• **Governança do Núcleo** — Gestão de lideranças e facilitadores",
-      "• **Ciclos MVP** — Acompanhamento dos 9 ciclos do programa",
+      "O portal MVP é sua central de gestão do programa. Use o menu lateral para navegar entre as seções:",
+      "• **Dashboard** — Visão geral com todos os indicadores estratégicos e guia de primeiros passos",
+      "• **Estrutura Organizacional** — Cadastro de setores e unidades da empresa",
+      "• **Base Populacional** — Cadastro e gestão de colaboradores participantes",
+      "• **Governança do Núcleo** — Gestão de lideranças e facilitadores do programa",
+      "• **Ciclos MVP** — Acompanhamento dos 9 ciclos do programa com fatores de sucesso",
       "• **Turmas** — Criação e gestão de turmas de treinamento",
-      "• **Ações & Alertas** — Monitoramento de ações e prazos",
-      "• **Relatórios** — Exportação de análises executivas",
-      "• **Configurações** — Responsáveis pela implementação",
+      "• **Ações & Alertas** — Monitoramento de ações pendentes, prazos e alertas automáticos",
+      "• **Relatórios** — Exportação de análises executivas em PDF",
+      "• **Configurações** — Responsáveis pela implementação e troca de senha",
       "• **Manual MVP** — Esta página de ajuda",
+    ],
+  },
+  {
+    id: "primeiro-acesso",
+    title: "Primeiro Acesso e Segurança",
+    icon: Lock,
+    content: [
+      "No seu primeiro acesso ao portal, você passará por um fluxo obrigatório de configuração:",
+      "**1. Troca de senha obrigatória:**",
+      "• Ao fazer login com a senha temporária, o sistema exige que você defina uma nova senha",
+      "• Essa etapa é obrigatória e não pode ser ignorada",
+      "**2. Onboarding da empresa:**",
+      "• Após trocar a senha, o wizard de configuração inicial é apresentado",
+      "• Você será guiado para configurar: logo da empresa, estrutura organizacional, base de colaboradores e núcleo de sustentação",
+      "• O portal operacional completo só é liberado após completar o onboarding",
+      "**Troca de senha posterior:**",
+      "• A qualquer momento, acesse Configurações para alterar sua senha",
+      "**Botão 'Sair':**",
+      "• Nas telas de troca de senha e onboarding existe um botão 'Sair' como escape seguro",
     ],
   },
   {
@@ -52,7 +71,7 @@ const manualSections = [
       "A Estrutura Organizacional permite cadastrar setores e unidades da empresa.",
       "**O que é:** Organização hierárquica da empresa dentro da plataforma.",
       "**Como usar:**",
-      "1. Acesse Estrutura Organizacional no menu",
+      "1. Acesse 'Estrutura da Empresa' no menu lateral",
       "2. Cadastre os setores da empresa (ex: Produção, Administrativo, Logística)",
       "3. Dentro de cada setor, cadastre as unidades se aplicável",
       "4. Depois associe colaboradores a cada setor na Base Populacional",
@@ -66,11 +85,17 @@ const manualSections = [
     icon: Database,
     content: [
       "A Base Populacional é o cadastro completo dos colaboradores participantes do programa.",
-      "**O que é:** Lista de todos os colaboradores que serão acompanhados pela metodologia.",
-      "**Como usar:**",
-      "• Importação via arquivo CSV (recomendado para grandes volumes)",
-      "• Cadastro manual individual",
-      "**Dados necessários:** Nome, setor, cargo e turno de cada colaborador.",
+      "**Como cadastrar:**",
+      "• **Cadastro individual** — Clique em 'Novo Colaborador' e preencha os dados",
+      "• **Importação em lote** — Faça upload de arquivo Excel ou CSV com os dados dos colaboradores",
+      "• **Modelo de planilha** — Baixe o modelo padrão para garantir o formato correto na importação",
+      "**Dados necessários:** Nome completo, Email, Cargo, Setor e Turno",
+      "**Gestão de status:**",
+      "• Colaboradores são **inativados** (não excluídos) para preservar histórico",
+      "• Use os filtros: **Ativos** / **Inativos** / **Todos** para visualizar",
+      "• Colaboradores inativos não contam no denominador de cobertura",
+      "**Exportação:** Exporte a base completa para Excel a qualquer momento",
+      "**Controle de duplicidade:** A importação detecta duplicatas por email e não cria registros duplicados",
       "**Quando utilizar:** Logo após cadastrar a estrutura organizacional.",
       "**Boas práticas:** Mantenha a base atualizada. Colaboradores desligados devem ser inativados para não distorcer os indicadores de cobertura.",
     ],
@@ -81,12 +106,16 @@ const manualSections = [
     icon: ShieldCheck,
     content: [
       "O Núcleo de Sustentação é formado por lideranças e facilitadores que conduzem o programa.",
-      "**O que é:** Grupo de pessoas responsáveis por sustentar e multiplicar a metodologia.",
       "**Composição:**",
       "• **Lideranças** — Gestores que patrocinam e acompanham o programa",
       "• **Facilitadores** — Pessoas habilitadas a conduzir turmas e aplicar práticas",
+      "**Como usar:**",
+      "1. Acesse 'Governança do Núcleo' no menu lateral",
+      "2. Cadastre as lideranças do programa",
+      "3. Cadastre os facilitadores habilitados",
+      "**Importância:** O Núcleo é utilizado como fonte de responsáveis nos Fatores de Sucesso dos ciclos.",
       "**Quando utilizar:** Defina o núcleo antes de criar turmas.",
-      "**Boas práticas:** Invista na formação de pelo menos 1 facilitador para cada 30 colaboradores da base.",
+      "**Boas práticas:** Tenha pelo menos 1 facilitador para cada 30 colaboradores da base.",
     ],
   },
   {
@@ -94,45 +123,102 @@ const manualSections = [
     title: "Ciclos MVP",
     icon: Rocket,
     content: [
-      "Os Ciclos MVP são as 9 etapas do programa, organizadas em 3 fases:",
+      "Os Ciclos MVP são as **9 etapas** do programa, organizadas em 3 fases:",
       "**Fase Monitorar:** M1, M2, M3 — Diagnóstico e primeiras ações",
       "**Fase Validar:** V1, V2, V3 — Consolidação das práticas",
       "**Fase Perpetuar:** P1, P2, P3 — Sustentabilidade da cultura",
-      "**Como funciona cada ciclo:**",
-      "1. Cada ciclo possui ações pré-definidas baseadas na metodologia",
-      "2. Execute as ações e registre a conclusão no sistema",
-      "3. Quando todas as ações obrigatórias estiverem concluídas, o ciclo fica pronto para encerramento",
-      "4. Encerre o ciclo para avançar no programa",
+      "**Público-alvo por ciclo:**",
+      "• M1, M2, V1, V2, P1, P2 → Todos os colaboradores",
+      "• M3, V3, P3 → Exclusivo para liderança",
+      "**Estrutura de cada ciclo:**",
+      "• Cada ciclo possui **Fatores de Sucesso** com ações pré-definidas pela metodologia",
+      "• As ações são a estrutura principal de acompanhamento",
+      "**Progresso do ciclo (3 componentes):**",
+      "• **Treinamento (peso 70%)** — Colaboradores únicos treinados no ciclo ÷ base ativa",
+      "• **Fatores de Sucesso (peso 20%)** — Ações dos fatores concluídas ou tratadas",
+      "• **Ações do Ciclo (peso 10%)** — Ações criadas por você dentro do ciclo",
+      "**Cards clicáveis na tela de progresso:**",
+      "• Clique em Treinamento → navega para a tela de Turmas do ciclo",
+      "• Clique em Fatores → abre os fatores de sucesso do ciclo",
+      "• Clique em Ações → navega para Ações & Alertas",
+      "**Encerramento:**",
+      "• Atinja os critérios mínimos (≥80% ações concluídas, ≥1 turma finalizada)",
+      "• Clique em 'Encerrar Ciclo' para avançar",
+      "• O próximo ciclo é liberado automaticamente",
       "**Boas práticas:** Não pule ciclos. A metodologia é sequencial. Ciclos encerrados aumentam o Índice de Maturidade.",
     ],
   },
   {
+    id: "fatores-sucesso",
+    title: "Fatores de Sucesso",
+    icon: Target,
+    content: [
+      "Os **Fatores de Sucesso** são a estrutura principal de cada ciclo. Eles contêm ações práticas que orientam a implementação da metodologia.",
+      "**Estrutura de cada ação:**",
+      "• **Imagem ilustrativa** — Referência visual da prática",
+      "• **Título** — Nome da ação",
+      "• **Texto explicativo** — 'O que deve ser feito' (orientação prática)",
+      "• **Dica prática** — Sugestões adicionais de execução",
+      "**Campos operacionais (preenchidos por você):**",
+      "• **Responsável** — Pessoa encarregada da ação (sugestão vem do Núcleo)",
+      "• **Data prevista** — Prazo para conclusão",
+      "• **Observações** — Anotações livres",
+      "• **Status** — Pendente → Em Andamento → Concluído",
+      "• **Toggle ON/OFF** — Desativar uma ação que não se aplica (requer justificativa)",
+      "**Contagem dinâmica:**",
+      "• O contador (ex: '2/5 tratadas') reflete sempre a quantidade real de ações existentes",
+      "• Se uma ação for removida ou desativada, o total é recalculado automaticamente",
+      "**Boas práticas:**",
+      "• Defina responsáveis e prazos para todas as ações",
+      "• Atualize o status regularmente",
+      "• Se uma ação não se aplica, desative-a com justificativa (não deixe pendente)",
+    ],
+  },
+  {
     id: "turmas",
-    title: "Turmas",
+    title: "Turmas de Treinamento",
     icon: GraduationCap,
     content: [
       "As Turmas são sessões de treinamento onde os colaboradores participam das atividades do programa.",
       "**Como criar uma turma:**",
-      "1. Defina o facilitador responsável",
-      "2. Escolha a data e horário",
-      "3. Selecione os participantes da base populacional",
-      "4. Realize a turma e registre as presenças",
-      "**Quando utilizar:** Após definir o núcleo e ter facilitadores habilitados.",
-      "**Boas práticas:** Planeje turmas regulares. Se a base tem 200 colaboradores e 80 foram treinados, a cobertura será de 40%. Aumente progressivamente.",
+      "1. Acesse 'Turmas' no menu lateral",
+      "2. Clique em 'Nova Turma'",
+      "3. Defina o facilitador responsável (do Núcleo de Sustentação)",
+      "4. Escolha o módulo do ciclo (ex: M1, M2)",
+      "5. Selecione os participantes da Base Populacional",
+      "6. Defina data de início e fim",
+      "**Após realizar a turma:**",
+      "• Registre as presenças dos participantes",
+      "• Finalize a turma para que ela conte como 'Concluída'",
+      "**Controle de duplicidade:**",
+      "• Colaborador treinado em mais de uma turma do mesmo módulo conta como 1 pessoa treinada",
+      "• Isso evita inflação do indicador de cobertura",
+      "**Impacto nos indicadores:**",
+      "• Turmas alimentam a Cobertura do Programa (% de colaboradores treinados)",
+      "• Turmas alimentam o componente Treinamento (70%) do progresso do ciclo",
+      "• Turmas concluídas liberam o critério para encerrar o ciclo",
+      "**Boas práticas:** Planeje turmas regulares. Amplie progressivamente a cobertura.",
     ],
   },
   {
     id: "acoes",
     title: "Ações e Alertas",
-    icon: Target,
+    icon: AlertTriangle,
     content: [
-      "Ações são atividades práticas derivadas dos ciclos MVP que precisam ser executadas.",
-      "**Cada ação contém:** Descrição, responsável, prazo e status (pendente, em andamento, concluída, atrasada).",
-      "**Alertas automáticos são gerados quando:**",
-      "• Uma ação ultrapassa o prazo → 'Ação Atrasada'",
-      "• A cobertura do programa está abaixo de 30%",
-      "• Um ciclo está pronto para ser encerrado",
-      "**Boas práticas:** Acompanhe semanalmente as ações em aberto. Ações atrasadas reduzem a pontuação de maturidade.",
+      "A tela **Ações & Alertas** centraliza o monitoramento de todas as ações e prazos do programa.",
+      "**Tipos de ação:**",
+      "• Ações dos Fatores de Sucesso de cada ciclo (pré-definidas pela metodologia)",
+      "• Ações criadas manualmente por você dentro do ciclo",
+      "**Status possíveis:** Pendente → Em Andamento → Concluído → Atrasada (automático)",
+      "**Alertas automáticos:**",
+      "• ⚠️ Ação com prazo vencido → marcada como 'Atrasada' automaticamente",
+      "• ⚠️ Cobertura do programa abaixo de 30%",
+      "• ✅ Ciclo pronto para ser encerrado",
+      "• ⚠️ Ações sem responsável ou prazo definido",
+      "**Isolamento de alertas:**",
+      "• Você vê apenas os alertas da sua empresa",
+      "• Nenhum alerta de outras empresas aparece no seu portal",
+      "**Boas práticas:** Acompanhe semanalmente. Ações atrasadas reduzem a pontuação de maturidade.",
     ],
   },
   {
@@ -140,28 +226,32 @@ const manualSections = [
     title: "Checklist da Implementação",
     icon: CheckCircle2,
     content: [
-      "O Checklist da Implementação acompanha automaticamente o progresso da metodologia.",
+      "O Dashboard inclui um **Guia de Primeiros Passos** que monitora automaticamente o progresso da configuração inicial.",
       "**Etapas monitoradas:**",
-      "• Onboarding: Núcleo definido + Base populacional cadastrada",
-      "• Pré-Implementação: Estrutura validada + Primeira turma + Planejamento do ciclo",
-      "• Implementação: Ciclos M1-M3, V1-V3 e P1-P3 iniciados",
-      "**Como funciona:** Cada item é marcado automaticamente quando a ação correspondente ocorre no sistema.",
-      "**Boas práticas:** Use o checklist como guia para saber sempre qual é o próximo passo da implementação.",
+      "• ✅ Núcleo de sustentação definido",
+      "• ✅ Base populacional cadastrada",
+      "• ✅ Estrutura organizacional validada",
+      "• ✅ Primeira turma criada",
+      "• ✅ Primeira prática registrada",
+      "**Como funciona:** Cada item é marcado automaticamente quando a ação correspondente ocorre no sistema. Não é necessário marcar manualmente.",
+      "**Boas práticas:** Use o checklist como guia para saber qual é o próximo passo da implementação. Complete todas as etapas antes de avançar para os ciclos.",
     ],
   },
   {
     id: "notificacoes",
-    title: "Sistema de Notificações",
-    icon: AlertTriangle,
+    title: "Alertas e Notificações",
+    icon: Bell,
     content: [
-      "A plataforma gera notificações automáticas para situações críticas.",
+      "O sistema gera notificações automáticas para situações que requerem sua atenção.",
       "**Tipos de notificação:**",
-      "• Alerta de atraso — ações com prazo vencido",
-      "• Implementação parada — 30+ dias sem atividade",
+      "• Ações com prazo vencido (atrasadas)",
+      "• Implementação parada (30+ dias sem atividade)",
       "• Sugestão de próximo passo",
-      "• Relatório executivo mensal",
-      "**Central de Notificações:** Área centralizada com mensagens recentes, alertas ativos e histórico.",
-      "**Boas práticas:** Configure os responsáveis pela implementação em Configurações → Responsáveis para garantir que alertas cheguem às pessoas certas.",
+      "• Ciclo pronto para encerramento",
+      "**Isolamento por empresa:**",
+      "• Você vê apenas os alertas da sua empresa",
+      "• Alertas de gestão da plataforma (ex: 'Empresa BBM inativada') não aparecem para clientes",
+      "**Boas práticas:** Verifique os alertas regularmente e trate as pendências em ordem de prioridade.",
     ],
   },
   {
@@ -171,29 +261,42 @@ const manualSections = [
     content: [
       "O módulo de Relatórios oferece análises executivas completas.",
       "**Tipos de relatório disponíveis:**",
-      "• **Relatório Executivo** — Visão geral com todos os indicadores",
-      "• **Progresso por Colaborador** — Busca por nome com histórico individual",
-      "• **Maturidade por Setor** — Comparativo entre setores",
-      "**Exportação:** Relatórios em PDF para apresentações e reuniões de governança.",
-      "**Quando utilizar:** Mensalmente para acompanhamento e antes de reuniões executivas.",
+      "• **Relatório Executivo** — Visão geral com todos os indicadores da empresa",
+      "• **Progresso por Colaborador** — Busca por nome com histórico individual de participação",
+      "• **Maturidade por Setor** — Comparativo entre os setores da empresa",
+      "**Exportação:** Relatórios podem ser exportados em PDF para apresentações e reuniões de governança.",
+      "**Quando utilizar:** Mensalmente para acompanhamento interno e antes de reuniões executivas.",
       "**Boas práticas:** Use o Relatório Executivo para reuniões mensais e o relatório por Setor para identificar áreas que precisam de atenção.",
     ],
   },
   {
+    id: "configuracoes",
+    title: "Configurações",
+    icon: Settings,
+    content: [
+      "A tela de **Configurações** permite gerenciar aspectos operacionais do seu portal.",
+      "**Funcionalidades:**",
+      "• Definir responsáveis pela implementação do programa na empresa",
+      "• Alterar sua senha de acesso",
+      "**Boas práticas:**",
+      "• Defina pelo menos 1 responsável pela implementação",
+      "• Troque sua senha periodicamente",
+    ],
+  },
+  {
     id: "navegacao",
-    title: "Navegação entre Telas",
+    title: "Navegação Inteligente",
     icon: ArrowRight,
     content: [
-      "A plataforma possui navegação inteligente (drill-down) para facilitar a análise.",
+      "A plataforma possui navegação inteligente (drill-down) para facilitar a análise e a ação.",
       "**Cards clicáveis no dashboard:**",
-      "• Empresas Ativas → Lista de empresas",
-      "• Ações Atrasadas → Detalhamento com responsável e dias de atraso",
-      "• Ciclos em Andamento → Empresas com ciclos ativos",
-      "**Fluxo de navegação:**",
-      "• Dashboard → Alertas → Detalhe da ação (com destaque automático)",
-      "• Relatórios → Exportar PDF",
-      "• Configurações → Gerenciar responsáveis",
-      "**Boas práticas:** Use os alertas do dashboard para navegar diretamente aos pontos de atenção.",
+      "• Clique em indicadores para ver detalhes",
+      "• Clique em alertas para ir diretamente ao item que precisa de atenção",
+      "**Na tela de Ciclos MVP:**",
+      "• Card de Treinamento → abre a tela de Turmas",
+      "• Card de Fatores de Sucesso → abre os fatores do ciclo",
+      "• Card de Ações → abre Ações & Alertas",
+      "**Boas práticas:** Use os links diretos para resolver pendências rapidamente sem navegar por múltiplas telas.",
     ],
   },
 ];
@@ -216,8 +319,8 @@ const indicatorDetails = [
     ],
     levels: "Inicial (0-25) · Estruturando (26-50) · Evoluindo (51-75) · Consolidando (76-90) · Cultura Forte (91-100)",
     howToImprove: [
-      "Realizar mais turmas e registrar presenças",
-      "Concluir ações pendentes dos ciclos",
+      "Realizar mais turmas e registrar presenças corretamente",
+      "Concluir ações pendentes dos fatores de sucesso",
       "Ampliar a cobertura treinando mais colaboradores",
       "Avançar nos ciclos MVP encerrando etapas concluídas",
     ],
@@ -228,11 +331,11 @@ const indicatorDetails = [
     icon: Users,
     color: "success",
     whatMeasures: "Percentual de colaboradores da base populacional que já participaram de pelo menos uma turma de treinamento.",
-    dataSource: "Cruzamento entre a Base Populacional ativa e os registros de presença nas Turmas.",
+    dataSource: "Cruzamento entre a Base Populacional ativa e os registros de presença nas Turmas. Colaboradores únicos são contados (repetição no mesmo módulo não infla o indicador).",
     calculation: [
-      "Numerador: colaboradores com pelo menos 1 presença registrada",
+      "Numerador: colaboradores únicos com pelo menos 1 presença registrada",
       "Denominador: total de colaboradores ativos na base",
-      "Fórmula: (pessoas treinadas ÷ base ativa) × 100",
+      "Fórmula: (pessoas únicas treinadas ÷ base ativa) × 100",
     ],
     levels: "Abaixo de 30% → crítico · 30-70% → em desenvolvimento · Acima de 70% → boa penetração",
     howToImprove: [
@@ -253,13 +356,13 @@ const indicatorDetails = [
       "Base populacional cadastrada → 15 pontos",
       "Núcleo de sustentação ativo → 10 pontos",
       "Facilitadores habilitados → 5 pontos",
-      "Ciclos encerrados → até 30 pontos (proporcional)",
+      "Ciclos encerrados → até 30 pontos (proporcional aos 9 ciclos)",
       "Ações concluídas → até 25 pontos (proporcional)",
       "Cobertura do programa → até 15 pontos (proporcional)",
     ],
     levels: "0-25 → Inicial · 26-50 → Estruturando · 51-75 → Evoluindo · 76-100 → Consolidado",
     howToImprove: [
-      "Garantir que base populacional esteja cadastrada",
+      "Garantir que base populacional esteja cadastrada e atualizada",
       "Formar e habilitar mais facilitadores",
       "Encerrar ciclos concluídos para pontuar no progresso",
       "Executar e concluir ações dentro do prazo",
@@ -291,7 +394,7 @@ const indicatorDetails = [
     icon: CheckCircle2,
     color: "success",
     whatMeasures: "Quantidade e percentual de ações do plano que já foram finalizadas com sucesso.",
-    dataSource: "Registro de status das ações nos ciclos MVP. Uma ação é contada como concluída quando seu status é alterado para 'concluída'.",
+    dataSource: "Registro de status das ações nos Fatores de Sucesso e ações criadas manualmente nos ciclos.",
     calculation: [
       "Exibido como: ações concluídas / total de ações",
       "Percentual: (concluídas ÷ total) × 100",
@@ -310,7 +413,7 @@ const indicatorDetails = [
     icon: AlertTriangle,
     color: "danger",
     whatMeasures: "Número de ações que ultrapassaram o prazo de conclusão sem serem finalizadas.",
-    dataSource: "Comparação entre a data de prazo definida para cada ação e a data atual. Ações com prazo vencido e status diferente de 'concluída' são contadas.",
+    dataSource: "Comparação entre a data de prazo definida para cada ação e a data atual. Ações com prazo vencido e status diferente de 'concluída' são contadas automaticamente.",
     calculation: [
       "Contagem simples: ações com prazo < data atual e status ≠ concluída",
       "Também exibe o backlog total de ações pendentes",
@@ -327,12 +430,13 @@ const indicatorDetails = [
 
 /* ─── FLOW STEPS ─── */
 const flowSteps = [
+  { icon: Lock, title: "Primeiro Acesso", desc: "Troque a senha temporária e complete o onboarding" },
   { icon: Layers, title: "Estrutura Organizacional", desc: "Cadastre setores e unidades da empresa" },
   { icon: Database, title: "Base Populacional", desc: "Cadastre os colaboradores participantes" },
   { icon: ShieldCheck, title: "Núcleo de Sustentação", desc: "Defina lideranças e facilitadores" },
   { icon: GraduationCap, title: "Turmas", desc: "Crie turmas e registre presenças" },
-  { icon: Rocket, title: "Ciclos MVP", desc: "Execute e encerre os 9 ciclos do programa" },
-  { icon: Target, title: "Ações & Alertas", desc: "Acompanhe ações e prazos" },
+  { icon: Rocket, title: "Ciclos MVP", desc: "Inicie e acompanhe os fatores de sucesso" },
+  { icon: Target, title: "Fatores de Sucesso", desc: "Execute as ações de cada fator do ciclo" },
   { icon: BarChart3, title: "Indicadores", desc: "Dados alimentam os indicadores automaticamente" },
   { icon: Gauge, title: "Dashboard", desc: "Visualize a evolução cultural em tempo real" },
 ];
@@ -374,7 +478,7 @@ const improvementGuide = [
     icon: Gauge,
     actions: [
       "Aumentar a cobertura de treinamentos (realizar mais turmas)",
-      "Concluir ações práticas dos ciclos MVP",
+      "Concluir ações práticas dos fatores de sucesso",
       "Manter presença ativa nas atividades do programa",
       "Avançar progressivamente nas fases Monitorar → Validar → Perpetuar",
     ],
@@ -423,14 +527,13 @@ export default function HelpCenter() {
             </div>
             <div>
               <h2 className="text-xl font-display font-bold text-foreground">Fluxo do Programa no Sistema</h2>
-              <p className="text-sm text-muted-foreground">O caminho completo desde o cadastro até os indicadores</p>
+              <p className="text-sm text-muted-foreground">O caminho completo desde o primeiro acesso até os indicadores</p>
             </div>
           </div>
 
           <div className="relative">
             {flowSteps.map((step, i) => (
               <div key={i} className="flex items-start gap-4 relative">
-                {/* Vertical line */}
                 {i < flowSteps.length - 1 && (
                   <div className="absolute left-[19px] top-10 w-0.5 h-[calc(100%-8px)] bg-border" />
                 )}
@@ -509,19 +612,14 @@ export default function HelpCenter() {
                 </AccordionTrigger>
                 <AccordionContent>
                   <div className="pl-11 space-y-4">
-                    {/* What it measures */}
                     <div>
                       <p className="text-xs font-bold uppercase tracking-wider text-primary mb-1">O que mede</p>
                       <p className="text-sm text-muted-foreground">{ind.whatMeasures}</p>
                     </div>
-
-                    {/* Data source */}
                     <div>
                       <p className="text-xs font-bold uppercase tracking-wider text-primary mb-1">De onde vêm os dados</p>
                       <p className="text-sm text-muted-foreground">{ind.dataSource}</p>
                     </div>
-
-                    {/* Calculation */}
                     <div>
                       <p className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Como é calculado</p>
                       <ul className="space-y-1">
@@ -532,14 +630,10 @@ export default function HelpCenter() {
                         ))}
                       </ul>
                     </div>
-
-                    {/* Levels */}
                     <div className="p-3 rounded-lg bg-muted/50 border border-border">
                       <p className="text-xs font-semibold text-foreground mb-1">Faixas de referência</p>
                       <p className="text-xs text-muted-foreground">{ind.levels}</p>
                     </div>
-
-                    {/* How to improve */}
                     <div>
                       <p className="text-xs font-bold uppercase tracking-wider text-success mb-1">Como melhorar</p>
                       <ul className="space-y-1">
