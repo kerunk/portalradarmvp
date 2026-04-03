@@ -93,7 +93,7 @@ function addReportToHistory(type: string, name: string) {
 
 // Admin sees aggregated portfolio reports with PDF export
 function AdminReportsView() {
-  const companies = getCompanies();
+  const companies = getActiveCompaniesFiltered();
   const enriched = useMemo(() => getEnrichedCompanies(), []);
   const [reportHistory, setReportHistory] = useState(getReportHistory);
 
