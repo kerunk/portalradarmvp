@@ -58,17 +58,18 @@ export function CycleProgressHeader({
 }: CycleProgressHeaderProps) {
   // Calculate weighted progress
   const progress = useMemo(() => {
-    // 1. Training coverage (70% weight) - people trained / total employees
+    // 1. Training coverage (70% weight) - UNIQUE people trained / total active employees
     const cycleTurmas = turmas.filter(t => t.cycleId === cycleId);
     const trainedSet = new Set<string>();
     cycleTurmas.forEach(turma => {
+      // Only count participants marked "present" in attendance records
       if (turma.attendance) {
         Object.entries(turma.attendance).forEach(([participantId, status]) => {
           if (status === "present") trainedSet.add(participantId);
         });
       }
-      // Also count participants from completed turmas
-      if (turma.status === "completed") {
+      // For completed turmas without attendance data, count participants as trained
+      if (turma.status === "completed" && (!turma.attendance || Object.keys(turma.attendance).length === 0)) {
         turma.participants.forEach(p => trainedSet.add(p.id));
       }
     });

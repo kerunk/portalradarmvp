@@ -8,6 +8,8 @@ import { CycleTurmas, type Turma } from "@/components/cycles/CycleTurmas";
 import { CycleClosureDialog } from "@/components/cycles/CycleClosureDialog";
 import { CycleStatusBadge } from "@/components/cycles/CycleStatusBadge";
 import { CycleProgressHeader } from "@/components/cycles/CycleProgressHeader";
+import { useAuth } from "@/contexts/AuthContext";
+import { getPopulation } from "@/lib/companyStorage";
 import { AdvanceCycleDialog } from "@/components/cycles/AdvanceCycleDialog";
 import { BestPracticesShelf } from "@/components/cycles/BestPracticesShelf";
 import { PendingDecisions } from "@/components/cycles/PendingDecisions";
@@ -47,7 +49,6 @@ import {
   setCycleState,
   getTurmas,
   setTurmas,
-  getEmployees,
   getRecords,
   isActionDelayed,
   addRecord,
@@ -142,6 +143,8 @@ export default function MVPCycles() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const companyId = user?.companyId || "";
   
   const highlightActionId = searchParams.get("highlight");
   const fromAlert = searchParams.get("fromAlert") === "true";
@@ -200,8 +203,11 @@ export default function MVPCycles() {
   const isCycleLocked = cycleGovernance?.status === 'closed' || cycleGovernance?.isLocked;
   const isCycleStarted = !!(currentCycleState?.startDate);
 
-  // Calculate data for progress header
-  const totalEmployees = useMemo(() => getEmployees().filter(e => e.active).length, [refreshKey]);
+  // Calculate data for progress header — use real population from companyStorage
+  const totalEmployees = useMemo(() => {
+    if (!companyId) return 0;
+    return getPopulation(companyId).filter(m => m.active).length;
+  }, [companyId, refreshKey]);
   
   const totalPracticesData = useMemo(() => {
     const records = getRecords().filter(r => r.cycleId === selectedCycleId && r.tags?.includes("melhor-prática"));
