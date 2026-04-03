@@ -143,11 +143,12 @@ function getCredential(email: string): UserCredential | null {
 
 // ============================================================
 // Default credentials (hardcoded fallbacks)
+// Only the platform master admin has a default credential.
+// All other users are created dynamically via the admin UI.
 // ============================================================
 
 const DEFAULT_CREDENTIALS: Record<string, { password: string; mustChangePassword: boolean }> = {
   "admin@radarmvp.com": { password: "admin123", mustChangePassword: true },
-  "admin@alpha.com": { password: "cliente123", mustChangePassword: true },
 };
 
 // Get effective credential: saved overrides defaults
