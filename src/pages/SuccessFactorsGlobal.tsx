@@ -312,6 +312,7 @@ export default function SuccessFactorsGlobal() {
                                   title: action.title,
                                   description: action.description || "",
                                   bestPractice: action.bestPractice,
+                                  imageUrl: action.imageUrl || "",
                                 })
                               }
                             >
