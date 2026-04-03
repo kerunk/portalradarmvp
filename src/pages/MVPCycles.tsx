@@ -381,7 +381,7 @@ export default function MVPCycles() {
     const percentage = totalActions > 0 ? Math.round((done / totalActions) * 100) : 0;
 
     return { total: totalActions, completed, treated, delayed, percentage };
-  }, [currentCycleState]);
+  }, [currentCycleState, currentCycle]);
 
   const handleToggleAction = (factorId: string, actionId: string, enabled: boolean) => {
     if (isCycleLocked) {
