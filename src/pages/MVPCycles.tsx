@@ -203,7 +203,12 @@ export default function MVPCycles() {
     setCycleState(cycleId, cycleState);
   }, []);
 
-  const currentCycle = mvpCycles.find(c => c.id === selectedCycleId)!;
+  // Build currentCycle with effective (persisted) success factors
+  const currentCycle = useMemo(() => {
+    const baseCycle = mvpCycles.find(c => c.id === selectedCycleId)!;
+    const effectiveFactors = getEffectiveSuccessFactors(selectedCycleId);
+    return { ...baseCycle, successFactors: effectiveFactors };
+  }, [selectedCycleId, refreshKey]);
   const currentCycleState = cycleStates[selectedCycleId];
   const isCycleLocked = cycleGovernance?.status === 'closed' || cycleGovernance?.isLocked;
   const isCycleStarted = !!(currentCycleState?.startDate);
