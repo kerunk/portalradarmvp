@@ -665,6 +665,11 @@ export function getCompanies(): CompanyState[] {
   return getGlobalState().companies;
 }
 
+// Returns only real, active, non-deleted companies for operational views
+export function getActiveCompaniesFiltered(): CompanyState[] {
+  return getGlobalState().companies.filter(c => c.active !== false && !c.deleted);
+}
+
 export function setCompanies(companies: CompanyState[]): void {
   setGlobalState({ companies });
 }
