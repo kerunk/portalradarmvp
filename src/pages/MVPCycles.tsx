@@ -144,6 +144,8 @@ export default function MVPCycles() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const companyId = user?.companyId || "";
   
   const highlightActionId = searchParams.get("highlight");
   const fromAlert = searchParams.get("fromAlert") === "true";
