@@ -825,10 +825,12 @@ export default function MVPCycles() {
         />
 
         {/* Best Practices Shelf */}
-        <BestPracticesShelf 
-          cycleId={selectedCycleId}
-          onCreateAction={handleCreateActionFromTemplate}
-        />
+        <div id="practices-section">
+          <BestPracticesShelf 
+            cycleId={selectedCycleId}
+            onCreateAction={handleCreateActionFromTemplate}
+          />
+        </div>
 
         {/* Pending Decisions */}
         <PendingDecisions
