@@ -95,7 +95,7 @@ export default function SuccessFactorsGlobal() {
       selectedCycleId,
       editingAction.factorId,
       editingAction.actionId,
-      { title: editingAction.title, bestPractice: editingAction.bestPractice }
+      { title: editingAction.title, description: editingAction.description, bestPractice: editingAction.bestPractice }
     );
 
     if (!result.success) {
