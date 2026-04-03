@@ -1063,22 +1063,37 @@ export default function MVPCycles() {
           isLocked={isCycleLocked}
         />
 
-        {/* Progress Summary */}
-        <div className="bg-card rounded-lg p-4 border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-foreground">Progresso do Ciclo {selectedCycleId}</p>
-              <p className="text-xs text-muted-foreground">
-                {cycleProgress.completed}/{cycleProgress.total} ações concluídas
-                {cycleProgress.delayed > 0 && ` • ${cycleProgress.delayed} atrasada(s)`}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-primary">{cycleProgress.percentage}%</p>
-              <p className="text-xs text-muted-foreground">Conclusão</p>
+        {/* Next cycle advance button */}
+        {nextCycleId && cycleGovernance?.status !== 'closed' && (
+          <div className="bg-card rounded-lg p-4 border">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Próximo passo</p>
+                <p className="text-xs text-muted-foreground">
+                  {cycleProgress.percentage >= 85 
+                    ? `Você pode avançar para o ciclo ${nextCycleId}.`
+                    : `Atinja 85% de progresso para avançar ao ${nextCycleId} sem restrições.`
+                  }
+                </p>
+              </div>
+              <Button
+                variant={cycleProgress.percentage >= 85 ? "default" : "outline"}
+                className="gap-2"
+                onClick={() => {
+                  if (cycleProgress.percentage >= 85) {
+                    setSelectedCycleId(nextCycleId);
+                  } else {
+                    setIsAdvanceDialogOpen(true);
+                  }
+                }}
+              >
+                Ir para {nextCycleId}
+              </Button>
             </div>
           </div>
-        </div>
+        )}
+          </>
+        )}
       </div>
 
       {/* Cycle Closure Dialog */}
@@ -1090,6 +1105,18 @@ export default function MVPCycles() {
         onCycleClosed={handleCloseCycle}
         onExportPDF={handleExportClosurePDF}
       />
+
+      {/* Advance Cycle Dialog */}
+      {nextCycleId && (
+        <AdvanceCycleDialog
+          isOpen={isAdvanceDialogOpen}
+          onClose={() => setIsAdvanceDialogOpen(false)}
+          currentCycleId={selectedCycleId}
+          nextCycleId={nextCycleId}
+          currentProgress={cycleProgress.percentage}
+          onConfirm={handleAdvanceWithJustification}
+        />
+      )}
     </AppLayout>
   );
 }
