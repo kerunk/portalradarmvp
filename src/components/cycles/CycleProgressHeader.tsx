@@ -59,6 +59,9 @@ export function CycleProgressHeader({
   onStartCycle,
   onCloseCycle,
   isCycleLocked,
+  onNavigateTraining,
+  onNavigatePractices,
+  onNavigateActions,
 }: CycleProgressHeaderProps) {
   // Calculate weighted progress
   const progress = useMemo(() => {
