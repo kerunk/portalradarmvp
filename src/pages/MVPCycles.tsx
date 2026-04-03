@@ -42,6 +42,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { mvpCycles, type MVPCycle, getModuleNumber, SUCCESS_FACTOR_DESCRIPTIONS } from "@/data/mvpCycles";
+import { getEffectiveSuccessFactors } from "@/lib/globalSuccessFactors";
 import { getNucleoMembers } from "@/lib/companyStorage";
 import {
   getState,
@@ -123,11 +124,14 @@ const statusConfig = {
 };
 
 function initializeCycleState(cycle: MVPCycle, started: boolean = false): CycleState {
+  // Use effective (persisted global) factors instead of raw static data
+  const effectiveFactors = getEffectiveSuccessFactors(cycle.id);
   return {
-    factors: cycle.successFactors.map(factor => ({
+    factors: effectiveFactors.map(factor => ({
       id: factor.id,
       actions: factor.actions.map(action => ({
         id: action.id,
+        title: action.title,
         enabled: true,
         disabledReason: "",
         responsible: "",
@@ -199,7 +203,12 @@ export default function MVPCycles() {
     setCycleState(cycleId, cycleState);
   }, []);
 
-  const currentCycle = mvpCycles.find(c => c.id === selectedCycleId)!;
+  // Build currentCycle with effective (persisted) success factors
+  const currentCycle = useMemo(() => {
+    const baseCycle = mvpCycles.find(c => c.id === selectedCycleId)!;
+    const effectiveFactors = getEffectiveSuccessFactors(selectedCycleId);
+    return { ...baseCycle, successFactors: effectiveFactors };
+  }, [selectedCycleId, refreshKey]);
   const currentCycleState = cycleStates[selectedCycleId];
   const isCycleLocked = cycleGovernance?.status === 'closed' || cycleGovernance?.isLocked;
   const isCycleStarted = !!(currentCycleState?.startDate);
