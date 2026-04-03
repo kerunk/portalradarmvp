@@ -204,8 +204,11 @@ export default function MVPCycles() {
   const isCycleLocked = cycleGovernance?.status === 'closed' || cycleGovernance?.isLocked;
   const isCycleStarted = !!(currentCycleState?.startDate);
 
-  // Calculate data for progress header
-  const totalEmployees = useMemo(() => getEmployees().filter(e => e.active).length, [refreshKey]);
+  // Calculate data for progress header — use real population from companyStorage
+  const totalEmployees = useMemo(() => {
+    if (!companyId) return 0;
+    return getPopulation(companyId).filter(m => m.active).length;
+  }, [companyId, refreshKey]);
   
   const totalPracticesData = useMemo(() => {
     const records = getRecords().filter(r => r.cycleId === selectedCycleId && r.tags?.includes("melhor-prática"));
