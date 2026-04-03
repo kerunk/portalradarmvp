@@ -966,57 +966,29 @@ export default function MVPCycles() {
                         const displayStatus = isDelayed ? "delayed" : actionState.status;
 
                         return (
-                          <div key={actionDef.id} id={`action-${actionDef.id}`} className={cn(
-                            "p-4 rounded-lg border transition-all duration-500",
+                          <Card key={actionDef.id} id={`action-${actionDef.id}`} className={cn(
+                            "overflow-hidden transition-all duration-500",
                             actionState.enabled 
-                              ? displayStatus === "completed" ? "bg-success/5 border-success/20" 
-                                : displayStatus === "delayed" ? "bg-destructive/5 border-destructive/20"
-                                : "bg-card border-border" 
-                              : "bg-muted/30 border-muted",
+                              ? displayStatus === "completed" ? "border-success/30 bg-success/5" 
+                                : displayStatus === "delayed" ? "border-destructive/30 bg-destructive/5"
+                                : "border-border" 
+                              : "border-muted bg-muted/30",
                             highlightedId === actionDef.id && "ring-2 ring-primary shadow-lg"
                           )}>
                             {fromAlert && highlightedId === actionDef.id && (
-                              <Badge variant="secondary" className="text-[10px] mb-2">
-                                Item aberto a partir de alerta do sistema
-                              </Badge>
+                              <div className="px-4 pt-3">
+                                <Badge variant="secondary" className="text-[10px]">
+                                  Item aberto a partir de alerta do sistema
+                                </Badge>
+                              </div>
                             )}
 
-                            {/* Header: Toggle + Title + Status */}
-                            <div className="flex items-center gap-3 mb-3">
-                              <Switch
-                                checked={actionState.enabled}
-                                onCheckedChange={(checked) => handleToggleAction(factor.id, actionDef.id, checked)}
-                                disabled={isCycleLocked}
-                              />
-                              <span className={cn("font-medium flex-1 text-sm", actionState.enabled ? "text-foreground" : "text-muted-foreground line-through")}>
-                                {actionDef.title}
-                              </span>
-                              {actionState.enabled && (
-                                <Select
-                                  value={actionState.status}
-                                  onValueChange={(value) => handleUpdateAction(factor.id, actionDef.id, { status: value as any })}
-                                  disabled={isCycleLocked}
-                                >
-                                  <SelectTrigger className={cn("w-[150px] h-9", statusConfig[displayStatus].color)}>
-                                    <div className="flex items-center gap-2">
-                                      {(() => { const Icon = statusConfig[displayStatus].icon; return <Icon size={14} />; })()}
-                                      <SelectValue />
-                                    </div>
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="pending">Pendente</SelectItem>
-                                    <SelectItem value="in_progress">Em andamento</SelectItem>
-                                    <SelectItem value="completed">Concluído</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            </div>
-
-                            {/* Visual content: Image + Description side by side */}
-                            {(actionDef.imageUrl || actionDef.description || actionDef.bestPractice) && (
-                              <div className={cn("flex gap-4 mb-3", actionDef.imageUrl ? "items-start" : "")}>
+                            {/* Top section: Image + Content side by side */}
+                            <div className="p-4 pb-3">
+                              <div className="flex gap-4">
+                                {/* Left: Image thumbnail */}
                                 {actionDef.imageUrl && (
-                                  <div className="w-20 h-20 rounded-lg overflow-hidden border border-border flex-shrink-0 bg-muted">
+                                  <div className="w-24 h-24 rounded-lg overflow-hidden border border-border flex-shrink-0 bg-muted">
                                     <img 
                                       src={actionDef.imageUrl} 
                                       alt={actionDef.title}
@@ -1025,102 +997,143 @@ export default function MVPCycles() {
                                     />
                                   </div>
                                 )}
-                                <div className="flex-1 space-y-2">
+
+                                {/* Right: Title + Description + Tips */}
+                                <div className="flex-1 min-w-0">
+                                  {/* Header: Toggle + Title + Status */}
+                                  <div className="flex items-center gap-3 mb-2">
+                                    <Switch
+                                      checked={actionState.enabled}
+                                      onCheckedChange={(checked) => handleToggleAction(factor.id, actionDef.id, checked)}
+                                      disabled={isCycleLocked}
+                                    />
+                                    <span className={cn("font-semibold flex-1 text-sm", actionState.enabled ? "text-foreground" : "text-muted-foreground line-through")}>
+                                      {actionDef.title}
+                                    </span>
+                                    {actionState.enabled && (
+                                      <Select
+                                        value={actionState.status}
+                                        onValueChange={(value) => handleUpdateAction(factor.id, actionDef.id, { status: value as any })}
+                                        disabled={isCycleLocked}
+                                      >
+                                        <SelectTrigger className={cn("w-[150px] h-8 text-xs", statusConfig[displayStatus].color)}>
+                                          <div className="flex items-center gap-2">
+                                            {(() => { const Icon = statusConfig[displayStatus].icon; return <Icon size={12} />; })()}
+                                            <SelectValue />
+                                          </div>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="pending">Pendente</SelectItem>
+                                          <SelectItem value="in_progress">Em andamento</SelectItem>
+                                          <SelectItem value="completed">Concluído</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    )}
+                                  </div>
+
+                                  {/* Description: O que fazer */}
                                   {actionDef.description && (
-                                    <div className="text-sm text-muted-foreground bg-secondary/20 p-3 rounded border border-border/50">
+                                    <div className="text-sm text-muted-foreground bg-secondary/30 p-3 rounded-md border border-border/50 mb-2">
                                       <p className="font-medium text-foreground/80 text-xs uppercase tracking-wide mb-1">O que fazer</p>
-                                      <p>{actionDef.description}</p>
+                                      <p className="leading-relaxed">{actionDef.description}</p>
                                     </div>
                                   )}
+
+                                  {/* Tip */}
                                   {actionDef.bestPractice && (
-                                    <div className="flex items-start gap-2 text-sm text-muted-foreground bg-warning/5 border border-warning/10 p-2 rounded">
+                                    <div className="flex items-start gap-2 text-sm text-muted-foreground bg-warning/5 border border-warning/10 p-2 rounded-md">
                                       <Lightbulb size={14} className="text-warning mt-0.5 flex-shrink-0" />
                                       <span><strong className="text-foreground/70">Dica:</strong> {actionDef.bestPractice}</span>
                                     </div>
                                   )}
                                 </div>
                               </div>
-                            )}
+                            </div>
 
-                            {/* Operational fields */}
-                            {actionState.enabled ? (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div>
-                                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Responsável</label>
-                                  <div className="relative">
-                                    <User size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
-                                    <Select
-                                      value={actionState.responsible || ""}
-                                      onValueChange={(value) => handleUpdateAction(factor.id, actionDef.id, { responsible: value })}
-                                      disabled={isCycleLocked}
-                                    >
-                                      <SelectTrigger className="pl-8 h-9">
-                                        <SelectValue placeholder="Selecione o responsável" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {nucleoMembersList.map(member => (
-                                          <SelectItem key={member.id} value={member.name}>
-                                            {member.name} — {member.role || member.sector || "Núcleo"}
-                                          </SelectItem>
-                                        ))}
-                                        {nucleoMembersList.length === 0 && (
-                                          <SelectItem value="__empty" disabled>
-                                            Nenhum integrante do núcleo cadastrado
-                                          </SelectItem>
-                                        )}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                </div>
-                                <div>
-                                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Data Prevista</label>
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <Button 
-                                        variant="outline" 
-                                        className={cn("w-full justify-start text-left h-9", !actionState.dueDate && "text-muted-foreground")}
+                            {/* Separator */}
+                            <Separator />
+
+                            {/* Bottom section: Operational fields */}
+                            <div className="p-4 pt-3">
+                              {actionState.enabled ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Responsável</label>
+                                    <div className="relative">
+                                      <User size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
+                                      <Select
+                                        value={actionState.responsible || ""}
+                                        onValueChange={(value) => handleUpdateAction(factor.id, actionDef.id, { responsible: value })}
                                         disabled={isCycleLocked}
                                       >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {actionState.dueDate ? format(new Date(actionState.dueDate), "dd/MM/yyyy", { locale: ptBR }) : "Selecionar"}
-                                      </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                      <Calendar
-                                        mode="single"
-                                        selected={actionState.dueDate ? new Date(actionState.dueDate) : undefined}
-                                        onSelect={date => handleUpdateAction(factor.id, actionDef.id, { dueDate: date?.toISOString() || null })}
-                                        className="pointer-events-auto"
-                                      />
-                                    </PopoverContent>
-                                  </Popover>
+                                        <SelectTrigger className="pl-8 h-9">
+                                          <SelectValue placeholder="Selecione o responsável" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {nucleoMembersList.map(member => (
+                                            <SelectItem key={member.id} value={member.name}>
+                                              {member.name} — {member.role || member.sector || "Núcleo"}
+                                            </SelectItem>
+                                          ))}
+                                          {nucleoMembersList.length === 0 && (
+                                            <SelectItem value="__empty" disabled>
+                                              Nenhum integrante do núcleo cadastrado
+                                            </SelectItem>
+                                          )}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Data Prevista</label>
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <Button 
+                                          variant="outline" 
+                                          className={cn("w-full justify-start text-left h-9", !actionState.dueDate && "text-muted-foreground")}
+                                          disabled={isCycleLocked}
+                                        >
+                                          <CalendarIcon className="mr-2 h-4 w-4" />
+                                          {actionState.dueDate ? format(new Date(actionState.dueDate), "dd/MM/yyyy", { locale: ptBR }) : "Selecionar"}
+                                        </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                          mode="single"
+                                          selected={actionState.dueDate ? new Date(actionState.dueDate) : undefined}
+                                          onSelect={date => handleUpdateAction(factor.id, actionDef.id, { dueDate: date?.toISOString() || null })}
+                                          className="pointer-events-auto"
+                                        />
+                                      </PopoverContent>
+                                    </Popover>
+                                  </div>
+                                  <div className="md:col-span-2">
+                                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Observações</label>
+                                    <Textarea
+                                      placeholder="Observações sobre esta ação..."
+                                      value={actionState.observation}
+                                      onChange={e => handleUpdateAction(factor.id, actionDef.id, { observation: e.target.value })}
+                                      className="min-h-[50px] text-sm"
+                                    />
+                                  </div>
                                 </div>
-                                <div className="md:col-span-2">
-                                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Observações</label>
+                              ) : (
+                                <div>
+                                  <div className="flex items-center gap-1 text-xs text-warning mb-1">
+                                    <AlertCircle size={12} />
+                                    <span>Motivo para não executar (obrigatório)</span>
+                                  </div>
                                   <Textarea
-                                    placeholder="Observações sobre esta ação..."
-                                    value={actionState.observation}
-                                    onChange={e => handleUpdateAction(factor.id, actionDef.id, { observation: e.target.value })}
-                                    className="min-h-[50px] text-sm"
+                                    placeholder="Explique por que esta ação não será executada..."
+                                    value={actionState.disabledReason}
+                                    onChange={e => handleUpdateAction(factor.id, actionDef.id, { disabledReason: e.target.value })}
+                                    className="min-h-[60px] text-sm"
+                                    disabled={isCycleLocked}
                                   />
                                 </div>
-                              </div>
-                            ) : (
-                              <div>
-                                <div className="flex items-center gap-1 text-xs text-warning mb-1">
-                                  <AlertCircle size={12} />
-                                  <span>Motivo para não executar (obrigatório)</span>
-                                </div>
-                                <Textarea
-                                  placeholder="Explique por que esta ação não será executada..."
-                                  value={actionState.disabledReason}
-                                  onChange={e => handleUpdateAction(factor.id, actionDef.id, { disabledReason: e.target.value })}
-                                  className="min-h-[60px] text-sm"
-                                  disabled={isCycleLocked}
-                                />
-                              </div>
-                            )}
-                          </div>
+                              )}
+                            </div>
+                          </Card>
                         );
                       })}
                     </div>
