@@ -912,7 +912,9 @@ export default function MVPCycles() {
                         </div>
                         <div className="text-left">
                           <span className="font-medium text-foreground">{factor.name}</span>
-                          <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {SUCCESS_FACTOR_DESCRIPTIONS[factor.id] || ""}
+                          </p>
                             <Badge variant={totalTreated === factorState.actions.length ? "default" : "secondary"} className="text-xs">
                               {totalTreated}/{factorState.actions.length} tratadas
                             </Badge>
