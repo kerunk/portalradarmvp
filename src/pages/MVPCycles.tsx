@@ -119,7 +119,7 @@ const statusConfig = {
   delayed: { label: "Atrasado", color: "bg-destructive/10 text-destructive", icon: AlertCircle },
 };
 
-function initializeCycleState(cycle: MVPCycle): CycleState {
+function initializeCycleState(cycle: MVPCycle, started: boolean = false): CycleState {
   return {
     factors: cycle.successFactors.map(factor => ({
       id: factor.id,
@@ -134,7 +134,7 @@ function initializeCycleState(cycle: MVPCycle): CycleState {
       })),
     })),
     closureStatus: "not_started",
-    startDate: new Date().toISOString(),
+    startDate: started ? new Date().toISOString() : undefined,
   };
 }
 
