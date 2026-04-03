@@ -198,6 +198,74 @@ export default function MVPCycles() {
   const currentCycle = mvpCycles.find(c => c.id === selectedCycleId)!;
   const currentCycleState = cycleStates[selectedCycleId];
   const isCycleLocked = cycleGovernance?.status === 'closed' || cycleGovernance?.isLocked;
+  const isCycleStarted = !!(currentCycleState?.startDate);
+
+  // Calculate data for progress header
+  const totalEmployees = useMemo(() => getEmployees().filter(e => e.active).length, [refreshKey]);
+  
+  const totalPracticesData = useMemo(() => {
+    const records = getRecords().filter(r => r.cycleId === selectedCycleId && r.tags?.includes("melhor-prática"));
+    const available = currentCycle?.successFactors?.reduce((sum, f) => sum + f.actions.length, 0) || 1;
+    return { used: records.length, available: Math.max(available, 1) };
+  }, [selectedCycleId, currentCycle, refreshKey]);
+
+  const nextCycleId = NEXT_CYCLE[selectedCycleId as CycleId];
+
+  // Handle starting a cycle
+  const handleStartCycle = useCallback(() => {
+    const cycle = mvpCycles.find(c => c.id === selectedCycleId);
+    if (!cycle) return;
+
+    const newState = initializeCycleState(cycle, true);
+    setCycleStates(prev => ({ ...prev, [selectedCycleId]: newState }));
+    saveCycleState(selectedCycleId, newState);
+    
+    // Create audit record
+    const now = new Date().toISOString();
+    addRecord({
+      id: `rec-cycle-start-${Date.now()}`,
+      companyId: "company-1",
+      date: now.split("T")[0],
+      cycleId: selectedCycleId,
+      type: "observation",
+      status: "closed",
+      title: `Ciclo ${selectedCycleId} iniciado`,
+      description: `O ciclo ${selectedCycleId} foi formalmente iniciado.`,
+      owner: "",
+      tags: ["ciclo-iniciado"],
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    toast({ title: `Ciclo ${selectedCycleId} iniciado!`, description: "As ações e turmas estão disponíveis para execução." });
+    setRefreshKey(k => k + 1);
+  }, [selectedCycleId, saveCycleState, toast]);
+
+  // Handle advancing to next cycle with justification
+  const handleAdvanceWithJustification = useCallback((justification: string) => {
+    if (!nextCycleId) return;
+    
+    // Record the justification
+    const now = new Date().toISOString();
+    addRecord({
+      id: `rec-advance-${Date.now()}`,
+      companyId: "company-1",
+      date: now.split("T")[0],
+      cycleId: selectedCycleId,
+      type: "decision",
+      status: "closed",
+      title: `Avanço antecipado para ${nextCycleId}`,
+      description: `Justificativa: ${justification}`,
+      owner: "",
+      tags: ["avanço-antecipado"],
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Switch to next cycle
+    setSelectedCycleId(nextCycleId);
+    toast({ title: `Navegando para ${nextCycleId}`, description: "Justificativa registrada com sucesso." });
+  }, [nextCycleId, selectedCycleId, setSelectedCycleId, toast]);
 
   // Auto-open factor and scroll to highlighted action from alert
   useEffect(() => {
