@@ -124,11 +124,14 @@ const statusConfig = {
 };
 
 function initializeCycleState(cycle: MVPCycle, started: boolean = false): CycleState {
+  // Use effective (persisted global) factors instead of raw static data
+  const effectiveFactors = getEffectiveSuccessFactors(cycle.id);
   return {
-    factors: cycle.successFactors.map(factor => ({
+    factors: effectiveFactors.map(factor => ({
       id: factor.id,
       actions: factor.actions.map(action => ({
         id: action.id,
+        title: action.title,
         enabled: true,
         disabledReason: "",
         responsible: "",
