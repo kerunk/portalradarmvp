@@ -705,52 +705,62 @@ export default function MVPCycles() {
           </div>
         </div>
 
-        {/* Cycle Header with Status and Actions */}
-        <div className="bg-card rounded-lg p-4 border">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <div>
-                <h2 className="text-xl font-display font-bold text-foreground">
-                  Módulo {currentCycle.moduleNumber ?? getModuleNumber(currentCycle.id)}: {currentCycle.title}
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Fase {currentCycle.phaseName} ({currentCycle.id}) • {currentCycle.estimatedDuration}
-                </p>
+        {/* Cycle Progress Header - Start / Progress / Close */}
+        <CycleProgressHeader
+          cycleId={selectedCycleId}
+          cycleTitle={currentCycle.title}
+          phase={currentCycle.phase}
+          cycleState={currentCycleState}
+          governance={cycleGovernance}
+          isStarted={isCycleStarted}
+          turmas={turmas}
+          totalEmployees={totalEmployees}
+          activeActionsCount={cycleProgress.total}
+          completedActionsCount={cycleProgress.completed}
+          totalPracticesUsed={totalPracticesData.used}
+          totalPracticesAvailable={totalPracticesData.available}
+          onStartCycle={handleStartCycle}
+          onCloseCycle={() => setIsClosureDialogOpen(true)}
+          isCycleLocked={!!isCycleLocked}
+        />
+
+        {/* Cycle Header with export actions */}
+        {isCycleStarted && (
+          <div className="bg-card rounded-lg p-4 border">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-4">
+                <div>
+                  <h2 className="text-xl font-display font-bold text-foreground">
+                    Módulo {currentCycle.moduleNumber ?? getModuleNumber(currentCycle.id)}: {currentCycle.title}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Fase {currentCycle.phaseName} ({currentCycle.id}) • {currentCycle.estimatedDuration}
+                  </p>
+                </div>
+                {cycleGovernance && (
+                  <CycleStatusBadge 
+                    status={cycleGovernance.status} 
+                    isLocked={cycleGovernance.isLocked}
+                  />
+                )}
               </div>
-              {cycleGovernance && (
-                <CycleStatusBadge 
-                  status={cycleGovernance.status} 
-                  isLocked={cycleGovernance.isLocked}
-                />
-              )}
-            </div>
 
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handleExportPDF} className="gap-2">
-                <FileDown size={16} />
-                Exportar PDF
-              </Button>
-              
-              {cycleGovernance?.status !== 'closed' && !cycleGovernance?.isLocked && (
-                <Button 
-                  onClick={() => setIsClosureDialogOpen(true)}
-                  className="gap-2"
-                  variant={cycleGovernance?.status === 'ready_to_close' ? 'default' : 'outline'}
-                >
-                  <Lock size={16} />
-                  Encerrar Ciclo
-                </Button>
-              )}
-
-              {cycleGovernance?.status === 'closed' && (
-                <Button variant="outline" onClick={handleExportClosurePDF} className="gap-2">
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={handleExportPDF} className="gap-2">
                   <FileDown size={16} />
-                  PDF de Encerramento
+                  Exportar PDF
                 </Button>
-              )}
+                
+                {cycleGovernance?.status === 'closed' && (
+                  <Button variant="outline" onClick={handleExportClosurePDF} className="gap-2">
+                    <FileDown size={16} />
+                    PDF de Encerramento
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Locked cycle warning */}
         {isCycleLocked && (
