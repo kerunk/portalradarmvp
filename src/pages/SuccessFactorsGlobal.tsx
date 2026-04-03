@@ -154,9 +154,7 @@ export default function SuccessFactorsGlobal() {
     });
   }, [selectedCycleId, toast]);
 
-  // Get cycle metadata from mvpCycles
-  const { mvpCycles } = require("@/data/mvpCycles");
-  const currentCycle = mvpCycles.find((c: any) => c.id === selectedCycleId);
+  const currentCycle = mvpCycles.find(c => c.id === selectedCycleId);
   if (!currentCycle) return null;
 
   return (
