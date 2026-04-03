@@ -333,13 +333,15 @@ export default function SuccessFactorsGlobal() {
                         variant="outline"
                         size="sm"
                         className="gap-2 w-full"
-                        onClick={() =>
-                          setEditingAction({
-                            factorId: factor.id,
-                            actionId: null,
-                            title: "",
-                            bestPractice: "",
-                          })
+                       onClick={() =>
+                           setEditingAction({
+                             factorId: factor.id,
+                             actionId: null,
+                             title: "",
+                             description: "",
+                             bestPractice: "",
+                           })
+                         }
                         }
                       >
                         <Plus size={14} />
