@@ -73,7 +73,7 @@ export function saveGlobalAction(
   cycleId: string,
   factorId: string,
   actionId: string | null, // null = create new
-  data: { title: string; bestPractice: string }
+  data: { title: string; description?: string; bestPractice: string }
 ): { success: boolean; newActionId?: string } {
   const factors = getEffectiveSuccessFactors(cycleId);
   const factor = factors.find(f => f.id === factorId);
