@@ -210,6 +210,12 @@ export default function MVPCycles() {
     return getPopulation(companyId).filter(m => m.active).length;
   }, [companyId, refreshKey]);
 
+  // Nucleus members for responsible selector
+  const nucleoMembersList = useMemo(() => {
+    if (!companyId) return [];
+    return getNucleoMembers(companyId);
+  }, [companyId, refreshKey]);
+
   const nextCycleId = NEXT_CYCLE[selectedCycleId as CycleId];
 
   // Handle starting a cycle
