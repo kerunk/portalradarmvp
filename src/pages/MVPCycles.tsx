@@ -42,6 +42,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { mvpCycles, type MVPCycle, getModuleNumber, SUCCESS_FACTOR_DESCRIPTIONS } from "@/data/mvpCycles";
+import { getEffectiveSuccessFactors } from "@/lib/globalSuccessFactors";
 import { getNucleoMembers } from "@/lib/companyStorage";
 import {
   getState,
