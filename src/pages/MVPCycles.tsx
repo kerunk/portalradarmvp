@@ -12,7 +12,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getPopulation } from "@/lib/companyStorage";
 import { AdvanceCycleDialog } from "@/components/cycles/AdvanceCycleDialog";
 import { BestPracticesShelf } from "@/components/cycles/BestPracticesShelf";
-import { getBestPracticesByCycle } from "@/data/bestPractices";
 import { PendingDecisions } from "@/components/cycles/PendingDecisions";
 import { 
   CreateActionFromTemplateDialog,
@@ -85,6 +84,7 @@ import {
   FileDown,
   Lock,
   LockOpen,
+  BookOpen,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
@@ -154,7 +154,6 @@ export default function MVPCycles() {
     return searchParams.get("cycle") || "M1";
   });
   
-  // Update URL when switching cycles for smooth navigation
   const setSelectedCycleId = useCallback((id: string) => {
     setSelectedCycleIdRaw(id);
     setSearchParams({ cycle: id }, { replace: true });
@@ -194,7 +193,7 @@ export default function MVPCycles() {
     setCycleGovernance(governance);
   }, [selectedCycleId, cycleStates, refreshKey]);
 
-  // Save cycle state with debounce
+  // Save cycle state
   const saveCycleState = useCallback((cycleId: string, cycleState: CycleState) => {
     setCycleState(cycleId, cycleState);
   }, []);
@@ -204,18 +203,11 @@ export default function MVPCycles() {
   const isCycleLocked = cycleGovernance?.status === 'closed' || cycleGovernance?.isLocked;
   const isCycleStarted = !!(currentCycleState?.startDate);
 
-  // Calculate data for progress header — use real population from companyStorage
+  // Total active employees from real population
   const totalEmployees = useMemo(() => {
     if (!companyId) return 0;
     return getPopulation(companyId).filter(m => m.active).length;
   }, [companyId, refreshKey]);
-  
-  const totalPracticesData = useMemo(() => {
-    const shelfPractices = getBestPracticesByCycle(selectedCycleId);
-    const available = shelfPractices.length;
-    const records = getRecords().filter(r => r.cycleId === selectedCycleId && r.tags?.includes("melhor-prática"));
-    return { used: Math.min(records.length, available), available };
-  }, [selectedCycleId, refreshKey]);
 
   const nextCycleId = NEXT_CYCLE[selectedCycleId as CycleId];
 
@@ -228,7 +220,6 @@ export default function MVPCycles() {
     setCycleStates(prev => ({ ...prev, [selectedCycleId]: newState }));
     saveCycleState(selectedCycleId, newState);
     
-    // Create audit record
     const now = new Date().toISOString();
     addRecord({
       id: `rec-cycle-start-${Date.now()}`,
@@ -253,7 +244,6 @@ export default function MVPCycles() {
   const handleAdvanceWithJustification = useCallback((justification: string) => {
     if (!nextCycleId) return;
     
-    // Record the justification
     const now = new Date().toISOString();
     addRecord({
       id: `rec-advance-${Date.now()}`,
@@ -270,7 +260,6 @@ export default function MVPCycles() {
       updatedAt: now,
     });
 
-    // Switch to next cycle
     setSelectedCycleId(nextCycleId);
     toast({ title: `Navegando para ${nextCycleId}`, description: "Justificativa registrada com sucesso." });
   }, [nextCycleId, selectedCycleId, setSelectedCycleId, toast]);
@@ -297,7 +286,7 @@ export default function MVPCycles() {
     return () => { clearTimeout(timer); clearTimeout(clearTimer); };
   }, [highlightActionId, currentCycleState]);
 
-  // Get active actions (enabled ones)
+  // Get all actions from success factors (enabled ones)
   const activeActions = useMemo(() => {
     if (!currentCycleState) return [];
     
@@ -336,17 +325,39 @@ export default function MVPCycles() {
     return actions;
   }, [currentCycleState, currentCycle]);
 
+  // Progress based on success factors actions
   const cycleProgress = useMemo(() => {
-    const total = activeActions.length;
-    const completed = activeActions.filter(a => a.action.status === "completed").length;
-    const delayed = activeActions.filter(a => a.isDelayed).length;
-    return {
-      total,
-      completed,
-      delayed,
-      percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
-    };
-  }, [activeActions]);
+    if (!currentCycleState) return { total: 0, completed: 0, treated: 0, delayed: 0, percentage: 0 };
+    
+    let totalActions = 0;
+    let completed = 0;
+    let treated = 0; // disabled with valid reason
+    let delayed = 0;
+
+    currentCycleState.factors.forEach(factorState => {
+      factorState.actions.forEach(actionState => {
+        totalActions++;
+        if (actionState.enabled) {
+          if (actionState.status === "completed") {
+            completed++;
+          }
+          if (isActionDelayed(actionState.dueDate, actionState.status)) {
+            delayed++;
+          }
+        } else {
+          // Disabled with reason counts as "treated"
+          if (actionState.disabledReason && actionState.disabledReason.trim().length > 0) {
+            treated++;
+          }
+        }
+      });
+    });
+
+    const done = completed + treated;
+    const percentage = totalActions > 0 ? Math.round((done / totalActions) * 100) : 0;
+
+    return { total: totalActions, completed, treated, delayed, percentage };
+  }, [currentCycleState]);
 
   const handleToggleAction = (factorId: string, actionId: string, enabled: boolean) => {
     if (isCycleLocked) {
@@ -377,7 +388,6 @@ export default function MVPCycles() {
       };
       saveCycleState(selectedCycleId, updated[selectedCycleId]);
 
-      // If disabling action with reason, create a decision record
       if (!enabled) {
         const actionState = prev[selectedCycleId].factors
           .find(f => f.id === factorId)?.actions
@@ -459,7 +469,33 @@ export default function MVPCycles() {
     const cycleId = actionData.cycleId;
     const factorId = actionData.factorId;
     
-    // Create new action in the cycle state
+    // Check for deduplication: if an action with the same title already exists in this factor
+    const existingCycleState = cycleStates[cycleId];
+    if (existingCycleState) {
+      const factorState = existingCycleState.factors.find(f => f.id === factorId);
+      if (factorState) {
+        const factorDef = currentCycle.successFactors.find(f => f.id === factorId);
+        const existingTitles = new Set<string>();
+        
+        // Collect titles from definition
+        factorDef?.actions.forEach(a => existingTitles.add(a.title.toLowerCase().trim()));
+        // Collect titles from custom actions (stored in state with title in observation or createdAt)
+        factorState.actions.forEach(a => {
+          if ((a as any).title) existingTitles.add(((a as any).title as string).toLowerCase().trim());
+        });
+
+        const newTitle = (actionData.title || actionData.description || "").toLowerCase().trim();
+        if (existingTitles.has(newTitle)) {
+          toast({ 
+            title: "Ação já existe", 
+            description: "Uma ação com título similar já existe neste fator de sucesso.",
+            variant: "destructive" 
+          });
+          return;
+        }
+      }
+    }
+
     const newActionId = `custom-action-${Date.now()}`;
     const newAction: CycleFactorAction = {
       id: newActionId,
@@ -480,7 +516,6 @@ export default function MVPCycles() {
 
       const factorIndex = cycleState.factors.findIndex(f => f.id === factorId);
       if (factorIndex === -1) {
-        // Factor doesn't exist, create it
         const updated = {
           ...prev,
           [cycleId]: {
@@ -541,7 +576,6 @@ export default function MVPCycles() {
   const handleCreateActionFromDecision = (actionData: NewActionData, decisionId: string) => {
     handleCreateActionFromTemplate({ ...actionData, sourceDecisionId: decisionId });
     
-    // Update decision record with linked action
     const state = getState();
     const decision = state.records.find(r => r.id === decisionId);
     if (decision) {
@@ -713,7 +747,7 @@ export default function MVPCycles() {
           </div>
         </div>
 
-        {/* Cycle Progress Header - Start / Progress / Close */}
+        {/* Cycle Progress Header - 2 blocks: Training + Success Factors */}
         <CycleProgressHeader
           cycleId={selectedCycleId}
           cycleTitle={currentCycle.title}
@@ -723,20 +757,15 @@ export default function MVPCycles() {
           isStarted={isCycleStarted}
           turmas={turmas}
           totalEmployees={totalEmployees}
-          activeActionsCount={cycleProgress.total}
-          completedActionsCount={cycleProgress.completed}
-          totalPracticesUsed={totalPracticesData.used}
-          totalPracticesAvailable={totalPracticesData.available}
+          totalFactorActions={cycleProgress.total}
+          completedFactorActions={cycleProgress.completed}
+          treatedFactorActions={cycleProgress.treated}
           onStartCycle={handleStartCycle}
           onCloseCycle={() => setIsClosureDialogOpen(true)}
           isCycleLocked={!!isCycleLocked}
           onNavigateTraining={() => navigate(`/turmas?cycle=${selectedCycleId}`)}
-          onNavigatePractices={() => {
-            const el = document.getElementById("practices-section");
-            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-          }}
-          onNavigateActions={() => {
-            const el = document.getElementById("actions-section");
+          onNavigateFactors={() => {
+            const el = document.getElementById("factors-section");
             if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
           }}
         />
@@ -826,27 +855,29 @@ export default function MVPCycles() {
           successCriteria={currentCycle.expectations.successCriteria}
         />
 
-        {/* Best Practices Shelf */}
-        <div id="practices-section">
-          <BestPracticesShelf 
-            cycleId={selectedCycleId}
-            onCreateAction={handleCreateActionFromTemplate}
-          />
-        </div>
-
         {/* Pending Decisions */}
         <PendingDecisions
           cycleId={selectedCycleId}
           onCreateAction={handleCreateActionFromDecision}
         />
 
-        {/* Block 4: Success Factors */}
-        <Card className="p-6">
-          <h3 className="text-lg font-display font-semibold text-foreground mb-2">
-            Fatores de Sucesso do Ciclo
-          </h3>
+        {/* Block 4: Success Factors — MAIN execution structure */}
+        <Card id="factors-section" className="p-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-display font-semibold text-foreground">
+              Fatores de Sucesso do Ciclo
+            </h3>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">
+                {cycleProgress.completed + cycleProgress.treated}/{cycleProgress.total} ações tratadas
+              </span>
+              <Progress value={cycleProgress.percentage} className="w-24 h-2" />
+              <span className="text-sm font-semibold text-primary">{cycleProgress.percentage}%</span>
+            </div>
+          </div>
           <p className="text-sm text-muted-foreground mb-4">
-            Configure as ações que serão executadas. Ações ON exigem prazo e responsável.
+            Estrutura principal de execução do ciclo. Configure e acompanhe as ações de cada fator.
+            Ações ON exigem prazo e responsável. Ações OFF exigem justificativa.
             {isCycleLocked && " (Somente leitura)"}
           </p>
 
@@ -857,6 +888,9 @@ export default function MVPCycles() {
               
               const isOpen = openFactors.includes(factor.id);
               const activeCount = factorState.actions.filter(a => a.enabled).length;
+              const completedCount = factorState.actions.filter(a => a.enabled && a.status === "completed").length;
+              const treatedCount = factorState.actions.filter(a => !a.enabled && a.disabledReason && a.disabledReason.trim().length > 0).length;
+              const totalTreated = completedCount + treatedCount;
 
               return (
                 <Collapsible
@@ -878,9 +912,12 @@ export default function MVPCycles() {
                         <div className="text-left">
                           <span className="font-medium text-foreground">{factor.name}</span>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <Badge variant={activeCount === factor.actions.length ? "default" : "secondary"} className="text-xs">
-                              {activeCount}/{factor.actions.length} ações ativas
+                            <Badge variant={totalTreated === factorState.actions.length ? "default" : "secondary"} className="text-xs">
+                              {totalTreated}/{factorState.actions.length} tratadas
                             </Badge>
+                            {factorState.actions.some(a => a.enabled && isActionDelayed(a.dueDate, a.status)) && (
+                              <Badge variant="destructive" className="text-xs">Atrasado</Badge>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -894,10 +931,17 @@ export default function MVPCycles() {
                         const actionState = factorState.actions.find(a => a.id === actionDef.id);
                         if (!actionState) return null;
 
+                        const isDelayed = actionState.enabled && isActionDelayed(actionState.dueDate, actionState.status);
+                        const displayStatus = isDelayed ? "delayed" : actionState.status;
+
                         return (
                           <div key={actionDef.id} id={`action-${actionDef.id}`} className={cn(
                             "p-4 rounded-lg border transition-all duration-500",
-                            actionState.enabled ? "bg-success/5 border-success/20" : "bg-muted/30 border-muted",
+                            actionState.enabled 
+                              ? displayStatus === "completed" ? "bg-success/5 border-success/20" 
+                                : displayStatus === "delayed" ? "bg-destructive/5 border-destructive/20"
+                                : "bg-success/5 border-success/20" 
+                              : "bg-muted/30 border-muted",
                             highlightedId === actionDef.id && "ring-2 ring-primary shadow-lg"
                           )}>
                             {fromAlert && highlightedId === actionDef.id && (
@@ -911,9 +955,28 @@ export default function MVPCycles() {
                                 onCheckedChange={(checked) => handleToggleAction(factor.id, actionDef.id, checked)}
                                 disabled={isCycleLocked}
                               />
-                              <span className={cn("font-medium", actionState.enabled ? "text-foreground" : "text-muted-foreground")}>
+                              <span className={cn("font-medium flex-1", actionState.enabled ? "text-foreground" : "text-muted-foreground")}>
                                 {actionDef.title}
                               </span>
+                              {actionState.enabled && (
+                                <Select
+                                  value={actionState.status}
+                                  onValueChange={(value) => handleUpdateAction(factor.id, actionDef.id, { status: value as any })}
+                                  disabled={isCycleLocked}
+                                >
+                                  <SelectTrigger className={cn("w-[150px] h-9", statusConfig[displayStatus].color)}>
+                                    <div className="flex items-center gap-2">
+                                      {(() => { const Icon = statusConfig[displayStatus].icon; return <Icon size={14} />; })()}
+                                      <SelectValue />
+                                    </div>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="pending">Pendente</SelectItem>
+                                    <SelectItem value="in_progress">Em andamento</SelectItem>
+                                    <SelectItem value="completed">Concluído</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )}
                             </div>
 
                             <div className="flex items-start gap-2 text-sm text-muted-foreground bg-secondary/30 p-2 rounded mb-3">
@@ -995,83 +1058,7 @@ export default function MVPCycles() {
           </div>
         </Card>
 
-        {/* Block 5: Active Actions */}
-        <Card id="actions-section" className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-display font-semibold text-foreground flex items-center gap-2">
-              <ListChecks size={20} className="text-primary" />
-              Ações do Ciclo ({activeActions.length})
-            </h3>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">{cycleProgress.completed}/{cycleProgress.total} concluídas</span>
-              <Progress value={cycleProgress.percentage} className="w-24 h-2" />
-              <span className="text-sm font-semibold text-primary">{cycleProgress.percentage}%</span>
-            </div>
-          </div>
-
-          {activeActions.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <ListChecks size={48} className="mx-auto mb-3 opacity-30" />
-              <p>Nenhuma ação ativa. Ative ações nos Fatores de Sucesso acima.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {activeActions.map(({ id, factorId, factorName, title, action, isDelayed }) => {
-                const displayStatus = isDelayed ? "delayed" : action.status;
-                const config = statusConfig[displayStatus];
-                const StatusIcon = config.icon;
-
-                return (
-                  <div key={id} id={`action-${id}`} className={cn(
-                    "p-4 rounded-lg border-l-4 bg-card border transition-all duration-500",
-                    displayStatus === "completed" && "border-l-success",
-                    displayStatus === "in_progress" && "border-l-warning",
-                    displayStatus === "pending" && "border-l-muted",
-                    displayStatus === "delayed" && "border-l-destructive",
-                    highlightedId === id && "ring-2 ring-primary shadow-lg bg-primary/5"
-                  )}>
-                    {fromAlert && highlightedId === id && (
-                      <Badge variant="secondary" className="text-[10px] mb-2">
-                        Item aberto a partir de alerta do sistema
-                      </Badge>
-                    )}
-                    <div className="flex items-start justify-between gap-4 mb-2">
-                      <div>
-                        <span className="font-medium text-foreground">{title}</span>
-                        <p className="text-xs text-muted-foreground">{factorName} • {action.responsible || "Sem responsável"}</p>
-                      </div>
-                      <Select
-                        value={action.status}
-                        onValueChange={(value) => handleUpdateAction(factorId, id, { status: value as any })}
-                        disabled={isCycleLocked}
-                      >
-                        <SelectTrigger className={cn("w-[150px] h-9", config.color)}>
-                          <div className="flex items-center gap-2">
-                            <StatusIcon size={14} />
-                            <SelectValue />
-                          </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pendente</SelectItem>
-                          <SelectItem value="in_progress">Em andamento</SelectItem>
-                          <SelectItem value="completed">Concluído</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {action.dueDate && (
-                      <p className={cn("text-xs", isDelayed ? "text-destructive font-medium" : "text-muted-foreground")}>
-                        Prazo: {format(new Date(action.dueDate), "dd/MM/yyyy", { locale: ptBR })}
-                        {isDelayed && " (ATRASADO)"}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-
-        {/* Block 6: Turmas */}
+        {/* Block 5: Turmas */}
         <CycleTurmas
           cycleId={selectedCycleId}
           cycleName={currentCycle.title}
@@ -1081,6 +1068,14 @@ export default function MVPCycles() {
           onDeleteTurma={handleDeleteTurma}
           isLocked={isCycleLocked}
         />
+
+        {/* Block 6: Best Practices — Reference library (secondary) */}
+        <div id="practices-section">
+          <BestPracticesShelf 
+            cycleId={selectedCycleId}
+            onCreateAction={handleCreateActionFromTemplate}
+          />
+        </div>
 
         {/* Next cycle advance button */}
         {nextCycleId && cycleGovernance?.status !== 'closed' && (
