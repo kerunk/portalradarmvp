@@ -56,9 +56,9 @@ const createSuccessFactors = (customActions?: Record<string, MVPSuggestedAction[
     icon: "📢",
     color: "amber",
     actions: customActions?.communication || [
-      { id: "comm-1", title: "Campanha de divulgação interna", bestPractice: "Usar múltiplos canais: email, mural, WhatsApp" },
-      { id: "comm-2", title: "Material visual do ciclo", bestPractice: "Banners, cartazes ou posts digitais" },
-      { id: "comm-3", title: "Mensagens-chave para engajamento", bestPractice: "Definir 3 mensagens principais do ciclo" },
+      { id: "comm-1", title: "Campanha de divulgação interna", description: "Criar e veicular comunicação sobre o início do ciclo usando os canais internos da empresa (email, mural, TV corporativa, WhatsApp).", bestPractice: "Usar múltiplos canais simultaneamente para garantir alcance" },
+      { id: "comm-2", title: "Material visual do ciclo", description: "Produzir peças visuais (banners, cartazes, posts digitais) que identifiquem o ciclo e reforcem as mensagens-chave.", bestPractice: "Manter identidade visual consistente com o programa MVP" },
+      { id: "comm-3", title: "Mensagens-chave para engajamento", description: "Definir de 2 a 3 mensagens principais que serão repetidas ao longo do ciclo para gerar entendimento e adesão.", bestPractice: "Mensagens curtas, diretas e conectadas ao dia a dia do colaborador" },
     ],
   },
   {
@@ -67,9 +67,9 @@ const createSuccessFactors = (customActions?: Record<string, MVPSuggestedAction[
     icon: "⚙️",
     color: "emerald",
     actions: customActions?.structure || [
-      { id: "struct-1", title: "Reunião semanal do núcleo de sustentação", bestPractice: "Máximo 30 min, pauta fixa" },
-      { id: "struct-2", title: "Checklist de acompanhamento operacional", bestPractice: "Usar este portal para registrar" },
-      { id: "struct-3", title: "Definição de responsáveis por ação", bestPractice: "Cada ação deve ter um dono claro" },
+      { id: "struct-1", title: "Reunião semanal do núcleo", description: "Realizar reunião curta e objetiva com o núcleo de sustentação para acompanhar o andamento do ciclo e resolver pendências.", bestPractice: "Máximo 30 minutos, pauta fixa e registro de decisões" },
+      { id: "struct-2", title: "Checklist de acompanhamento operacional", description: "Usar este portal para registrar e monitorar o progresso das ações, turmas e indicadores do ciclo.", bestPractice: "Atualizar semanalmente para manter a visibilidade do progresso" },
+      { id: "struct-3", title: "Definição de responsáveis por ação", description: "Garantir que cada ação do ciclo tenha um responsável claro e um prazo definido antes do início da execução.", bestPractice: "Cada ação deve ter um dono — sem dono, a ação não acontece" },
     ],
   },
   {
@@ -78,9 +78,9 @@ const createSuccessFactors = (customActions?: Record<string, MVPSuggestedAction[
     icon: "👔",
     color: "blue",
     actions: customActions?.leadership || [
-      { id: "lead-1", title: "Participação visível em atividades", bestPractice: "Líderes devem estar presentes nos treinamentos" },
-      { id: "lead-2", title: "Comunicação formal da liderança", bestPractice: "Email ou vídeo curto do diretor" },
-      { id: "lead-3", title: "Reunião de alinhamento com gestores", bestPractice: "Agendar no início do ciclo, máximo 1h" },
+      { id: "lead-1", title: "Participação visível em atividades do ciclo", description: "Garantir que líderes estejam presentes e participem ativamente nos treinamentos, workshops e ações do ciclo.", bestPractice: "A presença da liderança demonstra compromisso e legitima o programa" },
+      { id: "lead-2", title: "Comunicação formal da liderança", description: "Líderes devem comunicar formalmente o apoio ao ciclo por email, vídeo curto ou mensagem direta às equipes.", bestPractice: "Uma comunicação do líder máximo no início do ciclo gera impacto significativo" },
+      { id: "lead-3", title: "Reunião de alinhamento com gestores", description: "Realizar reunião de alinhamento com todos os gestores no início do ciclo para garantir entendimento e comprometimento.", bestPractice: "Agendar no início do ciclo, máximo 1h, com pauta objetiva" },
     ],
   },
   {
@@ -89,9 +89,9 @@ const createSuccessFactors = (customActions?: Record<string, MVPSuggestedAction[
     icon: "🎯",
     color: "purple",
     actions: customActions?.practice || [
-      { id: "prac-1", title: "Exercícios de campo estruturados", bestPractice: "Aplicar conceitos em situações reais" },
-      { id: "prac-2", title: "Diálogos de liderança sobre fatores humanos", bestPractice: "Mínimo 1 diálogo semanal por equipe" },
-      { id: "prac-3", title: "Registro de aplicações práticas", bestPractice: "Documentar exemplos reais de aplicação" },
+      { id: "prac-1", title: "Exercícios práticos estruturados", description: "Aplicar os conceitos do módulo em situações reais do dia a dia, com exercícios guiados e roteiros práticos.", bestPractice: "Conectar os exercícios a situações que os colaboradores vivenciam na rotina" },
+      { id: "prac-2", title: "Diálogos de liderança sobre fatores humanos", description: "Gestores devem conduzir conversas estruturadas com suas equipes sobre os temas do ciclo, usando roteiro de apoio.", bestPractice: "Mínimo 1 diálogo semanal por equipe, máximo 15 minutos" },
+      { id: "prac-3", title: "Registro de aplicações práticas", description: "Documentar exemplos reais de aplicação dos conceitos do ciclo no dia a dia, registrando o que funcionou e o que pode melhorar.", bestPractice: "Manter registro atualizado para compartilhar boas práticas entre áreas" },
     ],
   },
   {
@@ -100,9 +100,8 @@ const createSuccessFactors = (customActions?: Record<string, MVPSuggestedAction[
     icon: "📊",
     color: "rose",
     actions: customActions?.indicators || [
-      { id: "ind-1", title: "Registro de indicadores do ciclo", bestPractice: "Atualizar semanalmente no portal" },
-      { id: "ind-2", title: "Documentação de evidências comportamentais", bestPractice: "Anotar observações e resultados relevantes" },
-      { id: "ind-3", title: "Análise de desvios e ajustes", bestPractice: "Identificar e reportar problemas cedo" },
+      { id: "ind-1", title: "Atualização dos indicadores do ciclo", description: "Registrar e atualizar semanalmente os indicadores de progresso do ciclo no portal, garantindo visibilidade para o núcleo e a liderança.", bestPractice: "Manter os indicadores atualizados é essencial para decisões rápidas" },
+      { id: "ind-2", title: "Reunião de validação de progresso", description: "Realizar uma reunião de checkpoint ao longo do ciclo para validar o andamento, identificar bloqueios e ajustar o plano se necessário.", bestPractice: "Na metade do ciclo, reunir núcleo e liderança para validação conjunta" },
     ],
   },
 ];
