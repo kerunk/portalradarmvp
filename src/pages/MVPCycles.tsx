@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getPopulation } from "@/lib/companyStorage";
 import { AdvanceCycleDialog } from "@/components/cycles/AdvanceCycleDialog";
 import { BestPracticesShelf } from "@/components/cycles/BestPracticesShelf";
+import { getBestPracticesByCycle } from "@/data/bestPractices";
 import { PendingDecisions } from "@/components/cycles/PendingDecisions";
 import { 
   CreateActionFromTemplateDialog,
