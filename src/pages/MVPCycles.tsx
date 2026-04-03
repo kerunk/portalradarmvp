@@ -728,6 +728,15 @@ export default function MVPCycles() {
           onStartCycle={handleStartCycle}
           onCloseCycle={() => setIsClosureDialogOpen(true)}
           isCycleLocked={!!isCycleLocked}
+          onNavigateTraining={() => navigate(`/turmas?cycle=${selectedCycleId}`)}
+          onNavigatePractices={() => {
+            const el = document.getElementById("practices-section");
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+          onNavigateActions={() => {
+            const el = document.getElementById("actions-section");
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
         />
 
         {/* Cycle Header with export actions */}
