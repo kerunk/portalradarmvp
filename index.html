@@ -21,6 +21,32 @@
 
   <body>
     <div id="root"></div>
+
+    <div id="app-fallback" style="display:none; position:fixed; inset:0; z-index:99999; background:#f8fafc; font-family:system-ui,sans-serif;">
+      <div style="max-width:420px; margin:15vh auto; text-align:center; padding:2rem;">
+        <div style="font-size:3rem; margin-bottom:1rem;">⚠️</div>
+        <h2 style="font-size:1.25rem; font-weight:600; color:#1e293b; margin-bottom:0.5rem;">A aplicação não carregou corretamente</h2>
+        <p style="color:#64748b; font-size:0.875rem; margin-bottom:2rem;">Isso pode ocorrer por dados corrompidos no navegador. Escolha uma opção abaixo para recuperar o acesso.</p>
+        <div style="display:flex; flex-direction:column; gap:0.75rem;">
+          <button onclick="try{localStorage.removeItem('mvp_auth_session')}catch(e){} window.location.href='/login'" style="padding:0.75rem 1.5rem; background:#2563eb; color:#fff; border:none; border-radius:0.5rem; font-size:0.875rem; cursor:pointer; font-weight:500;">Voltar para login</button>
+          <button onclick="try{Object.keys(localStorage).filter(function(k){return k.startsWith('mvp_')}).forEach(function(k){localStorage.removeItem(k)})}catch(e){} window.location.reload()" style="padding:0.75rem 1.5rem; background:#fff; color:#dc2626; border:1px solid #dc2626; border-radius:0.5rem; font-size:0.875rem; cursor:pointer; font-weight:500;">Limpar dados e recarregar</button>
+        </div>
+        <p style="color:#94a3b8; font-size:0.75rem; margin-top:1.5rem;">Se o problema persistir, limpe o cache do navegador.</p>
+      </div>
+    </div>
+
+    <script>
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          var root = document.getElementById('root');
+          var fallback = document.getElementById('app-fallback');
+          if (root && fallback && (!root.firstChild || root.innerHTML.trim() === '')) {
+            fallback.style.display = 'block';
+          }
+        }, 6000);
+      });
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
