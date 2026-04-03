@@ -26,7 +26,7 @@ export default function ActiveCycles() {
   const navigate = useNavigate();
 
   const activeCycles = useMemo(() => {
-    const companies = getCompanies();
+    const companies = getActiveCompaniesFiltered();
     const entries: ActiveCycleEntry[] = [];
     const now = Date.now();
 

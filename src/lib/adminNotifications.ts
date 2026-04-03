@@ -140,7 +140,7 @@ export function getCompanyRiskData(company: CompanyState): CompanyRiskData {
 }
 
 export function generateAdminNotifications(filterEmail?: string, filterRole?: string): AdminNotification[] {
-  let companies = getCompanies();
+  let companies = getCompanies().filter(c => c.active !== false && !c.deleted);
   const dismissed = getDismissedAdmin();
   const notifications: AdminNotification[] = [];
 

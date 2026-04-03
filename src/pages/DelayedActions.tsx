@@ -27,7 +27,7 @@ export default function DelayedActions() {
   const navigate = useNavigate();
 
   const delayedActions = useMemo(() => {
-    const companies = getCompanies();
+    const companies = getActiveCompaniesFiltered();
     const actions: DelayedAction[] = [];
     const now = Date.now();
 
