@@ -7,6 +7,8 @@ import { CycleExpectations } from "@/components/cycles/CycleExpectations";
 import { CycleTurmas, type Turma } from "@/components/cycles/CycleTurmas";
 import { CycleClosureDialog } from "@/components/cycles/CycleClosureDialog";
 import { CycleStatusBadge } from "@/components/cycles/CycleStatusBadge";
+import { CycleProgressHeader } from "@/components/cycles/CycleProgressHeader";
+import { AdvanceCycleDialog } from "@/components/cycles/AdvanceCycleDialog";
 import { BestPracticesShelf } from "@/components/cycles/BestPracticesShelf";
 import { PendingDecisions } from "@/components/cycles/PendingDecisions";
 import { 
@@ -45,6 +47,8 @@ import {
   setCycleState,
   getTurmas,
   setTurmas,
+  getEmployees,
+  getRecords,
   isActionDelayed,
   addRecord,
   updateRecord,
@@ -54,6 +58,7 @@ import {
   type TurmaState,
   type RecordState,
 } from "@/lib/storage";
+import { NEXT_CYCLE, type CycleId } from "@/lib/constants";
 import { 
   obterGovernancaDeCiclo, 
   avaliarEncerramentoDeCiclo,
@@ -114,7 +119,7 @@ const statusConfig = {
   delayed: { label: "Atrasado", color: "bg-destructive/10 text-destructive", icon: AlertCircle },
 };
 
-function initializeCycleState(cycle: MVPCycle): CycleState {
+function initializeCycleState(cycle: MVPCycle, started: boolean = false): CycleState {
   return {
     factors: cycle.successFactors.map(factor => ({
       id: factor.id,
@@ -129,7 +134,7 @@ function initializeCycleState(cycle: MVPCycle): CycleState {
       })),
     })),
     closureStatus: "not_started",
-    startDate: new Date().toISOString(),
+    startDate: started ? new Date().toISOString() : undefined,
   };
 }
 
@@ -156,6 +161,7 @@ export default function MVPCycles() {
   const [turmas, setTurmasState] = useState<TurmaState[]>([]);
   const [openFactors, setOpenFactors] = useState<string[]>([]);
   const [isClosureDialogOpen, setIsClosureDialogOpen] = useState(false);
+  const [isAdvanceDialogOpen, setIsAdvanceDialogOpen] = useState(false);
   const [cycleGovernance, setCycleGovernance] = useState<CycleGovernance | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [highlightedId, setHighlightedId] = useState<string | null>(highlightActionId);
@@ -192,6 +198,74 @@ export default function MVPCycles() {
   const currentCycle = mvpCycles.find(c => c.id === selectedCycleId)!;
   const currentCycleState = cycleStates[selectedCycleId];
   const isCycleLocked = cycleGovernance?.status === 'closed' || cycleGovernance?.isLocked;
+  const isCycleStarted = !!(currentCycleState?.startDate);
+
+  // Calculate data for progress header
+  const totalEmployees = useMemo(() => getEmployees().filter(e => e.active).length, [refreshKey]);
+  
+  const totalPracticesData = useMemo(() => {
+    const records = getRecords().filter(r => r.cycleId === selectedCycleId && r.tags?.includes("melhor-prática"));
+    const available = currentCycle?.successFactors?.reduce((sum, f) => sum + f.actions.length, 0) || 1;
+    return { used: records.length, available: Math.max(available, 1) };
+  }, [selectedCycleId, currentCycle, refreshKey]);
+
+  const nextCycleId = NEXT_CYCLE[selectedCycleId as CycleId];
+
+  // Handle starting a cycle
+  const handleStartCycle = useCallback(() => {
+    const cycle = mvpCycles.find(c => c.id === selectedCycleId);
+    if (!cycle) return;
+
+    const newState = initializeCycleState(cycle, true);
+    setCycleStates(prev => ({ ...prev, [selectedCycleId]: newState }));
+    saveCycleState(selectedCycleId, newState);
+    
+    // Create audit record
+    const now = new Date().toISOString();
+    addRecord({
+      id: `rec-cycle-start-${Date.now()}`,
+      companyId: "company-1",
+      date: now.split("T")[0],
+      cycleId: selectedCycleId,
+      type: "observation",
+      status: "closed",
+      title: `Ciclo ${selectedCycleId} iniciado`,
+      description: `O ciclo ${selectedCycleId} foi formalmente iniciado.`,
+      owner: "",
+      tags: ["ciclo-iniciado"],
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    toast({ title: `Ciclo ${selectedCycleId} iniciado!`, description: "As ações e turmas estão disponíveis para execução." });
+    setRefreshKey(k => k + 1);
+  }, [selectedCycleId, saveCycleState, toast]);
+
+  // Handle advancing to next cycle with justification
+  const handleAdvanceWithJustification = useCallback((justification: string) => {
+    if (!nextCycleId) return;
+    
+    // Record the justification
+    const now = new Date().toISOString();
+    addRecord({
+      id: `rec-advance-${Date.now()}`,
+      companyId: "company-1",
+      date: now.split("T")[0],
+      cycleId: selectedCycleId,
+      type: "decision",
+      status: "closed",
+      title: `Avanço antecipado para ${nextCycleId}`,
+      description: `Justificativa: ${justification}`,
+      owner: "",
+      tags: ["avanço-antecipado"],
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Switch to next cycle
+    setSelectedCycleId(nextCycleId);
+    toast({ title: `Navegando para ${nextCycleId}`, description: "Justificativa registrada com sucesso." });
+  }, [nextCycleId, selectedCycleId, setSelectedCycleId, toast]);
 
   // Auto-open factor and scroll to highlighted action from alert
   useEffect(() => {
@@ -631,53 +705,66 @@ export default function MVPCycles() {
           </div>
         </div>
 
-        {/* Cycle Header with Status and Actions */}
-        <div className="bg-card rounded-lg p-4 border">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <div>
-                <h2 className="text-xl font-display font-bold text-foreground">
-                  Módulo {currentCycle.moduleNumber ?? getModuleNumber(currentCycle.id)}: {currentCycle.title}
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Fase {currentCycle.phaseName} ({currentCycle.id}) • {currentCycle.estimatedDuration}
-                </p>
+        {/* Cycle Progress Header - Start / Progress / Close */}
+        <CycleProgressHeader
+          cycleId={selectedCycleId}
+          cycleTitle={currentCycle.title}
+          phase={currentCycle.phase}
+          cycleState={currentCycleState}
+          governance={cycleGovernance}
+          isStarted={isCycleStarted}
+          turmas={turmas}
+          totalEmployees={totalEmployees}
+          activeActionsCount={cycleProgress.total}
+          completedActionsCount={cycleProgress.completed}
+          totalPracticesUsed={totalPracticesData.used}
+          totalPracticesAvailable={totalPracticesData.available}
+          onStartCycle={handleStartCycle}
+          onCloseCycle={() => setIsClosureDialogOpen(true)}
+          isCycleLocked={!!isCycleLocked}
+        />
+
+        {/* Cycle Header with export actions */}
+        {isCycleStarted && (
+          <div className="bg-card rounded-lg p-4 border">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-4">
+                <div>
+                  <h2 className="text-xl font-display font-bold text-foreground">
+                    Módulo {currentCycle.moduleNumber ?? getModuleNumber(currentCycle.id)}: {currentCycle.title}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Fase {currentCycle.phaseName} ({currentCycle.id}) • {currentCycle.estimatedDuration}
+                  </p>
+                </div>
+                {cycleGovernance && (
+                  <CycleStatusBadge 
+                    status={cycleGovernance.status} 
+                    isLocked={cycleGovernance.isLocked}
+                  />
+                )}
               </div>
-              {cycleGovernance && (
-                <CycleStatusBadge 
-                  status={cycleGovernance.status} 
-                  isLocked={cycleGovernance.isLocked}
-                />
-              )}
-            </div>
 
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handleExportPDF} className="gap-2">
-                <FileDown size={16} />
-                Exportar PDF
-              </Button>
-              
-              {cycleGovernance?.status !== 'closed' && !cycleGovernance?.isLocked && (
-                <Button 
-                  onClick={() => setIsClosureDialogOpen(true)}
-                  className="gap-2"
-                  variant={cycleGovernance?.status === 'ready_to_close' ? 'default' : 'outline'}
-                >
-                  <Lock size={16} />
-                  Encerrar Ciclo
-                </Button>
-              )}
-
-              {cycleGovernance?.status === 'closed' && (
-                <Button variant="outline" onClick={handleExportClosurePDF} className="gap-2">
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={handleExportPDF} className="gap-2">
                   <FileDown size={16} />
-                  PDF de Encerramento
+                  Exportar PDF
                 </Button>
-              )}
+                
+                {cycleGovernance?.status === 'closed' && (
+                  <Button variant="outline" onClick={handleExportClosurePDF} className="gap-2">
+                    <FileDown size={16} />
+                    PDF de Encerramento
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
+        {/* Content only visible after cycle is started */}
+        {isCycleStarted && (
+          <>
         {/* Locked cycle warning */}
         {isCycleLocked && (
           <Alert className={cycleGovernance?.status === 'closed' ? "border-success/50 bg-success/5" : ""}>
@@ -976,22 +1063,37 @@ export default function MVPCycles() {
           isLocked={isCycleLocked}
         />
 
-        {/* Progress Summary */}
-        <div className="bg-card rounded-lg p-4 border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-foreground">Progresso do Ciclo {selectedCycleId}</p>
-              <p className="text-xs text-muted-foreground">
-                {cycleProgress.completed}/{cycleProgress.total} ações concluídas
-                {cycleProgress.delayed > 0 && ` • ${cycleProgress.delayed} atrasada(s)`}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-primary">{cycleProgress.percentage}%</p>
-              <p className="text-xs text-muted-foreground">Conclusão</p>
+        {/* Next cycle advance button */}
+        {nextCycleId && cycleGovernance?.status !== 'closed' && (
+          <div className="bg-card rounded-lg p-4 border">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Próximo passo</p>
+                <p className="text-xs text-muted-foreground">
+                  {cycleProgress.percentage >= 85 
+                    ? `Você pode avançar para o ciclo ${nextCycleId}.`
+                    : `Atinja 85% de progresso para avançar ao ${nextCycleId} sem restrições.`
+                  }
+                </p>
+              </div>
+              <Button
+                variant={cycleProgress.percentage >= 85 ? "default" : "outline"}
+                className="gap-2"
+                onClick={() => {
+                  if (cycleProgress.percentage >= 85) {
+                    setSelectedCycleId(nextCycleId);
+                  } else {
+                    setIsAdvanceDialogOpen(true);
+                  }
+                }}
+              >
+                Ir para {nextCycleId}
+              </Button>
             </div>
           </div>
-        </div>
+        )}
+          </>
+        )}
       </div>
 
       {/* Cycle Closure Dialog */}
@@ -1003,6 +1105,18 @@ export default function MVPCycles() {
         onCycleClosed={handleCloseCycle}
         onExportPDF={handleExportClosurePDF}
       />
+
+      {/* Advance Cycle Dialog */}
+      {nextCycleId && (
+        <AdvanceCycleDialog
+          isOpen={isAdvanceDialogOpen}
+          onClose={() => setIsAdvanceDialogOpen(false)}
+          currentCycleId={selectedCycleId}
+          nextCycleId={nextCycleId}
+          currentProgress={cycleProgress.percentage}
+          onConfirm={handleAdvanceWithJustification}
+        />
+      )}
     </AppLayout>
   );
 }
