@@ -425,6 +425,26 @@ export default function SuccessFactorsGlobal() {
                   className="min-h-[60px]"
                 />
               </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  URL da Imagem Ilustrativa (opcional)
+                </label>
+                <Input
+                  value={editingAction.imageUrl}
+                  onChange={e =>
+                    setEditingAction({
+                      ...editingAction,
+                      imageUrl: e.target.value,
+                    })
+                  }
+                  placeholder="https://exemplo.com/imagem.jpg"
+                />
+                {editingAction.imageUrl && (
+                  <div className="mt-2 w-20 h-20 rounded-lg overflow-hidden border border-border bg-muted">
+                    <img src={editingAction.imageUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
