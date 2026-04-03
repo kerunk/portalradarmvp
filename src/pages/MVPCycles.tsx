@@ -934,8 +934,8 @@ export default function MVPCycles() {
                             {SUCCESS_FACTOR_DESCRIPTIONS[factor.id] || ""}
                           </p>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <Badge variant={totalTreated === factorState.actions.length ? "default" : "secondary"} className="text-xs">
-                              {totalTreated}/{factorState.actions.length} tratadas
+                            <Badge variant={totalTreated === totalValidActions ? "default" : "secondary"} className="text-xs">
+                              {totalTreated}/{totalValidActions} tratadas
                             </Badge>
                             {factorState.actions.some(a => a.enabled && isActionDelayed(a.dueDate, a.status)) && (
                               <Badge variant="destructive" className="text-xs">Atrasado</Badge>
