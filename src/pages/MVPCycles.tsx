@@ -994,7 +994,7 @@ export default function MVPCycles() {
         </Card>
 
         {/* Block 5: Active Actions */}
-        <Card className="p-6">
+        <Card id="actions-section" className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-display font-semibold text-foreground flex items-center gap-2">
               <ListChecks size={20} className="text-primary" />
