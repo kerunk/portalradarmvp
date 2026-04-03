@@ -211,19 +211,6 @@ function resolveUserProfile(email: string): UserProfile | null {
     }
   } catch {}
 
-  // Demo client
-  if (lower === "admin@alpha.com") {
-    return {
-      id: "cliente-1",
-      name: "Carlos Silva",
-      email: "admin@alpha.com",
-      role: "cliente",
-      companyId: "company-1",
-      companyName: "Empresa Alpha",
-      onboardingStatus: "completed",
-    };
-  }
-
   // Company admin users
   try {
     const companies = getCompanies();
