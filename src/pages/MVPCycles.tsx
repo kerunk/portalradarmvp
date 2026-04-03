@@ -349,8 +349,17 @@ export default function MVPCycles() {
     let treated = 0; // disabled with valid reason
     let delayed = 0;
 
+    // Dynamic count: only count actions that still exist in the global definition
+    const effectiveFactors = currentCycle.successFactors;
+    
     currentCycleState.factors.forEach(factorState => {
+      const globalFactor = effectiveFactors.find(f => f.id === factorState.id);
+      const globalActionIds = globalFactor ? new Set(globalFactor.actions.map(a => a.id)) : new Set<string>();
+      
       factorState.actions.forEach(actionState => {
+        // Skip actions that no longer exist in the global definition
+        if (!globalActionIds.has(actionState.id)) return;
+        
         totalActions++;
         if (actionState.enabled) {
           if (actionState.status === "completed") {
@@ -902,10 +911,14 @@ export default function MVPCycles() {
               if (!factorState) return null;
               
               const isOpen = openFactors.includes(factor.id);
-              const activeCount = factorState.actions.filter(a => a.enabled).length;
-              const completedCount = factorState.actions.filter(a => a.enabled && a.status === "completed").length;
-              const treatedCount = factorState.actions.filter(a => !a.enabled && a.disabledReason && a.disabledReason.trim().length > 0).length;
+              // Dynamic count: only count actions that still exist in the global definition
+              const globalActionIds = new Set(factor.actions.map(a => a.id));
+              const validActions = factorState.actions.filter(a => globalActionIds.has(a.id));
+              const activeCount = validActions.filter(a => a.enabled).length;
+              const completedCount = validActions.filter(a => a.enabled && a.status === "completed").length;
+              const treatedCount = validActions.filter(a => !a.enabled && a.disabledReason && a.disabledReason.trim().length > 0).length;
               const totalTreated = completedCount + treatedCount;
+              const totalValidActions = validActions.length;
 
               return (
                 <Collapsible
@@ -930,8 +943,8 @@ export default function MVPCycles() {
                             {SUCCESS_FACTOR_DESCRIPTIONS[factor.id] || ""}
                           </p>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <Badge variant={totalTreated === factorState.actions.length ? "default" : "secondary"} className="text-xs">
-                              {totalTreated}/{factorState.actions.length} tratadas
+                            <Badge variant={totalTreated === totalValidActions ? "default" : "secondary"} className="text-xs">
+                              {totalTreated}/{totalValidActions} tratadas
                             </Badge>
                             {factorState.actions.some(a => a.enabled && isActionDelayed(a.dueDate, a.status)) && (
                               <Badge variant="destructive" className="text-xs">Atrasado</Badge>
@@ -958,7 +971,7 @@ export default function MVPCycles() {
                             actionState.enabled 
                               ? displayStatus === "completed" ? "bg-success/5 border-success/20" 
                                 : displayStatus === "delayed" ? "bg-destructive/5 border-destructive/20"
-                                : "bg-success/5 border-success/20" 
+                                : "bg-card border-border" 
                               : "bg-muted/30 border-muted",
                             highlightedId === actionDef.id && "ring-2 ring-primary shadow-lg"
                           )}>
@@ -967,13 +980,15 @@ export default function MVPCycles() {
                                 Item aberto a partir de alerta do sistema
                               </Badge>
                             )}
+
+                            {/* Header: Toggle + Title + Status */}
                             <div className="flex items-center gap-3 mb-3">
                               <Switch
                                 checked={actionState.enabled}
                                 onCheckedChange={(checked) => handleToggleAction(factor.id, actionDef.id, checked)}
                                 disabled={isCycleLocked}
                               />
-                              <span className={cn("font-medium flex-1", actionState.enabled ? "text-foreground" : "text-muted-foreground")}>
+                              <span className={cn("font-medium flex-1 text-sm", actionState.enabled ? "text-foreground" : "text-muted-foreground line-through")}>
                                 {actionDef.title}
                               </span>
                               {actionState.enabled && (
@@ -997,20 +1012,37 @@ export default function MVPCycles() {
                               )}
                             </div>
 
-                            {/* Description — what to do */}
-                            {actionDef.description && (
-                              <div className="text-sm text-muted-foreground bg-secondary/20 p-3 rounded mb-2 border border-border/50">
-                                <p className="font-medium text-foreground/80 text-xs uppercase tracking-wide mb-1">O que fazer</p>
-                                <p>{actionDef.description}</p>
+                            {/* Visual content: Image + Description side by side */}
+                            {(actionDef.imageUrl || actionDef.description || actionDef.bestPractice) && (
+                              <div className={cn("flex gap-4 mb-3", actionDef.imageUrl ? "items-start" : "")}>
+                                {actionDef.imageUrl && (
+                                  <div className="w-20 h-20 rounded-lg overflow-hidden border border-border flex-shrink-0 bg-muted">
+                                    <img 
+                                      src={actionDef.imageUrl} 
+                                      alt={actionDef.title}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                    />
+                                  </div>
+                                )}
+                                <div className="flex-1 space-y-2">
+                                  {actionDef.description && (
+                                    <div className="text-sm text-muted-foreground bg-secondary/20 p-3 rounded border border-border/50">
+                                      <p className="font-medium text-foreground/80 text-xs uppercase tracking-wide mb-1">O que fazer</p>
+                                      <p>{actionDef.description}</p>
+                                    </div>
+                                  )}
+                                  {actionDef.bestPractice && (
+                                    <div className="flex items-start gap-2 text-sm text-muted-foreground bg-warning/5 border border-warning/10 p-2 rounded">
+                                      <Lightbulb size={14} className="text-warning mt-0.5 flex-shrink-0" />
+                                      <span><strong className="text-foreground/70">Dica:</strong> {actionDef.bestPractice}</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )}
 
-                            {/* Best practice tip */}
-                            <div className="flex items-start gap-2 text-sm text-muted-foreground bg-amber-500/5 border border-amber-500/10 p-2 rounded mb-3">
-                              <Lightbulb size={14} className="text-warning mt-0.5 flex-shrink-0" />
-                              <span><strong className="text-foreground/70">Dica:</strong> {actionDef.bestPractice}</span>
-                            </div>
-
+                            {/* Operational fields */}
                             {actionState.enabled ? (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div>

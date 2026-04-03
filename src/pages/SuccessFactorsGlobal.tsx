@@ -66,6 +66,7 @@ export default function SuccessFactorsGlobal() {
     title: string;
     description: string;
     bestPractice: string;
+    imageUrl: string;
   } | null>(null);
 
   // Read effective factors (defaults merged with overrides) — re-reads on refreshKey change
@@ -95,7 +96,7 @@ export default function SuccessFactorsGlobal() {
       selectedCycleId,
       editingAction.factorId,
       editingAction.actionId,
-      { title: editingAction.title, description: editingAction.description, bestPractice: editingAction.bestPractice }
+      { title: editingAction.title, description: editingAction.description, bestPractice: editingAction.bestPractice, imageUrl: editingAction.imageUrl || undefined }
     );
 
     if (!result.success) {
@@ -311,6 +312,7 @@ export default function SuccessFactorsGlobal() {
                                   title: action.title,
                                   description: action.description || "",
                                   bestPractice: action.bestPractice,
+                                  imageUrl: action.imageUrl || "",
                                 })
                               }
                             >
@@ -339,6 +341,7 @@ export default function SuccessFactorsGlobal() {
                             title: "",
                             description: "",
                             bestPractice: "",
+                            imageUrl: "",
                           })
                         }
                       >
@@ -421,6 +424,26 @@ export default function SuccessFactorsGlobal() {
                   placeholder="Ex: Máximo 30 min, pauta fixa"
                   className="min-h-[60px]"
                 />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  URL da Imagem Ilustrativa (opcional)
+                </label>
+                <Input
+                  value={editingAction.imageUrl}
+                  onChange={e =>
+                    setEditingAction({
+                      ...editingAction,
+                      imageUrl: e.target.value,
+                    })
+                  }
+                  placeholder="https://exemplo.com/imagem.jpg"
+                />
+                {editingAction.imageUrl && (
+                  <div className="mt-2 w-20 h-20 rounded-lg overflow-hidden border border-border bg-muted">
+                    <img src={editingAction.imageUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  </div>
+                )}
               </div>
             </div>
           )}

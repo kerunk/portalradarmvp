@@ -73,7 +73,7 @@ export function saveGlobalAction(
   cycleId: string,
   factorId: string,
   actionId: string | null, // null = create new
-  data: { title: string; description?: string; bestPractice: string }
+  data: { title: string; description?: string; bestPractice: string; imageUrl?: string }
 ): { success: boolean; newActionId?: string } {
   const factors = getEffectiveSuccessFactors(cycleId);
   const factor = factors.find(f => f.id === factorId);
@@ -85,14 +85,14 @@ export function saveGlobalAction(
   if (actionId) {
     // Update existing
     updatedActions = factor.actions.map(a =>
-      a.id === actionId ? { ...a, title: data.title, description: data.description, bestPractice: data.bestPractice } : a
+      a.id === actionId ? { ...a, title: data.title, description: data.description, bestPractice: data.bestPractice, imageUrl: data.imageUrl } : a
     );
   } else {
     // Create new
     newActionId = `${factorId}-custom-${Date.now()}`;
     updatedActions = [
       ...factor.actions,
-      { id: newActionId, title: data.title, description: data.description, bestPractice: data.bestPractice },
+      { id: newActionId, title: data.title, description: data.description, bestPractice: data.bestPractice, imageUrl: data.imageUrl },
     ];
   }
 
