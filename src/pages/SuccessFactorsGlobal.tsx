@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,13 +15,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -37,7 +30,13 @@ import {
   Settings2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { mvpCycles, SUCCESS_FACTOR_DESCRIPTIONS } from "@/data/mvpCycles";
+import { SUCCESS_FACTOR_DESCRIPTIONS } from "@/data/mvpCycles";
+import {
+  getEffectiveSuccessFactors,
+  saveGlobalAction,
+  deleteGlobalAction,
+  replicateToCompanies,
+} from "@/lib/globalSuccessFactors";
 import { useToast } from "@/hooks/use-toast";
 
 const cycleOptions = ["M1", "M2", "M3", "V1", "V2", "V3", "P1", "P2", "P3"];
@@ -60,6 +59,7 @@ export default function SuccessFactorsGlobal() {
   const { toast } = useToast();
   const [selectedCycleId, setSelectedCycleId] = useState("M1");
   const [openFactors, setOpenFactors] = useState<string[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [editingAction, setEditingAction] = useState<{
     factorId: string;
     actionId: string | null;
@@ -67,9 +67,15 @@ export default function SuccessFactorsGlobal() {
     bestPractice: string;
   } | null>(null);
 
-  const currentCycle = useMemo(
-    () => mvpCycles.find(c => c.id === selectedCycleId),
-    [selectedCycleId]
+  // Read effective factors (defaults merged with overrides) — re-reads on refreshKey change
+  const factors = useMemo(
+    () => getEffectiveSuccessFactors(selectedCycleId),
+    [selectedCycleId, refreshKey]
+  );
+
+  const totalActions = useMemo(
+    () => factors.reduce((sum, f) => sum + f.actions.length, 0),
+    [factors]
   );
 
   const toggleFactor = (factorId: string) => {
@@ -80,31 +86,78 @@ export default function SuccessFactorsGlobal() {
     );
   };
 
-  const handleSaveAction = () => {
+  const handleSaveAction = useCallback(() => {
     if (!editingAction) return;
-    toast({
-      title: editingAction.actionId ? "Ação atualizada" : "Ação criada",
-      description: `"${editingAction.title}" salva com sucesso. As empresas receberão a atualização.`,
-    });
-    setEditingAction(null);
-  };
 
-  const handleDeleteAction = (factorId: string, actionId: string) => {
-    if (confirm("Deseja remover esta ação padrão? Empresas que já a utilizam manterão seus dados.")) {
+    // 1. Persist to global storage
+    const result = saveGlobalAction(
+      selectedCycleId,
+      editingAction.factorId,
+      editingAction.actionId,
+      { title: editingAction.title, bestPractice: editingAction.bestPractice }
+    );
+
+    if (!result.success) {
       toast({
-        title: "Ação removida",
-        description: "A ação padrão foi removida da estrutura global.",
+        title: "Erro ao salvar",
+        description: "Não foi possível persistir a alteração. Tente novamente.",
         variant: "destructive",
       });
+      return;
     }
-  };
 
+    // 2. Cascade to companies
+    const replication = replicateToCompanies(selectedCycleId);
+
+    // 3. Refresh UI
+    setRefreshKey(k => k + 1);
+    setEditingAction(null);
+
+    // 4. Conditional success message
+    const action = editingAction.actionId ? "atualizada" : "criada";
+    if (replication.failed > 0) {
+      toast({
+        title: `Ação ${action} com alertas`,
+        description: `Salva com sucesso. ${replication.updated} empresa(s) atualizada(s), ${replication.failed} com erro.`,
+      });
+    } else {
+      toast({
+        title: `Ação ${action}`,
+        description: replication.updated > 0
+          ? `"${editingAction.title}" salva. ${replication.updated} empresa(s) receberão a atualização.`
+          : `"${editingAction.title}" salva com sucesso.`,
+      });
+    }
+  }, [editingAction, selectedCycleId, toast]);
+
+  const handleDeleteAction = useCallback((factorId: string, actionId: string) => {
+    if (!confirm("Deseja remover esta ação padrão? Empresas que já a utilizam manterão seus dados.")) {
+      return;
+    }
+
+    const success = deleteGlobalAction(selectedCycleId, factorId, actionId);
+
+    if (!success) {
+      toast({
+        title: "Erro ao remover",
+        description: "Não foi possível remover a ação. Tente novamente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setRefreshKey(k => k + 1);
+    toast({
+      title: "Ação removida",
+      description: "A ação padrão foi removida da estrutura global.",
+      variant: "destructive",
+    });
+  }, [selectedCycleId, toast]);
+
+  // Get cycle metadata from mvpCycles
+  const { mvpCycles } = require("@/data/mvpCycles");
+  const currentCycle = mvpCycles.find((c: any) => c.id === selectedCycleId);
   if (!currentCycle) return null;
-
-  const totalActions = currentCycle.successFactors.reduce(
-    (sum, f) => sum + f.actions.length,
-    0
-  );
 
   return (
     <AppLayout
@@ -118,8 +171,9 @@ export default function SuccessFactorsGlobal() {
           <div className="text-sm text-muted-foreground">
             <p className="font-medium text-foreground mb-1">Como funciona a cascata</p>
             <p>
-              As alterações feitas aqui definem a estrutura padrão dos ciclos para <strong>novas empresas</strong>.
-              Empresas que já possuem o ciclo em andamento manterão suas ações e dados, recebendo apenas novas ações adicionadas.
+              As alterações feitas aqui definem a estrutura padrão dos ciclos.
+              Empresas que já possuem o ciclo em andamento receberão novas ações e atualizações de título,
+              sem perder dados operacionais já preenchidos (responsável, prazo, status).
             </p>
           </div>
         </div>
@@ -163,7 +217,7 @@ export default function SuccessFactorsGlobal() {
               </p>
             </div>
             <Badge variant="outline" className="text-sm">
-              {currentCycle.successFactors.length} fatores • {totalActions} ações
+              {factors.length} fatores • {totalActions} ações
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
@@ -180,7 +234,7 @@ export default function SuccessFactorsGlobal() {
             </h3>
           </div>
 
-          {currentCycle.successFactors.map(factor => {
+          {factors.map(factor => {
             const isOpen = openFactors.includes(factor.id);
             const description = SUCCESS_FACTOR_DESCRIPTIONS[factor.id] || "";
 
@@ -353,7 +407,7 @@ export default function SuccessFactorsGlobal() {
             <Button variant="outline" onClick={() => setEditingAction(null)}>
               Cancelar
             </Button>
-            <Button onClick={handleSaveAction}>
+            <Button onClick={handleSaveAction} disabled={!editingAction?.title?.trim()}>
               {editingAction?.actionId ? "Salvar Alterações" : "Criar Ação"}
             </Button>
           </DialogFooter>
