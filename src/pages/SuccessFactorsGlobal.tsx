@@ -304,13 +304,15 @@ export default function SuccessFactorsGlobal() {
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7"
-                              onClick={() =>
-                                setEditingAction({
-                                  factorId: factor.id,
-                                  actionId: action.id,
-                                  title: action.title,
-                                  bestPractice: action.bestPractice,
-                                })
+                             onClick={() =>
+                                 setEditingAction({
+                                   factorId: factor.id,
+                                   actionId: action.id,
+                                   title: action.title,
+                                   description: action.description || "",
+                                   bestPractice: action.bestPractice,
+                                 })
+                               }
                               }
                             >
                               <Edit2 size={14} />
