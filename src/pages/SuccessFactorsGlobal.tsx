@@ -64,6 +64,7 @@ export default function SuccessFactorsGlobal() {
     factorId: string;
     actionId: string | null;
     title: string;
+    description: string;
     bestPractice: string;
   } | null>(null);
 
