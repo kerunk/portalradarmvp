@@ -37,6 +37,9 @@ interface CycleProgressHeaderProps {
   onStartCycle: () => void;
   onCloseCycle: () => void;
   isCycleLocked: boolean;
+  onNavigateTraining?: () => void;
+  onNavigatePractices?: () => void;
+  onNavigateActions?: () => void;
 }
 
 export function CycleProgressHeader({
