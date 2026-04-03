@@ -41,7 +41,8 @@ import {
 } from "@/components/ui/select";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { mvpCycles, type MVPCycle, getModuleNumber } from "@/data/mvpCycles";
+import { mvpCycles, type MVPCycle, getModuleNumber, SUCCESS_FACTOR_DESCRIPTIONS } from "@/data/mvpCycles";
+import { getNucleoMembers } from "@/lib/companyStorage";
 import {
   getState,
   setState,
