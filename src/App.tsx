@@ -25,6 +25,7 @@ import MVPCycles from "./pages/MVPCycles";
 import Turmas from "./pages/Turmas";
 import SuccessFactors from "./pages/SuccessFactors";
 import BestPracticesGlobal from "./pages/BestPracticesGlobal";
+import SuccessFactorsGlobal from "./pages/SuccessFactorsGlobal";
 import Settings from "./pages/Settings";
 import BasePopulacional from "./pages/BasePopulacional";
 import OrgStructure from "./pages/OrgStructure";
