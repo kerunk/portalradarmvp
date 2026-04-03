@@ -8,6 +8,8 @@ import { CycleTurmas, type Turma } from "@/components/cycles/CycleTurmas";
 import { CycleClosureDialog } from "@/components/cycles/CycleClosureDialog";
 import { CycleStatusBadge } from "@/components/cycles/CycleStatusBadge";
 import { CycleProgressHeader } from "@/components/cycles/CycleProgressHeader";
+import { useAuth } from "@/contexts/AuthContext";
+import { getPopulation } from "@/lib/companyStorage";
 import { AdvanceCycleDialog } from "@/components/cycles/AdvanceCycleDialog";
 import { BestPracticesShelf } from "@/components/cycles/BestPracticesShelf";
 import { PendingDecisions } from "@/components/cycles/PendingDecisions";
