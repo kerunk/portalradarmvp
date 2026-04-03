@@ -1102,13 +1102,7 @@ export default function MVPCycles() {
           isLocked={isCycleLocked}
         />
 
-        {/* Block 6: Best Practices — Reference library (secondary) */}
-        <div id="practices-section">
-          <BestPracticesShelf 
-            cycleId={selectedCycleId}
-            onCreateAction={handleCreateActionFromTemplate}
-          />
-        </div>
+        {/* Best Practices library removed from client view — content integrated into Success Factors */}
 
         {/* Next cycle advance button */}
         {nextCycleId && cycleGovernance?.status !== 'closed' && (
