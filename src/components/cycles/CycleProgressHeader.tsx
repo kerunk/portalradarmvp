@@ -12,7 +12,6 @@ import {
   TrendingUp,
   Award,
   Users,
-  ListChecks,
   Sparkles,
   ChevronRight,
 } from "lucide-react";
@@ -31,16 +30,17 @@ interface CycleProgressHeaderProps {
   isStarted: boolean;
   turmas: TurmaState[];
   totalEmployees: number;
-  activeActionsCount: number;
-  completedActionsCount: number;
-  totalPracticesUsed: number;
-  totalPracticesAvailable: number;
+  /** Total enabled actions in success factors */
+  totalFactorActions: number;
+  /** Completed actions in success factors */
+  completedFactorActions: number;
+  /** Disabled-with-reason (treated) actions */
+  treatedFactorActions: number;
   onStartCycle: () => void;
   onCloseCycle: () => void;
   isCycleLocked: boolean;
   onNavigateTraining?: () => void;
-  onNavigatePractices?: () => void;
-  onNavigateActions?: () => void;
+  onNavigateFactors?: () => void;
 }
 
 export function CycleProgressHeader({
@@ -52,30 +52,25 @@ export function CycleProgressHeader({
   isStarted,
   turmas,
   totalEmployees,
-  activeActionsCount,
-  completedActionsCount,
-  totalPracticesUsed,
-  totalPracticesAvailable,
+  totalFactorActions,
+  completedFactorActions,
+  treatedFactorActions,
   onStartCycle,
   onCloseCycle,
   isCycleLocked,
   onNavigateTraining,
-  onNavigatePractices,
-  onNavigateActions,
+  onNavigateFactors,
 }: CycleProgressHeaderProps) {
-  // Calculate weighted progress
   const progress = useMemo(() => {
-    // 1. Training coverage (70% weight) - UNIQUE people trained / total active employees
+    // 1. Training coverage (70% weight)
     const cycleTurmas = turmas.filter(t => t.cycleId === cycleId);
     const trainedSet = new Set<string>();
     cycleTurmas.forEach(turma => {
-      // Only count participants marked "present" in attendance records
       if (turma.attendance) {
         Object.entries(turma.attendance).forEach(([participantId, status]) => {
           if (status === "present") trainedSet.add(participantId);
         });
       }
-      // For completed turmas without attendance data, count participants as trained
       if (turma.status === "completed" && (!turma.attendance || Object.keys(turma.attendance).length === 0)) {
         turma.participants.forEach(p => trainedSet.add(p.id));
       }
@@ -84,30 +79,24 @@ export function CycleProgressHeader({
       ? Math.min(100, Math.round((trainedSet.size / totalEmployees) * 100))
       : 0;
 
-    // 2. Practices executed (20% weight)
-    const practicesPercent = totalPracticesAvailable > 0
-      ? Math.min(100, Math.round((totalPracticesUsed / totalPracticesAvailable) * 100))
-      : 0;
-
-    // 3. Actions completed (10% weight)
-    const actionsPercent = activeActionsCount > 0
-      ? Math.min(100, Math.round((completedActionsCount / activeActionsCount) * 100))
+    // 2. Success Factors (30% weight) — completed + treated / total
+    const factorsDone = completedFactorActions + treatedFactorActions;
+    const factorsPercent = totalFactorActions > 0
+      ? Math.min(100, Math.round((factorsDone / totalFactorActions) * 100))
       : 0;
 
     // Weighted total
-    const weighted = Math.round(
-      trainingPercent * 0.7 + practicesPercent * 0.2 + actionsPercent * 0.1
-    );
+    const weighted = Math.round(trainingPercent * 0.7 + factorsPercent * 0.3);
 
     return {
       total: Math.min(100, weighted),
       training: trainingPercent,
-      practices: practicesPercent,
-      actions: actionsPercent,
+      factors: factorsPercent,
       trainedCount: trainedSet.size,
+      factorsDone,
       isReadyToAdvance: weighted >= 85,
     };
-  }, [cycleId, turmas, totalEmployees, totalPracticesUsed, totalPracticesAvailable, activeActionsCount, completedActionsCount]);
+  }, [cycleId, turmas, totalEmployees, totalFactorActions, completedFactorActions, treatedFactorActions]);
 
   const phaseGradient = {
     M: "from-blue-500 to-blue-600",
@@ -127,7 +116,7 @@ export function CycleProgressHeader({
     P: "bg-emerald-500/10",
   }[phase];
 
-  // Not started state - show prominent start button
+  // Not started state
   if (!isStarted) {
     return (
       <Card className="p-8 border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
@@ -166,7 +155,6 @@ export function CycleProgressHeader({
     );
   }
 
-  // Started state - show progress bar and status
   const isClosed = governance?.status === "closed";
 
   return (
@@ -225,7 +213,6 @@ export function CycleProgressHeader({
         </div>
         
         <div className="relative">
-          {/* Progress bar */}
           <div className="relative h-5 w-full overflow-hidden rounded-full bg-secondary">
             <div
               className={cn(
@@ -236,7 +223,6 @@ export function CycleProgressHeader({
             />
           </div>
           
-          {/* 85% milestone marker */}
           <div
             className="absolute top-0 h-5 w-0.5 bg-foreground/60"
             style={{ left: "85%" }}
@@ -250,8 +236,8 @@ export function CycleProgressHeader({
         </div>
       </div>
 
-      {/* Breakdown cards - clickable shortcuts */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* Two breakdown cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div
           onClick={onNavigateTraining}
           className={cn(
@@ -279,55 +265,29 @@ export function CycleProgressHeader({
         </div>
 
         <div
-          onClick={onNavigatePractices}
+          onClick={onNavigateFactors}
           className={cn(
             "p-3 rounded-lg bg-amber-500/5 border border-amber-500/15 space-y-1 transition-all",
-            onNavigatePractices && "cursor-pointer hover:bg-amber-500/10 hover:border-amber-500/30 hover:shadow-sm active:scale-[0.98]"
+            onNavigateFactors && "cursor-pointer hover:bg-amber-500/10 hover:border-amber-500/30 hover:shadow-sm active:scale-[0.98]"
           )}
-          role={onNavigatePractices ? "button" : undefined}
-          tabIndex={onNavigatePractices ? 0 : undefined}
-          onKeyDown={onNavigatePractices ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigatePractices(); } } : undefined}
+          role={onNavigateFactors ? "button" : undefined}
+          tabIndex={onNavigateFactors ? 0 : undefined}
+          onKeyDown={onNavigateFactors ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigateFactors(); } } : undefined}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-medium text-amber-600">
               <Sparkles className="h-3.5 w-3.5" />
-              Práticas (peso 20%)
+              Fatores de Sucesso (peso 30%)
             </div>
-            {onNavigatePractices && <ChevronRight className="h-3.5 w-3.5 text-amber-400" />}
+            {onNavigateFactors && <ChevronRight className="h-3.5 w-3.5 text-amber-400" />}
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-lg font-bold text-foreground">{progress.practices}%</span>
+            <span className="text-lg font-bold text-foreground">{progress.factors}%</span>
             <span className="text-xs text-muted-foreground">
-              {totalPracticesUsed}/{totalPracticesAvailable} executadas
+              {progress.factorsDone}/{totalFactorActions} ações tratadas
             </span>
           </div>
-          <Progress value={progress.practices} className="h-1.5" />
-        </div>
-
-        <div
-          onClick={onNavigateActions}
-          className={cn(
-            "p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/15 space-y-1 transition-all",
-            onNavigateActions && "cursor-pointer hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:shadow-sm active:scale-[0.98]"
-          )}
-          role={onNavigateActions ? "button" : undefined}
-          tabIndex={onNavigateActions ? 0 : undefined}
-          onKeyDown={onNavigateActions ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigateActions(); } } : undefined}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs font-medium text-emerald-600">
-              <ListChecks className="h-3.5 w-3.5" />
-              Ações (peso 10%)
-            </div>
-            {onNavigateActions && <ChevronRight className="h-3.5 w-3.5 text-emerald-400" />}
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-lg font-bold text-foreground">{progress.actions}%</span>
-            <span className="text-xs text-muted-foreground">
-              {completedActionsCount}/{activeActionsCount} concluídas
-            </span>
-          </div>
-          <Progress value={progress.actions} className="h-1.5" />
+          <Progress value={progress.factors} className="h-1.5" />
         </div>
       </div>
 
