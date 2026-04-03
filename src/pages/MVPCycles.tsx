@@ -349,8 +349,17 @@ export default function MVPCycles() {
     let treated = 0; // disabled with valid reason
     let delayed = 0;
 
+    // Dynamic count: only count actions that still exist in the global definition
+    const effectiveFactors = currentCycle.successFactors;
+    
     currentCycleState.factors.forEach(factorState => {
+      const globalFactor = effectiveFactors.find(f => f.id === factorState.id);
+      const globalActionIds = globalFactor ? new Set(globalFactor.actions.map(a => a.id)) : new Set<string>();
+      
       factorState.actions.forEach(actionState => {
+        // Skip actions that no longer exist in the global definition
+        if (!globalActionIds.has(actionState.id)) return;
+        
         totalActions++;
         if (actionState.enabled) {
           if (actionState.status === "completed") {
