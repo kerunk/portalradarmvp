@@ -47,6 +47,8 @@ import {
   setCycleState,
   getTurmas,
   setTurmas,
+  getEmployees,
+  getRecords,
   isActionDelayed,
   addRecord,
   updateRecord,
@@ -56,6 +58,7 @@ import {
   type TurmaState,
   type RecordState,
 } from "@/lib/storage";
+import { NEXT_CYCLE, type CycleId } from "@/lib/constants";
 import { 
   obterGovernancaDeCiclo, 
   avaliarEncerramentoDeCiclo,
