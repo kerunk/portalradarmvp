@@ -141,19 +141,19 @@ export const mvpCycles: MVPCycle[] = [
     },
     successFactors: createSuccessFactors({
       communication: [
-        { id: "m1-comm-1", title: "Campanha de lançamento do Programa MVP", bestPractice: "Gerar expectativa positiva, usar múltiplos canais" },
-        { id: "m1-comm-2", title: "Kit de comunicação visual do M1", bestPractice: "Cartazes, banners digitais, mensagens padrão" },
-        { id: "m1-comm-3", title: "FAQ sobre o Radar Pessoal", bestPractice: "Antecipar dúvidas comuns dos colaboradores" },
+        { id: "m1-comm-1", title: "Campanha de lançamento do Programa MVP", description: "Criar e veicular campanha de lançamento oficial do programa, gerando expectativa positiva e esclarecendo objetivos para toda a organização.", bestPractice: "Gerar expectativa positiva, usar múltiplos canais" },
+        { id: "m1-comm-2", title: "Kit de comunicação visual do M1", description: "Produzir materiais visuais específicos do primeiro módulo (cartazes, banners, posts) para manter o ciclo visível no ambiente.", bestPractice: "Cartazes, banners digitais, mensagens padrão" },
+        { id: "m1-comm-3", title: "FAQ sobre o Radar Pessoal", description: "Elaborar documento de perguntas frequentes sobre o Radar Pessoal para antecipar dúvidas e reduzir resistências.", bestPractice: "Antecipar dúvidas comuns dos colaboradores" },
       ],
       leadership: [
-        { id: "m1-lead-1", title: "Comunicação de abertura pelo líder máximo", bestPractice: "Demonstrar compromisso visível da alta direção" },
-        { id: "m1-lead-2", title: "Líderes aplicam o Radar Pessoal primeiro", bestPractice: "Dar o exemplo antes da equipe" },
-        { id: "m1-lead-3", title: "Presença obrigatória nos workshops", bestPractice: "100% da liderança nos eventos de abertura" },
+        { id: "m1-lead-1", title: "Comunicação de abertura pelo líder máximo", description: "O líder máximo da unidade deve comunicar formalmente o início do programa, demonstrando apoio e compromisso da alta direção.", bestPractice: "Demonstrar compromisso visível da alta direção" },
+        { id: "m1-lead-2", title: "Líderes aplicam o Radar Pessoal primeiro", description: "Antes dos colaboradores, os líderes devem ser os primeiros a aplicar o Radar Pessoal, dando o exemplo e legitimando a ferramenta.", bestPractice: "Dar o exemplo antes da equipe" },
+        { id: "m1-lead-3", title: "Presença obrigatória nos workshops", description: "Garantir presença de 100% da liderança nos workshops de abertura e sensibilização do módulo.", bestPractice: "100% da liderança nos eventos de abertura" },
       ],
       practice: [
-        { id: "m1-prac-1", title: "Workshop de sensibilização sobre fatores humanos", bestPractice: "Máximo 2h, conectar com segurança e desempenho" },
-        { id: "m1-prac-2", title: "Aplicação guiada do Radar Pessoal", bestPractice: "Ambiente tranquilo para reflexão individual" },
-        { id: "m1-prac-3", title: "Sessão de esclarecimento pós-diagnóstico", bestPractice: "Responder dúvidas sobre os resultados" },
+        { id: "m1-prac-1", title: "Workshop de sensibilização sobre fatores humanos", description: "Conduzir workshop prático conectando fatores humanos (atenção, fadiga, estresse, pressa, complacência) com segurança e desempenho.", bestPractice: "Máximo 2h, conectar com segurança e desempenho" },
+        { id: "m1-prac-2", title: "Aplicação guiada do Radar Pessoal", description: "Realizar sessão guiada para que cada colaborador aplique o Radar Pessoal em ambiente tranquilo e favorável à reflexão.", bestPractice: "Ambiente tranquilo para reflexão individual" },
+        { id: "m1-prac-3", title: "Sessão de esclarecimento pós-diagnóstico", description: "Após a aplicação do Radar Pessoal, realizar sessão para esclarecer dúvidas sobre os resultados e próximos passos.", bestPractice: "Responder dúvidas sobre os resultados" },
       ],
     }),
   },
