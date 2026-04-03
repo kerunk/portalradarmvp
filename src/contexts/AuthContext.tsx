@@ -466,17 +466,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: "admin@radarmvp.com",
         role: "admin_mvp",
       });
-    } else {
-      setActiveCompany("company-1");
-      setUser({
-        id: "cliente-1",
-        name: "Carlos Silva",
-        email: "admin@alpha.com",
-        role: "cliente",
-        companyId: "company-1",
-        companyName: "Empresa Alpha",
-      });
     }
+    // Client role switching is not supported in production —
+    // clients must log in with their own credentials.
   };
 
   const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
