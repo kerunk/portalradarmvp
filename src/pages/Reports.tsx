@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import jsPDF from "jspdf";
-import { getCompanies } from "@/lib/storage";
+import { getCompanies, getActiveCompaniesFiltered } from "@/lib/storage";
 import { getCompanyRiskData } from "@/lib/adminNotifications";
 import { getEnrichedCompanies, RISK_LABELS } from "@/lib/portfolioUtils";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -93,7 +93,7 @@ function addReportToHistory(type: string, name: string) {
 
 // Admin sees aggregated portfolio reports with PDF export
 function AdminReportsView() {
-  const companies = getCompanies();
+  const companies = getActiveCompaniesFiltered();
   const enriched = useMemo(() => getEnrichedCompanies(), []);
   const [reportHistory, setReportHistory] = useState(getReportHistory);
 

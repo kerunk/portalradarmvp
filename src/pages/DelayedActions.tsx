@@ -8,7 +8,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { AlertTriangle, Building2, ChevronRight, Clock } from "lucide-react";
-import { getCompanies, setActiveCompany, getState } from "@/lib/storage";
+import { getActiveCompaniesFiltered, setActiveCompany, getState } from "@/lib/storage";
 import { CYCLE_IDS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +27,7 @@ export default function DelayedActions() {
   const navigate = useNavigate();
 
   const delayedActions = useMemo(() => {
-    const companies = getCompanies();
+    const companies = getActiveCompaniesFiltered();
     const actions: DelayedAction[] = [];
     const now = Date.now();
 
