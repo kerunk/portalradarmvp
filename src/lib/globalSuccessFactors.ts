@@ -92,7 +92,7 @@ export function saveGlobalAction(
     newActionId = `${factorId}-custom-${Date.now()}`;
     updatedActions = [
       ...factor.actions,
-      { id: newActionId, title: data.title, description: data.description, bestPractice: data.bestPractice },
+      { id: newActionId, title: data.title, description: data.description, bestPractice: data.bestPractice, imageUrl: data.imageUrl },
     ];
   }
 
