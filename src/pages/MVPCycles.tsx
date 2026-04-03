@@ -902,10 +902,14 @@ export default function MVPCycles() {
               if (!factorState) return null;
               
               const isOpen = openFactors.includes(factor.id);
-              const activeCount = factorState.actions.filter(a => a.enabled).length;
-              const completedCount = factorState.actions.filter(a => a.enabled && a.status === "completed").length;
-              const treatedCount = factorState.actions.filter(a => !a.enabled && a.disabledReason && a.disabledReason.trim().length > 0).length;
+              // Dynamic count: only count actions that still exist in the global definition
+              const globalActionIds = new Set(factor.actions.map(a => a.id));
+              const validActions = factorState.actions.filter(a => globalActionIds.has(a.id));
+              const activeCount = validActions.filter(a => a.enabled).length;
+              const completedCount = validActions.filter(a => a.enabled && a.status === "completed").length;
+              const treatedCount = validActions.filter(a => !a.enabled && a.disabledReason && a.disabledReason.trim().length > 0).length;
               const totalTreated = completedCount + treatedCount;
+              const totalValidActions = validActions.length;
 
               return (
                 <Collapsible
