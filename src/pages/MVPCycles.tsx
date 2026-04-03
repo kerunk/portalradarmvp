@@ -762,6 +762,9 @@ export default function MVPCycles() {
           </div>
         )}
 
+        {/* Content only visible after cycle is started */}
+        {isCycleStarted && (
+          <>
         {/* Locked cycle warning */}
         {isCycleLocked && (
           <Alert className={cycleGovernance?.status === 'closed' ? "border-success/50 bg-success/5" : ""}>
