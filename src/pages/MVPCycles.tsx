@@ -49,7 +49,6 @@ import {
   setCycleState,
   getTurmas,
   setTurmas,
-  getEmployees,
   getRecords,
   isActionDelayed,
   addRecord,
