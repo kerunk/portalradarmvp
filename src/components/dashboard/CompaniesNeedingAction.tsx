@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { AlertCircle, Building2, ArrowRight } from "lucide-react";
-import { getCompanies } from "@/lib/storage";
+import { getActiveCompaniesFiltered } from "@/lib/storage";
 import { getNextRecommendedAction, getImplementationProgress } from "@/lib/implementationEngine";
 
 interface Props {
