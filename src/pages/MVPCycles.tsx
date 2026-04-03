@@ -86,7 +86,6 @@ import {
   FileDown,
   Lock,
   LockOpen,
-  BookOpen,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
