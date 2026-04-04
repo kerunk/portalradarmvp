@@ -34,13 +34,17 @@ function toCompanyState(row: any): CompanyState {
 }
 
 function mapOnboardingFromDB(
-  dbStatus: string | null
+  dbStatus: string | null | undefined
 ): "not_started" | "in_progress" | "completed" {
-  switch (dbStatus) {
+  switch ((dbStatus || "").trim().toLowerCase()) {
     case "em_andamento":
+    case "in_progress":
       return "in_progress";
     case "concluido":
+    case "completed":
       return "completed";
+    case "nao_iniciado":
+    case "not_started":
     default:
       return "not_started";
   }
@@ -49,11 +53,15 @@ function mapOnboardingFromDB(
 function mapOnboardingToDB(
   appStatus: string
 ): "nao_iniciado" | "em_andamento" | "concluido" {
-  switch (appStatus) {
+  switch ((appStatus || "").trim().toLowerCase()) {
+    case "em_andamento":
     case "in_progress":
       return "em_andamento";
+    case "concluido":
     case "completed":
       return "concluido";
+    case "nao_iniciado":
+    case "not_started":
     default:
       return "nao_iniciado";
   }

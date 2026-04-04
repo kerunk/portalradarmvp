@@ -47,17 +47,25 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
   useEffect(() => {
     let cancelled = false;
     setLoadingCompany(true);
-    fetchCompanyById(companyId).then(c => {
-      if (!cancelled) {
-        setCompanyFromDB(c ? { onboardingStatus: c.onboardingStatus } : null);
-        setLoadingCompany(false);
-      }
-    });
+    fetchCompanyById(companyId)
+      .then(c => {
+        if (!cancelled) {
+          console.log("[Portal] onboarding_status:", c?.onboardingStatus ?? "not_found");
+          setCompanyFromDB(c ? { onboardingStatus: c.onboardingStatus } : null);
+          setLoadingCompany(false);
+        }
+      })
+      .catch(error => {
+        if (!cancelled) {
+          console.error("[Portal] error loading onboarding status:", error);
+          setCompanyFromDB(null);
+          setLoadingCompany(false);
+        }
+      });
     return () => { cancelled = true; };
   }, [companyId, refreshKey]);
 
-  // Check if onboarding has started — null company means not found, treat as not started
-  const onboardingStarted = companyFromDB != null && companyFromDB.onboardingStatus !== 'not_started';
+  const onboardingCompleted = companyFromDB?.onboardingStatus === 'completed';
 
   // All hooks must be called unconditionally (React rules), but guard reads with company scope
   const popStats = useMemo(() => { setActiveCompany(companyId); return getPopulationStats(companyId); }, [companyId, refreshKey]);
@@ -134,7 +142,7 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
     );
   }
 
-  if (!onboardingStarted) {
+  if (!onboardingCompleted) {
     return <OnboardingGate companyName={companyName} />;
   }
 
