@@ -18,12 +18,12 @@ import {
 } from "@/components/ui/select";
 import { Building2, User, Mail, Lock, FileDown, CheckCircle2, Upload, Image } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { addCompany, type CompanyState } from "@/lib/storage";
+import { type CompanyState } from "@/lib/storage";
+import { createCompanyInSupabase } from "@/lib/companyService";
 import { generateAccessPDF } from "@/lib/pdfGenerator";
 import { useAuth } from "@/contexts/AuthContext";
-import { getAdminRoleForUser, addCompanyToManager, getAdminRoleAssignments } from "@/lib/permissions";
+import { getAdminRoleForUser, addCompanyToManager } from "@/lib/permissions";
 import { emitCompanyCreated } from "@/lib/operationalEvents";
-// registerCredential removed — v2 uses Supabase Auth
 
 interface CreateCompanyDialogProps {
   open: boolean;
@@ -112,11 +112,10 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
     }
 
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
     
     const tempPassword = generateTempPassword();
     const company: CompanyState = {
-      id: `company-${Date.now()}`,
+      id: `company-${Date.now()}`, // Temporary ID, will be replaced by Supabase
       name: companyName.trim(),
       sector: sector || "Não informado",
       employees: parseInt(employees) || 0,
@@ -130,10 +129,21 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
       ownerName: user?.name,
     };
     
-    addCompany(company);
+    // Save to Supabase as source of truth
+    const result = await createCompanyInSupabase(company);
     
-    // Save credentials to the credentials store for consistent auth
-    // v2: credentials are managed via Supabase Auth — no local registration needed
+    if (!result.success) {
+      toast({
+        title: "Erro ao criar empresa",
+        description: result.error || "Falha ao salvar no banco de dados.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Use the Supabase-generated ID
+    company.id = result.id || company.id;
     
     // Auto-assign to gerente_conta if applicable
     if (user?.email) {

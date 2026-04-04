@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { CreateCompanyDialog } from "@/components/companies/CreateCompanyDialog";
 import { EditCompanyDialog } from "@/components/companies/EditCompanyDialog";
 import { getCompanies, setCompanies, type CompanyState } from "@/lib/storage";
+import { fetchCompanies } from "@/lib/companyService";
 import { Badge } from "@/components/ui/badge";
 import {
   getEnrichedCompanies,
@@ -69,18 +70,35 @@ export default function Companies() {
   const canDelete = hasPermission(adminRole, "deleteCompanies");
   const canEdit = adminRole === "admin_master" || adminRole === "admin_mvp";
 
+  // Load companies from Supabase and sync to localStorage for enrichment compatibility
+  const [supabaseCompanies, setSupabaseCompanies] = useState<CompanyState[]>([]);
+  const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
+
+  const loadCompanies = useCallback(async () => {
+    setIsLoadingCompanies(true);
+    const companies = await fetchCompanies();
+    setSupabaseCompanies(companies);
+    // Sync to localStorage for backward compatibility with enrichment functions
+    setCompanies(companies);
+    setIsLoadingCompanies(false);
+  }, []);
+
   useEffect(() => {
-    if (!createDialogOpen) setRefreshKey(k => k + 1);
-  }, [createDialogOpen]);
+    loadCompanies();
+  }, [loadCompanies]);
+
+  useEffect(() => {
+    if (!createDialogOpen) loadCompanies();
+  }, [createDialogOpen, loadCompanies]);
 
   // Listen for company changes from CreateCompanyDialog
   useEffect(() => {
-    const handler = () => setRefreshKey(k => k + 1);
+    const handler = () => loadCompanies();
     window.addEventListener("mvp_company_changed", handler);
     return () => window.removeEventListener("mvp_company_changed", handler);
-  }, []);
+  }, [loadCompanies]);
 
-  const enriched = useMemo(() => getEnrichedCompanies(user?.email, adminRole), [refreshKey, user?.email, adminRole]);
+  const enriched = useMemo(() => getEnrichedCompanies(user?.email, adminRole), [supabaseCompanies, user?.email, adminRole]);
 
   // Available managers for reassignment
   const availableManagers = useMemo(() => {

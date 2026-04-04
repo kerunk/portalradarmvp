@@ -1,17 +1,12 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { getCompanies, setActiveCompany } from "@/lib/storage";
+import { setActiveCompany } from "@/lib/storage";
+import { fetchCompanyById } from "@/lib/companyService";
 import { useReadOnly } from "@/contexts/ReadOnlyContext";
 
 /**
- * CompanyMirror is a thin entry-point component.
- * It activates mirror/read-only mode for the target company,
- * sets the active company context, then redirects the admin
- * to the real client route (e.g. "/" for dashboard, "/ciclos", "/turmas", etc.).
- *
- * The rest of the app (Sidebar, AppLayout, Dashboard, etc.) checks
- * `isReadOnly` from ReadOnlyContext and renders the client portal
- * experience with a read-only banner.
+ * CompanyMirror — loads company from Supabase, activates mirror/read-only mode,
+ * then redirects admin to the client portal route.
  */
 
 const tabToRoute: Record<string, string> = {
@@ -33,28 +28,45 @@ export default function CompanyMirror() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { enterMirror } = useReadOnly();
-
-  const companies = useMemo(() => getCompanies(), []);
-  const company = companies.find(c => c.id === companyId);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (company) {
-      // Activate mirror mode
-      enterMirror(company.id, company.name);
-      setActiveCompany(company.id);
-
-      // Determine target route from ?tab= param
-      const tab = searchParams.get("tab") || "dashboard";
-      const route = tabToRoute[tab] || "/";
-
-      // Replace current URL so the admin sees the real client route
-      navigate(route, { replace: true });
-    } else {
-      // Company not found – go back to companies list
+    if (!companyId) {
       navigate("/empresas", { replace: true });
+      return;
     }
-  }, [company?.id]);
 
-  // This component renders nothing – it just redirects
+    async function loadAndRedirect() {
+      const company = await fetchCompanyById(companyId!);
+
+      if (company) {
+        // Activate mirror mode
+        enterMirror(company.id, company.name);
+        setActiveCompany(company.id);
+
+        // Determine target route from ?tab= param
+        const tab = searchParams.get("tab") || "dashboard";
+        const route = tabToRoute[tab] || "/";
+
+        // Replace current URL so the admin sees the real client route
+        navigate(route, { replace: true });
+      } else {
+        // Company not found – go back to companies list
+        navigate("/empresas", { replace: true });
+      }
+      setLoading(false);
+    }
+
+    loadAndRedirect();
+  }, [companyId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-muted-foreground">Carregando portal da empresa...</p>
+      </div>
+    );
+  }
+
   return null;
 }

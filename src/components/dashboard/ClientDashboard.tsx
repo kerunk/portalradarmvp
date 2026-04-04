@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { MetricCard } from "./MetricCard";
 import { ProgressCard } from "./ProgressCard";
 import { SmartAlerts } from "./SmartAlerts";
@@ -21,7 +21,8 @@ import { Users, Target, CheckCircle, TrendingUp, GraduationCap, Shield, UserChec
 import { cn } from "@/lib/utils";
 import { getPopulationStats, getPopulation } from "@/lib/companyStorage";
 import { obterIndicadoresGlobais, obterIndicadoresTodosCiclos } from "@/lib/governance";
-import { getState, setActiveCompany, getCompanyById } from "@/lib/storage";
+import { getState, setActiveCompany } from "@/lib/storage";
+import { fetchCompanyById } from "@/lib/companyService";
 import { generateInsights, calculateCultureScore } from "@/lib/reportData";
 
 interface ClientDashboardProps {
@@ -33,16 +34,30 @@ interface ClientDashboardProps {
 
 export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDismissed }: ClientDashboardProps) {
   // Set active company synchronously before any data reads
-  // useEffect for cleanup only
   setActiveCompany(companyId);
   useEffect(() => {
     setActiveCompany(companyId);
     return () => { setActiveCompany(null); };
   }, [companyId]);
 
+  // Load company from Supabase for onboarding gate
+  const [companyFromDB, setCompanyFromDB] = useState<{ onboardingStatus: string } | null>(null);
+  const [loadingCompany, setLoadingCompany] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingCompany(true);
+    fetchCompanyById(companyId).then(c => {
+      if (!cancelled) {
+        setCompanyFromDB(c ? { onboardingStatus: c.onboardingStatus } : null);
+        setLoadingCompany(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [companyId, refreshKey]);
+
   // Check if onboarding has started — null company means not found, treat as not started
-  const company = useMemo(() => getCompanyById(companyId), [companyId, refreshKey]);
-  const onboardingStarted = company != null && company.onboardingStatus !== 'not_started';
+  const onboardingStarted = companyFromDB != null && companyFromDB.onboardingStatus !== 'not_started';
 
   // All hooks must be called unconditionally (React rules), but guard reads with company scope
   const popStats = useMemo(() => { setActiveCompany(companyId); return getPopulationStats(companyId); }, [companyId, refreshKey]);
@@ -110,7 +125,15 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
     pending: globalIndicators.pendingActions,
   };
 
-  // Gate: block portal if onboarding not started
+  // Gate: block portal while loading or if onboarding not started
+  if (loadingCompany) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <p className="text-muted-foreground">Carregando dados da empresa...</p>
+      </div>
+    );
+  }
+
   if (!onboardingStarted) {
     return <OnboardingGate companyName={companyName} />;
   }

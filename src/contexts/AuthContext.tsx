@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { supabase } from "@/integrations/supabase/client";
 import type { AppRole } from "@/types/supabase";
 import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
+import { fetchCompanyById } from "@/lib/companyService";
 
 // ============================================================
 // Portal MVP v2 — Supabase Auth Context
@@ -84,6 +85,23 @@ async function buildUserFromSession(supabaseUser: SupabaseUser): Promise<User | 
       }
     }
 
+    // Determine onboarding status from Supabase company
+    let onboardingStatus: string = "nao_iniciado";
+    if (companyId) {
+      const companyData = await fetchCompanyById(companyId);
+      if (companyData) {
+        // Map CompanyState onboardingStatus to our internal status
+        const statusMap: Record<string, string> = {
+          not_started: "nao_iniciado",
+          in_progress: "em_andamento",
+          completed: "completed",
+        };
+        onboardingStatus = statusMap[companyData.onboardingStatus] || "nao_iniciado";
+        if (!companyName) companyName = companyData.name;
+        if (!companyLogo) companyLogo = companyData.logo;
+      }
+    }
+
     return {
       id: supabaseUser.id,
       name: (profile as any)?.full_name ?? supabaseUser.email?.split("@")[0] ?? "Usuário",
@@ -93,7 +111,7 @@ async function buildUserFromSession(supabaseUser: SupabaseUser): Promise<User | 
       companyName,
       companyLogo,
       mustChangePassword: false,
-      onboardingStatus: "completed",
+      onboardingStatus,
     };
   } catch (err) {
     console.error("Error building user from session:", err);
