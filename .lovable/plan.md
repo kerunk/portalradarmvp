@@ -1,32 +1,101 @@
 
 
-## Auto-Recovery for White Screen — Plan
+# Diagnóstico Forense — Bug de Finalização do Onboarding
 
-### What it does
-Adds a lightweight watchdog that detects when the app fails to render (white screen) and shows a recovery UI with options to return to `/login` or clear corrupted data.
+## Mapeamento Completo do Fluxo
 
-### Why it won't break anything
-- It's a **standalone wrapper** around the existing `<App />` in `index.html` / `main.tsx`
-- Zero changes to any existing component, page, route, auth logic, or storage
-- It only activates if React fails to mount or crashes completely — normal operation is untouched
+### 1. Botão "Entrar no Portal MVP"
+- **Componente**: `src/pages/Onboarding.tsx`, linha ~611
+- **Função chamada**: `handleComplete()` (linha 311)
 
-### Implementation (2 files, minimal changes)
+### 2. Cadeia de Execução de `handleComplete()`
 
-**1. `index.html`** — Add inline fallback UI + timeout watchdog
+```text
+handleComplete()
+  ├─ saveNucleusToSupabase(companyId, nucleoMembers)     → nucleus_members
+  ├─ saveEmployeesToSupabase(companyId, finalPopulation)  → employees
+  ├─ saveOnboardingProgress(companyId, {...})              → company_onboarding_progress
+  └─ completeOnboarding()                                 → companies (AuthContext)
+       └─ navigate("/")
+```
 
-- Add a `<div id="app-fallback">` with a hidden recovery screen (pure HTML/CSS, no React)
-- Add a small inline `<script>` that:
-  - Waits 6 seconds after page load
-  - Checks if `#root` has any rendered children
-  - If empty → shows the fallback div with two buttons:
-    - "Voltar para login" → clears `mvp_auth_session` from localStorage, navigates to `/login`
-    - "Limpar dados e recarregar" → clears all `mvp_*` keys, reloads
+### 3. Função `completeOnboarding()` — AuthContext.tsx (linha 227)
 
-**2. `src/main.tsx`** — Hide fallback after successful render
+Executa:
+```typescript
+await supabase.from("companies")
+  .update({
+    onboarding_status: "concluido",
+    onboarding_completed_at: new Date().toISOString(),  // ← PROBLEMA PROVÁVEL
+  })
+  .eq("id", user.companyId)
+```
 
-- After `createRoot(...).render(<App />)`, add a line to hide the fallback div (confirms React mounted successfully)
+### 4. Lógica de Redirect — ProtectedRoute.tsx (linha 36)
 
-### No other files touched
-- No changes to ErrorBoundary, AuthContext, routes, pages, storage, components, or any business logic
-- The fallback is pure HTML that exists outside React — it's a safety net only
+```typescript
+if (user.onboardingStatus !== 'completed' && user.role === "admin_empresa") {
+  return <Navigate to="/onboarding" replace />;
+}
+```
+
+---
+
+## Diagnóstico: 3 Causas Raiz Identificadas
+
+### CAUSA A — Coluna inexistente `onboarding_completed_at`
+
+O `types/supabase.ts` define a tabela `companies` **sem** a coluna `onboarding_completed_at`. O UPDATE em `completeOnboarding()` envia essa coluna inexistente. Dependendo da configuração de RLS e schema validation do Supabase, isso pode:
+- Causar erro silencioso que faz o `.single()` falhar
+- Rejeitar o UPDATE inteiro por coluna desconhecida
+- Resultado: o `onboarding_status` **nunca é atualizado** para "concluido"
+
+### CAUSA B — Tabelas de onboarding podem não existir
+
+`saveNucleusToSupabase`, `saveEmployeesToSupabase`, e `saveOnboardingProgress` usam tabelas (`nucleus_members`, `employees`, `company_onboarding_progress`) que foram definidas em `mvp_v2_tables.sql`. Se o SQL **nunca foi executado** no Supabase, essas operações falham silenciosamente e o `handleComplete()` lança exceção **antes** de chegar ao `completeOnboarding()`.
+
+A cadeia de execução em `handleComplete()` é:
+1. `saveNucleusToSupabase` → falha se tabela não existe → **throw** → catch → "Erro ao finalizar"
+2. `completeOnboarding()` **nunca é alcançado**
+
+### CAUSA C — Dupla busca no `buildUserFromSession` com mismatch
+
+Após o UPDATE, `completeOnboarding` chama `buildUserFromSession` que faz DUAS buscas:
+1. Busca direta na tabela `companies` → obtém `onboarding_status` raw ("concluido")
+2. `fetchCompanyById` → converte via `mapOnboardingFromDB` para "completed"
+
+O `statusMap` na linha 62 converte `"completed"` → `"completed"` ✓, mas a **segunda** chamada (`fetchCompanyById`) mapeia "concluido" → "completed" que entra no `statusMap` como key "completed" → "completed". Isso funciona em teoria, mas se a primeira chamada tiver falhado (causa A), o status lido será "nao_iniciado", que se mapeia para "nao_iniciado", e o `ProtectedRoute` compara com `!== 'completed'` → **redirect para /onboarding**.
+
+---
+
+## Resumo do Diagnóstico
+
+| Pergunta | Resposta |
+|----------|---------|
+| A. Causa raiz do "Erro ao finalizar" | Tabelas `nucleus_members`/`employees`/`company_onboarding_progress` provavelmente não existem no Supabase, ou a coluna `onboarding_completed_at` causa rejeição do UPDATE |
+| B. Coluna lida no portal | `onboarding_status` da tabela `companies` |
+| C. Coluna escrita no final | `onboarding_status` + `onboarding_completed_at` (esta última possivelmente inexistente) |
+| D. Mismatch de nomes | **Sim** — `onboarding_completed_at` não existe no schema definido |
+| E. Mismatch de valores | **Não** — "concluido" é o valor correto para o DB e o mapeamento funciona |
+| F. companyId incorreto/nulo | Possível se `profile.company_id` não foi setado na criação do usuário |
+| G. Tipo do erro | Combinação de: **coluna inexistente** + **tabelas possivelmente não criadas** + **RLS bloqueando UPDATE** |
+
+## Arquivos Envolvidos
+
+| Arquivo | Papel |
+|---------|-------|
+| `src/pages/Onboarding.tsx` | Botão, handleComplete, advanceStep |
+| `src/contexts/AuthContext.tsx` | completeOnboarding, buildUserFromSession, statusMap |
+| `src/lib/employeeService.ts` | saveNucleus, saveEmployees, saveOnboardingProgress |
+| `src/lib/companyService.ts` | fetchCompanyById, mapOnboardingFromDB |
+| `src/components/auth/ProtectedRoute.tsx` | Gate de redirect para /onboarding |
+| `src/types/supabase.ts` | Schema sem `onboarding_completed_at` |
+
+## Próximos Passos Recomendados
+
+Para confirmar definitivamente, é necessário:
+1. Verificar no Supabase SQL Editor se as tabelas `nucleus_members`, `employees`, `company_onboarding_progress` **existem**
+2. Verificar se a coluna `onboarding_completed_at` **existe** na tabela `companies`
+3. Verificar as **RLS policies** da tabela `companies` para o role `admin_empresa` (UPDATE pode estar bloqueado)
+4. Verificar se o `profile.company_id` do usuário de teste está corretamente setado
 
