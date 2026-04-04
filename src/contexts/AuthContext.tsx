@@ -226,25 +226,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const completeOnboarding = async (): Promise<void> => {
     if (user?.companyId) {
-      console.log("[Onboarding] salvando status completed", user.companyId);
+      console.log("[Onboarding] salvando status concluido", user.companyId);
 
-      let updateResult = await (supabase.from("companies") as any)
+      const updateResult = await (supabase.from("companies") as any)
         .update({
-          onboarding_status: "completed",
+          onboarding_status: "concluido",
           onboarding_completed_at: new Date().toISOString(),
         })
         .eq("id", user.companyId)
         .select("id, onboarding_status")
         .single();
-
-      if (updateResult.error) {
-        console.warn("[Onboarding] update with completed failed, retrying with concluido", updateResult.error);
-        updateResult = await (supabase.from("companies") as any)
-          .update({ onboarding_status: "concluido" })
-          .eq("id", user.companyId)
-          .select("id, onboarding_status")
-          .single();
-      }
 
       if (updateResult.error) {
         console.error("[Onboarding] failed to persist completed status", updateResult.error);
