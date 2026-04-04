@@ -55,6 +55,7 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
   const cycleIndicators = useMemo(() => { setActiveCompany(companyId); return obterIndicadoresTodosCiclos(); }, [companyId, refreshKey]);
 
   const trainingStats = useMemo(() => {
+    setActiveCompany(companyId);
     const state = getState();
     const turmas = state.turmas;
     const turmasRealizadas = turmas.filter(t => t.status === "completed").length;
