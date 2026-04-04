@@ -81,6 +81,30 @@ export default function Onboarding() {
 
   const companyId = user.companyId || "";
 
+  // Restore onboarding progress from Supabase on mount
+  useEffect(() => {
+    if (!companyId) { setIsRestoring(false); return; }
+    (async () => {
+      try {
+        const [progress, nucleus, employees] = await Promise.all([
+          fetchOnboardingProgress(companyId),
+          fetchNucleusFromSupabase(companyId),
+          fetchEmployeesFromSupabase(companyId),
+        ]);
+        if (nucleus.length > 0) setNucleoMembers(nucleus);
+        if (employees.length > 0) setPopulationMembers(employees);
+        if (progress && progress.currentStep > 1) {
+          setStep(progress.currentStep);
+        }
+        console.log("[Onboarding] Restored progress:", { step: progress?.currentStep, nucleus: nucleus.length, employees: employees.length });
+      } catch (err) {
+        console.error("[Onboarding] Error restoring progress:", err);
+      } finally {
+        setIsRestoring(false);
+      }
+    })();
+  }, [companyId]);
+
   // ========== NÚCLEO HANDLERS ==========
   const resetNucleoForm = () => {
     setNucleoForm({ name: "", email: "", sector: "", role: "" });
