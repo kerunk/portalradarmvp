@@ -11,9 +11,10 @@ import {
 } from "@/components/ui/select";
 import { Building2, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getCompanies, setCompanies, type CompanyState } from "@/lib/storage";
+import { type CompanyState } from "@/lib/storage";
 import { auditCompanyAction } from "@/lib/auditLog";
 import { useAuth } from "@/contexts/AuthContext";
+import { updateCompanyInSupabase } from "@/lib/companyService";
 
 interface EditCompanyDialogProps {
   company: CompanyState | null;
@@ -56,29 +57,37 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSaved }: Edit
     }
   }, [company]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!company || !name.trim()) {
       toast({ title: "Nome da empresa é obrigatório", variant: "destructive" });
       return;
     }
 
-    const allCompanies = getCompanies();
     const before = { ...company };
-    const updated = allCompanies.map(c =>
-      c.id === company.id
-        ? {
-            ...c,
-            name: name.trim(),
-            sector: sector || c.sector,
-            employees: parseInt(employees) || c.employees,
-            city: city.trim(),
-            uf,
-            contactEmail: contactEmail.trim(),
-            observations: observations.trim(),
-          } as CompanyState & { city?: string; uf?: string; contactEmail?: string; observations?: string }
-        : c
-    );
-    setCompanies(updated as CompanyState[]);
+
+    const saved = await updateCompanyInSupabase(company.id, {
+      name: name.trim(),
+      sector: sector || company.sector,
+      employee_count: parseInt(employees) || company.employees,
+      admin_email: contactEmail.trim() || company.adminEmail,
+    });
+
+    if (!saved) {
+      toast({
+        title: "Erro ao atualizar empresa",
+        description: "Não foi possível persistir as alterações no Supabase.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log("[EditCompanyDialog] Company updated in Supabase", {
+      companyId: company.id,
+      name: name.trim(),
+      sector: sector || company.sector,
+      employeeCount: parseInt(employees) || company.employees,
+      adminEmail: contactEmail.trim() || company.adminEmail,
+    });
 
     auditCompanyAction(
       user?.email || "", user?.name || "Admin",
