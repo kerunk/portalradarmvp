@@ -155,9 +155,10 @@ export async function updateCompanyInSupabase(
     dbUpdates.onboarding_status = mapOnboardingToDB(updates.onboarding_status);
   }
 
-  const { error } = await supabase
-    .from("companies")
-    .update(dbUpdates as any)
+  // @ts-ignore - dynamic update fields
+  const { error } = await (supabase
+    .from("companies") as any)
+    .update(dbUpdates)
     .eq("id", companyId);
 
   if (error) {
