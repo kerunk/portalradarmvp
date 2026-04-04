@@ -42,14 +42,7 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
   const company = useMemo(() => getCompanyById(companyId), [companyId, refreshKey]);
   const onboardingStarted = company?.onboardingStatus !== 'not_started';
 
-  // If onboarding not started, show gate
-  if (!onboardingStarted) {
-    return <OnboardingGate companyName={companyName} />;
-  }
-
-  // Set active company for all scoped reads
-  setActiveCompany(companyId);
-
+  // All hooks must be called unconditionally (React rules)
   const popStats = useMemo(() => getPopulationStats(companyId), [companyId, refreshKey]);
   const globalIndicators = useMemo(() => { setActiveCompany(companyId); return obterIndicadoresGlobais(); }, [companyId, refreshKey]);
   const cycleIndicators = useMemo(() => { setActiveCompany(companyId); return obterIndicadoresTodosCiclos(); }, [companyId, refreshKey]);
@@ -72,7 +65,7 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
       return sum + Object.values(t.attendance).filter(s => s === "present").length;
     }, 0);
     return { turmasTotal: turmas.length, turmasRealizadas, pessoasTreinadas: trainedIds.size, totalPresences };
-  }, [refreshKey]);
+  }, [companyId, refreshKey]);
 
   const activePopulation = popStats.total;
   const coveragePercent = activePopulation > 0 ? Math.round((trainingStats.pessoasTreinadas / activePopulation) * 100) : 0;
