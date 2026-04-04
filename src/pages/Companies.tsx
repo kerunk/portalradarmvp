@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { CreateCompanyDialog } from "@/components/companies/CreateCompanyDialog";
 import { EditCompanyDialog } from "@/components/companies/EditCompanyDialog";
 import { getCompanies, setCompanies, type CompanyState } from "@/lib/storage";
+import { fetchCompanies } from "@/lib/companyService";
 import { Badge } from "@/components/ui/badge";
 import {
   getEnrichedCompanies,
