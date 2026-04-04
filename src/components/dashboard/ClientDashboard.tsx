@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { MetricCard } from "./MetricCard";
 import { ProgressCard } from "./ProgressCard";
 import { SmartAlerts } from "./SmartAlerts";
@@ -15,12 +15,13 @@ import { FirstStepsGuide } from "./FirstStepsGuide";
 import { ImplementationChecklist } from "./ImplementationChecklist";
 import { ImplementationJourney } from "./ImplementationJourney";
 import { ClientSuggestions } from "./ClientSuggestions";
+import { OnboardingGate } from "./OnboardingGate";
 import { Card } from "@/components/ui/card";
 import { Users, Target, CheckCircle, TrendingUp, GraduationCap, Shield, UserCheck, AlertTriangle, CheckCircle2, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPopulationStats, getPopulation } from "@/lib/companyStorage";
 import { obterIndicadoresGlobais, obterIndicadoresTodosCiclos } from "@/lib/governance";
-import { getState } from "@/lib/storage";
+import { getState, setActiveCompany, getCompanyById } from "@/lib/storage";
 import { generateInsights, calculateCultureScore } from "@/lib/reportData";
 
 interface ClientDashboardProps {
@@ -31,9 +32,27 @@ interface ClientDashboardProps {
 }
 
 export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDismissed }: ClientDashboardProps) {
+  // Ensure active company is set before any state reads
+  useEffect(() => {
+    setActiveCompany(companyId);
+    return () => { setActiveCompany(null); };
+  }, [companyId]);
+
+  // Check if onboarding has started
+  const company = useMemo(() => getCompanyById(companyId), [companyId, refreshKey]);
+  const onboardingStarted = company?.onboardingStatus !== 'not_started';
+
+  // If onboarding not started, show gate
+  if (!onboardingStarted) {
+    return <OnboardingGate companyName={companyName} />;
+  }
+
+  // Set active company for all scoped reads
+  setActiveCompany(companyId);
+
   const popStats = useMemo(() => getPopulationStats(companyId), [companyId, refreshKey]);
-  const globalIndicators = useMemo(() => obterIndicadoresGlobais(), [refreshKey]);
-  const cycleIndicators = useMemo(() => obterIndicadoresTodosCiclos(), [refreshKey]);
+  const globalIndicators = useMemo(() => { setActiveCompany(companyId); return obterIndicadoresGlobais(); }, [companyId, refreshKey]);
+  const cycleIndicators = useMemo(() => { setActiveCompany(companyId); return obterIndicadoresTodosCiclos(); }, [companyId, refreshKey]);
 
   const trainingStats = useMemo(() => {
     const state = getState();
