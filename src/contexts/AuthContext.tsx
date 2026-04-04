@@ -53,6 +53,15 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 async function buildUserFromSession(supabaseUser: SupabaseUser): Promise<User | null> {
   try {
+    const statusMap: Record<string, string> = {
+      not_started: "nao_iniciado",
+      nao_iniciado: "nao_iniciado",
+      in_progress: "em_andamento",
+      em_andamento: "em_andamento",
+      completed: "completed",
+      concluido: "completed",
+    };
+
     // Fetch profile
     const { data: profile } = await supabase
       .from("profiles")
@@ -72,30 +81,26 @@ async function buildUserFromSession(supabaseUser: SupabaseUser): Promise<User | 
     // Fetch company if profile has company_id
     let companyName: string | undefined;
     let companyLogo: string | undefined;
+    let companyOnboardingStatus: string | undefined;
     const companyId: string | undefined = (profile as any)?.company_id ?? undefined;
     if (companyId) {
       const { data: company } = await supabase
         .from("companies")
-        .select("name, logo_url")
+        .select("name, logo_url, onboarding_status")
         .eq("id", companyId)
         .single();
       if (company) {
         companyName = (company as any).name ?? undefined;
         companyLogo = (company as any).logo_url ?? undefined;
+        companyOnboardingStatus = (company as any).onboarding_status ?? undefined;
       }
     }
 
     // Determine onboarding status from Supabase company
-    let onboardingStatus: string = "nao_iniciado";
+    let onboardingStatus: string = statusMap[companyOnboardingStatus || ""] || "nao_iniciado";
     if (companyId) {
       const companyData = await fetchCompanyById(companyId);
       if (companyData) {
-        // Map CompanyState onboardingStatus to our internal status
-        const statusMap: Record<string, string> = {
-          not_started: "nao_iniciado",
-          in_progress: "em_andamento",
-          completed: "completed",
-        };
         onboardingStatus = statusMap[companyData.onboardingStatus] || "nao_iniciado";
         if (!companyName) companyName = companyData.name;
         if (!companyLogo) companyLogo = companyData.logo;
@@ -211,19 +216,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const startOnboarding = async (): Promise<void> => {
     if (user?.companyId) {
       const { updateCompanyOnboardingInSupabase } = await import("@/lib/companyService");
-      await updateCompanyOnboardingInSupabase(user.companyId, "in_progress");
+      const success = await updateCompanyOnboardingInSupabase(user.companyId, "in_progress");
+      if (!success) {
+        throw new Error("Falha ao persistir início do onboarding");
+      }
       setUser({ ...user, onboardingStatus: "em_andamento" });
     }
   };
 
   const completeOnboarding = async (): Promise<void> => {
     if (user?.companyId) {
-      const { updateCompanyInSupabase } = await import("@/lib/companyService");
-      // Update directly with DB value to avoid double-mapping
-      await (supabase.from("companies") as any)
-        .update({ onboarding_status: "concluido" })
-        .eq("id", user.companyId);
-      console.log("[Auth] onboarding_status updated to 'concluido' for company", user.companyId);
+      console.log("[Onboarding] salvando status completed", user.companyId);
+
+      let updateResult = await (supabase.from("companies") as any)
+        .update({
+          onboarding_status: "completed",
+          onboarding_completed_at: new Date().toISOString(),
+        })
+        .eq("id", user.companyId)
+        .select("id, onboarding_status")
+        .single();
+
+      if (updateResult.error) {
+        console.warn("[Onboarding] update with completed failed, retrying with concluido", updateResult.error);
+        updateResult = await (supabase.from("companies") as any)
+          .update({ onboarding_status: "concluido" })
+          .eq("id", user.companyId)
+          .select("id, onboarding_status")
+          .single();
+      }
+
+      if (updateResult.error) {
+        console.error("[Onboarding] failed to persist completed status", updateResult.error);
+        throw updateResult.error;
+      }
+
+      console.log("[Auth] onboarding_status persisted", updateResult.data?.onboarding_status);
+
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData.user) {
+        const refreshedUser = await buildUserFromSession(authData.user);
+        if (refreshedUser) {
+          setUser(refreshedUser);
+          return;
+        }
+      }
+
       setUser({ ...user, onboardingStatus: "completed" });
     }
   };

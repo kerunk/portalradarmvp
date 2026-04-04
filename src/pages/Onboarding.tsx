@@ -40,6 +40,7 @@ import {
   generateEmployeeCSVTemplate,
   parseEmployeeCSV,
 } from "@/lib/employeeService";
+import { fetchCompanyById } from "@/lib/companyService";
 import logoMvp from "@/assets/logo-mvp.jpeg";
 
 export default function Onboarding() {
@@ -73,13 +74,30 @@ export default function Onboarding() {
   // Restore onboarding progress from Supabase on mount
   useEffect(() => {
     if (!companyId) { setIsRestoring(false); return; }
+
+    let cancelled = false;
+
     (async () => {
       try {
+        const company = await fetchCompanyById(companyId);
+        if (cancelled) return;
+
+        console.log("[Onboarding] status carregado:", company?.onboardingStatus ?? "not_found");
+
+        if (company?.onboardingStatus === "completed") {
+          setIsRestoring(false);
+          navigate("/", { replace: true });
+          return;
+        }
+
         const [progress, nucleus, employees] = await Promise.all([
           fetchOnboardingProgress(companyId),
           fetchNucleusFromSupabase(companyId),
           fetchEmployeesFromSupabase(companyId),
         ]);
+
+        if (cancelled) return;
+
         if (nucleus.length > 0) setNucleoMembers(nucleus);
         if (employees.length > 0) setPopulationMembers(employees);
         if (progress && progress.currentStep > 1) {
@@ -89,18 +107,19 @@ export default function Onboarding() {
       } catch (err) {
         console.error("[Onboarding] Error restoring progress:", err);
       } finally {
-        setIsRestoring(false);
+        if (!cancelled) {
+          setIsRestoring(false);
+        }
       }
     })();
-  }, [companyId]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId, navigate]);
 
   if (!isAuthenticated || !user) {
     navigate("/login");
-    return null;
-  }
-
-  if (user.onboardingStatus === "completed") {
-    navigate("/");
     return null;
   }
 
@@ -250,23 +269,43 @@ export default function Onboarding() {
 
   // Save progress when advancing steps
   const advanceStep = async (nextStep: number) => {
-    setStep(nextStep);
-    if (!companyId) return;
-    // Save nucleus when leaving step 2
-    if (nextStep === 3 && nucleoMembers.length > 0) {
-      await saveNucleusToSupabase(companyId, nucleoMembers);
+    if (!companyId) {
+      setStep(nextStep);
+      return;
     }
-    // Save employees when leaving step 3
-    if (nextStep === 4 && populationMembers.length > 0) {
-      await saveEmployeesToSupabase(companyId, populationMembers);
+
+    try {
+      if (nextStep === 3 && nucleoMembers.length > 0) {
+        const nucleusSaved = await saveNucleusToSupabase(companyId, nucleoMembers);
+        if (!nucleusSaved) throw new Error("Falha ao salvar núcleo");
+      }
+
+      if (nextStep === 4 && populationMembers.length > 0) {
+        const employeesSaved = await saveEmployeesToSupabase(companyId, populationMembers);
+        if (!employeesSaved) throw new Error("Falha ao salvar colaboradores");
+      }
+
+      const progressSaved = await saveOnboardingProgress(companyId, {
+        currentStep: nextStep,
+        welcomeCompleted: nextStep > 1,
+        nucleusCompleted: nextStep > 2,
+        populationCompleted: nextStep > 3,
+        confirmationCompleted: false,
+      });
+
+      if (!progressSaved) {
+        throw new Error("Falha ao salvar progresso");
+      }
+
+      setStep(nextStep);
+    } catch (err) {
+      console.error("[Onboarding] Error advancing step:", err);
+      toast({
+        title: "Erro ao salvar etapa",
+        description: "Não foi possível persistir o progresso do onboarding.",
+        variant: "destructive",
+      });
     }
-    await saveOnboardingProgress(companyId, {
-      currentStep: nextStep,
-      welcomeCompleted: nextStep > 1,
-      nucleusCompleted: nextStep > 2,
-      populationCompleted: nextStep > 3,
-      confirmationCompleted: false,
-    });
   };
 
   const handleComplete = async () => {
@@ -278,21 +317,26 @@ export default function Onboarding() {
       setPopulation(companyId, finalPopulation);
 
       // Save to Supabase
-      await saveNucleusToSupabase(companyId, nucleoMembers);
-      await saveEmployeesToSupabase(companyId, finalPopulation);
-      await saveOnboardingProgress(companyId, {
+      const nucleusSaved = await saveNucleusToSupabase(companyId, nucleoMembers);
+      if (!nucleusSaved) throw new Error("Falha ao salvar núcleo");
+
+      const employeesSaved = await saveEmployeesToSupabase(companyId, finalPopulation);
+      if (!employeesSaved) throw new Error("Falha ao salvar colaboradores");
+
+      const progressSaved = await saveOnboardingProgress(companyId, {
         currentStep: 4,
         welcomeCompleted: true,
         nucleusCompleted: true,
         populationCompleted: true,
         confirmationCompleted: true,
       });
+      if (!progressSaved) throw new Error("Falha ao salvar progresso final");
 
       // Update company onboarding status in Supabase
       await completeOnboarding();
       console.log("[Onboarding] Completed! All data saved to Supabase.");
       toast({ title: "Configuração concluída!", description: "Bem-vindo ao Portal MVP." });
-      navigate("/");
+      navigate("/", { replace: true });
     } catch (err) {
       console.error("[Onboarding] Error completing:", err);
       toast({ title: "Erro ao finalizar", description: "Tente novamente.", variant: "destructive" });
