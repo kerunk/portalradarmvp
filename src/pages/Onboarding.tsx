@@ -68,18 +68,7 @@ export default function Onboarding() {
   const [popForm, setPopForm] = useState({ name: "", email: "", sector: "", role: "", unit: "", shift: "", admissionDate: "" });
 
   const totalSteps = 4;
-
-  if (!isAuthenticated || !user) {
-    navigate("/login");
-    return null;
-  }
-
-  if (user.onboardingStatus === "completed") {
-    navigate("/");
-    return null;
-  }
-
-  const companyId = user.companyId || "";
+  const companyId = user?.companyId || "";
 
   // Restore onboarding progress from Supabase on mount
   useEffect(() => {
@@ -104,6 +93,16 @@ export default function Onboarding() {
       }
     })();
   }, [companyId]);
+
+  if (!isAuthenticated || !user) {
+    navigate("/login");
+    return null;
+  }
+
+  if (user.onboardingStatus === "completed") {
+    navigate("/");
+    return null;
+  }
 
   // ========== NÚCLEO HANDLERS ==========
   const resetNucleoForm = () => {
