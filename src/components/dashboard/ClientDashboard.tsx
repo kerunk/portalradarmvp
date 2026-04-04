@@ -34,16 +34,30 @@ interface ClientDashboardProps {
 
 export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDismissed }: ClientDashboardProps) {
   // Set active company synchronously before any data reads
-  // useEffect for cleanup only
   setActiveCompany(companyId);
   useEffect(() => {
     setActiveCompany(companyId);
     return () => { setActiveCompany(null); };
   }, [companyId]);
 
+  // Load company from Supabase for onboarding gate
+  const [companyFromDB, setCompanyFromDB] = useState<{ onboardingStatus: string } | null>(null);
+  const [loadingCompany, setLoadingCompany] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingCompany(true);
+    fetchCompanyById(companyId).then(c => {
+      if (!cancelled) {
+        setCompanyFromDB(c ? { onboardingStatus: c.onboardingStatus } : null);
+        setLoadingCompany(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [companyId, refreshKey]);
+
   // Check if onboarding has started — null company means not found, treat as not started
-  const company = useMemo(() => getCompanyById(companyId), [companyId, refreshKey]);
-  const onboardingStarted = company != null && company.onboardingStatus !== 'not_started';
+  const onboardingStarted = companyFromDB != null && companyFromDB.onboardingStatus !== 'not_started';
 
   // All hooks must be called unconditionally (React rules), but guard reads with company scope
   const popStats = useMemo(() => { setActiveCompany(companyId); return getPopulationStats(companyId); }, [companyId, refreshKey]);
