@@ -182,12 +182,12 @@ export default function Onboarding() {
   };
 
   const handleDownloadTemplate = () => {
-    const csv = generatePopulationTemplate();
+    const csv = generateEmployeeCSVTemplate();
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "modelo_base_populacional.csv";
+    a.download = "modelo_colaboradores.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -199,14 +199,18 @@ export default function Onboarding() {
     reader.onload = (e) => {
       const content = e.target?.result as string;
       if (!content) return;
-      const { members, errors } = parsePopulationCSV(content);
+      const { members, errors } = parseEmployeeCSV(content);
       if (errors.length > 0) {
         toast({ title: "Erros na importação", description: errors.slice(0, 3).join("; "), variant: "destructive" });
       }
       if (members.length > 0) {
         const newMembers: PopulationMember[] = members.map((m, i) => createEmptyPopMember({
-          ...m,
           id: `pop-import-${Date.now()}-${i}`,
+          name: m.name,
+          email: m.email,
+          role: m.role,
+          sector: m.sector,
+          leadership: m.leadership,
         }));
         setPopulationMembers(prev => [...prev, ...newMembers]);
         toast({ title: `${newMembers.length} colaboradores importados.` });
