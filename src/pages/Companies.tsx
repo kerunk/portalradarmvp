@@ -613,7 +613,7 @@ export default function Companies() {
           company={editCompany}
           open={!!editCompany}
           onOpenChange={(open) => { if (!open) setEditCompany(null); }}
-          onSaved={() => setRefreshKey(k => k + 1)}
+          onSaved={() => { loadCompanies(); }}
         />
 
         {/* Manager Reassignment Dialog */}
