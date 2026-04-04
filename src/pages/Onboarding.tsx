@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import {
   Trash2,
   Database,
   LogOut,
+  Loader2,
 } from "lucide-react";
 import {
   type NucleoMember,
@@ -27,9 +28,18 @@ import {
   setNucleo,
   setPopulation,
   generatePopulationTemplate,
-  parsePopulationCSV,
   isEmailUsedInCompany,
 } from "@/lib/companyStorage";
+import {
+  saveNucleusToSupabase,
+  fetchNucleusFromSupabase,
+  saveEmployeesToSupabase,
+  fetchEmployeesFromSupabase,
+  saveOnboardingProgress,
+  fetchOnboardingProgress,
+  generateEmployeeCSVTemplate,
+  parseEmployeeCSV,
+} from "@/lib/employeeService";
 import logoMvp from "@/assets/logo-mvp.jpeg";
 
 export default function Onboarding() {
