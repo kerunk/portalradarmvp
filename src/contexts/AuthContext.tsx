@@ -209,13 +209,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const startOnboarding = async (): Promise<void> => {
-    if (user) {
-      setUser({ ...user, onboardingStatus: "in_progress" });
+    if (user?.companyId) {
+      const { updateCompanyOnboardingInSupabase } = await import("@/lib/companyService");
+      await updateCompanyOnboardingInSupabase(user.companyId, "in_progress");
+      setUser({ ...user, onboardingStatus: "em_andamento" });
     }
   };
 
   const completeOnboarding = async (): Promise<void> => {
-    if (user) {
+    if (user?.companyId) {
+      const { updateCompanyInSupabase } = await import("@/lib/companyService");
+      // Update directly with DB value to avoid double-mapping
+      await (supabase.from("companies") as any)
+        .update({ onboarding_status: "concluido" })
+        .eq("id", user.companyId);
+      console.log("[Auth] onboarding_status updated to 'concluido' for company", user.companyId);
       setUser({ ...user, onboardingStatus: "completed" });
     }
   };

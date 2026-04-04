@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import {
   Trash2,
   Database,
   LogOut,
+  Loader2,
 } from "lucide-react";
 import {
   type NucleoMember,
@@ -27,9 +28,18 @@ import {
   setNucleo,
   setPopulation,
   generatePopulationTemplate,
-  parsePopulationCSV,
   isEmailUsedInCompany,
 } from "@/lib/companyStorage";
+import {
+  saveNucleusToSupabase,
+  fetchNucleusFromSupabase,
+  saveEmployeesToSupabase,
+  fetchEmployeesFromSupabase,
+  saveOnboardingProgress,
+  fetchOnboardingProgress,
+  generateEmployeeCSVTemplate,
+  parseEmployeeCSV,
+} from "@/lib/employeeService";
 import logoMvp from "@/assets/logo-mvp.jpeg";
 
 export default function Onboarding() {
@@ -44,6 +54,7 @@ export default function Onboarding() {
 
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Núcleo state
@@ -57,6 +68,31 @@ export default function Onboarding() {
   const [popForm, setPopForm] = useState({ name: "", email: "", sector: "", role: "", unit: "", shift: "", admissionDate: "" });
 
   const totalSteps = 4;
+  const companyId = user?.companyId || "";
+
+  // Restore onboarding progress from Supabase on mount
+  useEffect(() => {
+    if (!companyId) { setIsRestoring(false); return; }
+    (async () => {
+      try {
+        const [progress, nucleus, employees] = await Promise.all([
+          fetchOnboardingProgress(companyId),
+          fetchNucleusFromSupabase(companyId),
+          fetchEmployeesFromSupabase(companyId),
+        ]);
+        if (nucleus.length > 0) setNucleoMembers(nucleus);
+        if (employees.length > 0) setPopulationMembers(employees);
+        if (progress && progress.currentStep > 1) {
+          setStep(progress.currentStep);
+        }
+        console.log("[Onboarding] Restored progress:", { step: progress?.currentStep, nucleus: nucleus.length, employees: employees.length });
+      } catch (err) {
+        console.error("[Onboarding] Error restoring progress:", err);
+      } finally {
+        setIsRestoring(false);
+      }
+    })();
+  }, [companyId]);
 
   if (!isAuthenticated || !user) {
     navigate("/login");
@@ -67,8 +103,6 @@ export default function Onboarding() {
     navigate("/");
     return null;
   }
-
-  const companyId = user.companyId || "";
 
   // ========== NÚCLEO HANDLERS ==========
   const resetNucleoForm = () => {
@@ -147,12 +181,12 @@ export default function Onboarding() {
   };
 
   const handleDownloadTemplate = () => {
-    const csv = generatePopulationTemplate();
+    const csv = generateEmployeeCSVTemplate();
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "modelo_base_populacional.csv";
+    a.download = "modelo_colaboradores.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -164,14 +198,18 @@ export default function Onboarding() {
     reader.onload = (e) => {
       const content = e.target?.result as string;
       if (!content) return;
-      const { members, errors } = parsePopulationCSV(content);
+      const { members, errors } = parseEmployeeCSV(content);
       if (errors.length > 0) {
         toast({ title: "Erros na importação", description: errors.slice(0, 3).join("; "), variant: "destructive" });
       }
       if (members.length > 0) {
         const newMembers: PopulationMember[] = members.map((m, i) => createEmptyPopMember({
-          ...m,
           id: `pop-import-${Date.now()}-${i}`,
+          name: m.name,
+          email: m.email,
+          role: m.role,
+          sector: m.sector,
+          leadership: m.leadership,
         }));
         setPopulationMembers(prev => [...prev, ...newMembers]);
         toast({ title: `${newMembers.length} colaboradores importados.` });
@@ -210,15 +248,57 @@ export default function Onboarding() {
     });
   };
 
+  // Save progress when advancing steps
+  const advanceStep = async (nextStep: number) => {
+    setStep(nextStep);
+    if (!companyId) return;
+    // Save nucleus when leaving step 2
+    if (nextStep === 3 && nucleoMembers.length > 0) {
+      await saveNucleusToSupabase(companyId, nucleoMembers);
+    }
+    // Save employees when leaving step 3
+    if (nextStep === 4 && populationMembers.length > 0) {
+      await saveEmployeesToSupabase(companyId, populationMembers);
+    }
+    await saveOnboardingProgress(companyId, {
+      currentStep: nextStep,
+      welcomeCompleted: nextStep > 1,
+      nucleusCompleted: nextStep > 2,
+      populationCompleted: nextStep > 3,
+      confirmationCompleted: false,
+    });
+  };
+
   const handleComplete = async () => {
     setIsLoading(true);
-    setNucleo(companyId, nucleoMembers);
-    const finalPopulation = mergeNucleoIntoPopulation();
-    setPopulation(companyId, finalPopulation);
-    await completeOnboarding();
-    toast({ title: "Configuração concluída!", description: "Bem-vindo ao Portal MVP." });
-    navigate("/");
-    setIsLoading(false);
+    try {
+      // Save to localStorage (legacy compatibility)
+      setNucleo(companyId, nucleoMembers);
+      const finalPopulation = mergeNucleoIntoPopulation();
+      setPopulation(companyId, finalPopulation);
+
+      // Save to Supabase
+      await saveNucleusToSupabase(companyId, nucleoMembers);
+      await saveEmployeesToSupabase(companyId, finalPopulation);
+      await saveOnboardingProgress(companyId, {
+        currentStep: 4,
+        welcomeCompleted: true,
+        nucleusCompleted: true,
+        populationCompleted: true,
+        confirmationCompleted: true,
+      });
+
+      // Update company onboarding status in Supabase
+      await completeOnboarding();
+      console.log("[Onboarding] Completed! All data saved to Supabase.");
+      toast({ title: "Configuração concluída!", description: "Bem-vindo ao Portal MVP." });
+      navigate("/");
+    } catch (err) {
+      console.error("[Onboarding] Error completing:", err);
+      toast({ title: "Erro ao finalizar", description: "Tente novamente.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // ========== RENDER STEPS ==========
@@ -252,7 +332,7 @@ export default function Onboarding() {
           </div>
         ))}
       </div>
-      <Button onClick={() => setStep(2)} size="lg" className="min-w-48">
+      <Button onClick={() => advanceStep(2)} size="lg" className="min-w-48">
         Iniciar Configuração <ArrowRight size={18} className="ml-2" />
       </Button>
     </div>
@@ -313,7 +393,7 @@ export default function Onboarding() {
       )}
       <div className="flex gap-3">
         <Button variant="outline" onClick={() => setStep(1)} className="flex-1"><ArrowLeft size={18} className="mr-2" /> Voltar</Button>
-        <Button onClick={() => setStep(3)} className="flex-1">Continuar <ArrowRight size={18} className="ml-2" /></Button>
+        <Button onClick={() => advanceStep(3)} className="flex-1">Continuar <ArrowRight size={18} className="ml-2" /></Button>
       </div>
     </div>
   );
@@ -407,7 +487,7 @@ export default function Onboarding() {
       )}
       <div className="flex gap-3">
         <Button variant="outline" onClick={() => setStep(2)} className="flex-1"><ArrowLeft size={18} className="mr-2" /> Voltar</Button>
-        <Button onClick={() => setStep(4)} className="flex-1">Continuar <ArrowRight size={18} className="ml-2" /></Button>
+        <Button onClick={() => advanceStep(4)} className="flex-1">Continuar <ArrowRight size={18} className="ml-2" /></Button>
       </div>
     </div>
   );
@@ -461,6 +541,17 @@ export default function Onboarding() {
       default: return null;
     }
   };
+
+  if (isRestoring) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <p className="text-sm text-muted-foreground">Carregando progresso...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
