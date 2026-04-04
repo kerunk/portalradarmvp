@@ -32,18 +32,20 @@ interface ClientDashboardProps {
 }
 
 export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDismissed }: ClientDashboardProps) {
-  // Ensure active company is set before any state reads
+  // Set active company synchronously before any data reads
+  // useEffect for cleanup only
+  setActiveCompany(companyId);
   useEffect(() => {
     setActiveCompany(companyId);
     return () => { setActiveCompany(null); };
   }, [companyId]);
 
-  // Check if onboarding has started
+  // Check if onboarding has started — null company means not found, treat as not started
   const company = useMemo(() => getCompanyById(companyId), [companyId, refreshKey]);
-  const onboardingStarted = company?.onboardingStatus !== 'not_started';
+  const onboardingStarted = company != null && company.onboardingStatus !== 'not_started';
 
-  // All hooks must be called unconditionally (React rules)
-  const popStats = useMemo(() => getPopulationStats(companyId), [companyId, refreshKey]);
+  // All hooks must be called unconditionally (React rules), but guard reads with company scope
+  const popStats = useMemo(() => { setActiveCompany(companyId); return getPopulationStats(companyId); }, [companyId, refreshKey]);
   const globalIndicators = useMemo(() => { setActiveCompany(companyId); return obterIndicadoresGlobais(); }, [companyId, refreshKey]);
   const cycleIndicators = useMemo(() => { setActiveCompany(companyId); return obterIndicadoresTodosCiclos(); }, [companyId, refreshKey]);
 
