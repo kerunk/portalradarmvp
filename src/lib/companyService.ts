@@ -217,9 +217,9 @@ export async function deleteCompanyFromSupabase(
   companyId: string
 ): Promise<boolean> {
   // First unlink profiles from this company
-  await supabase
-    .from("profiles")
-    .update({ company_id: null } as any)
+  await (supabase
+    .from("profiles") as any)
+    .update({ company_id: null })
     .eq("company_id", companyId);
 
   // Delete user_roles for users linked to this company
