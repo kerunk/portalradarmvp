@@ -125,7 +125,15 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
     pending: globalIndicators.pendingActions,
   };
 
-  // Gate: block portal if onboarding not started
+  // Gate: block portal while loading or if onboarding not started
+  if (loadingCompany) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <p className="text-muted-foreground">Carregando dados da empresa...</p>
+      </div>
+    );
+  }
+
   if (!onboardingStarted) {
     return <OnboardingGate companyName={companyName} />;
   }
