@@ -1,5 +1,7 @@
 export type AppRole = 'admin_mvp' | 'admin_empresa' | 'nucleo' | 'lideranca';
 
+export type OnboardingStatus = 'nao_iniciado' | 'em_andamento' | 'concluido';
+
 export interface Database {
   public: {
     Tables: {
@@ -46,6 +48,13 @@ export interface Database {
           slug: string;
           logo_url: string | null;
           active: boolean;
+          sector: string | null;
+          employee_count: number | null;
+          admin_name: string | null;
+          admin_email: string | null;
+          onboarding_status: OnboardingStatus;
+          owner_email: string | null;
+          owner_name: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -55,17 +64,32 @@ export interface Database {
           slug: string;
           logo_url?: string | null;
           active?: boolean;
+          sector?: string | null;
+          employee_count?: number | null;
+          admin_name?: string | null;
+          admin_email?: string | null;
+          onboarding_status?: OnboardingStatus;
+          owner_email?: string | null;
+          owner_name?: string | null;
         };
         Update: {
           name?: string;
           slug?: string;
           logo_url?: string | null;
           active?: boolean;
+          sector?: string | null;
+          employee_count?: number | null;
+          admin_name?: string | null;
+          admin_email?: string | null;
+          onboarding_status?: OnboardingStatus;
+          owner_email?: string | null;
+          owner_name?: string | null;
         };
       };
     };
     Enums: {
       app_role: AppRole;
+      onboarding_status: OnboardingStatus;
     };
   };
 }
