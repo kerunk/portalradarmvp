@@ -87,9 +87,11 @@ export default function Companies() {
     loadCompanies();
   }, [loadCompanies]);
 
-  useEffect(() => {
-    if (!createDialogOpen) loadCompanies();
-  }, [createDialogOpen, loadCompanies]);
+  // Reload when dialog closes after a company is created
+  const handleCreateDialogChange = (open: boolean) => {
+    setCreateDialogOpen(open);
+    if (!open) loadCompanies();
+  };
 
   // Listen for company changes from CreateCompanyDialog
   useEffect(() => {
@@ -98,7 +100,7 @@ export default function Companies() {
     return () => window.removeEventListener("mvp_company_changed", handler);
   }, [loadCompanies]);
 
-  const enriched = useMemo(() => getEnrichedCompanies(user?.email, adminRole), [supabaseCompanies, user?.email, adminRole]);
+  const enriched = useMemo(() => getEnrichedCompanies(user?.email, adminRole, supabaseCompanies), [supabaseCompanies, user?.email, adminRole]);
 
   // Available managers for reassignment
   const availableManagers = useMemo(() => {
@@ -606,12 +608,12 @@ export default function Companies() {
           </Table>
         </Card>
 
-        <CreateCompanyDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+        <CreateCompanyDialog open={createDialogOpen} onOpenChange={handleCreateDialogChange} />
         <EditCompanyDialog
           company={editCompany}
           open={!!editCompany}
           onOpenChange={(open) => { if (!open) setEditCompany(null); }}
-          onSaved={() => setRefreshKey(k => k + 1)}
+          onSaved={() => { loadCompanies(); }}
         />
 
         {/* Manager Reassignment Dialog */}
