@@ -461,7 +461,12 @@ export default function Companies() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm text-foreground">{ec.company.ownerName || "Admin Master"}</span>
+                      <div>
+                        <span className="text-sm text-foreground">{ec.company.adminName || "Não definido"}</span>
+                        {ec.company.adminEmail && (
+                          <p className="text-xs text-muted-foreground">{ec.company.adminEmail}</p>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={cn("text-xs", STAGE_COLORS[ec.stage])}>
