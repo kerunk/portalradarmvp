@@ -183,31 +183,51 @@ export default function Companies() {
   const handleDeleteCompany = async () => {
     if (!deleteCompany) return;
     
-    const deleted = await deleteCompanyFromSupabase(deleteCompany.id);
-    if (!deleted) {
-      toast({ title: "Erro ao excluir", description: "Não foi possível excluir a empresa do banco de dados.", variant: "destructive" });
-      setDeleteCompany(null);
-      return;
-    }
-
-    // Clean up localStorage operational data
-    try { localStorage.removeItem(`mvp_portal_company_${deleteCompany.id}`); } catch {}
+    console.log("Attempting to delete company:", deleteCompany.id, deleteCompany.name);
     
-    addOperationalEvent({
-      type: "company_deleted",
-      title: "Empresa excluída",
-      message: `A empresa ${deleteCompany.name} foi excluída por ${user?.name || user?.email}.`,
-      companyId: deleteCompany.id,
-      companyName: deleteCompany.name,
-    });
-    auditCompanyAction(
-      user?.email || "", user?.name || "Admin",
-      "company_deleted", deleteCompany.id, deleteCompany.name,
-      `Excluída por ${user?.name || user?.email}`
-    );
-    toast({ title: "Empresa excluída", description: `${deleteCompany.name} foi removida da plataforma.` });
-    setDeleteCompany(null);
-    loadCompanies();
+    try {
+      const deleted = await deleteCompanyFromSupabase(deleteCompany.id);
+      
+      if (!deleted) {
+        console.error("deleteCompanyFromSupabase returned false for:", deleteCompany.id);
+        toast({ 
+          title: "Erro ao excluir", 
+          description: "Não foi possível excluir a empresa. Verifique as permissões (RLS) no Supabase.", 
+          variant: "destructive" 
+        });
+        setDeleteCompany(null);
+        return;
+      }
+
+      console.log("Company deleted successfully from Supabase:", deleteCompany.id);
+
+      // Clean up localStorage operational data
+      try { localStorage.removeItem(`mvp_portal_company_${deleteCompany.id}`); } catch {}
+      
+      addOperationalEvent({
+        type: "company_deleted",
+        title: "Empresa excluída",
+        message: `A empresa ${deleteCompany.name} foi excluída por ${user?.name || user?.email}.`,
+        companyId: deleteCompany.id,
+        companyName: deleteCompany.name,
+      });
+      auditCompanyAction(
+        user?.email || "", user?.name || "Admin",
+        "company_deleted", deleteCompany.id, deleteCompany.name,
+        `Excluída por ${user?.name || user?.email}`
+      );
+      toast({ title: "Empresa excluída", description: `${deleteCompany.name} foi removida permanentemente.` });
+      setDeleteCompany(null);
+      await loadCompanies(); // Reload from Supabase to confirm
+    } catch (err) {
+      console.error("Exception during company deletion:", err);
+      toast({ 
+        title: "Erro ao excluir", 
+        description: "Ocorreu um erro inesperado ao excluir a empresa.", 
+        variant: "destructive" 
+      });
+      setDeleteCompany(null);
+    }
   };
 
   // Handle company deactivation/reactivation

@@ -216,19 +216,41 @@ export async function createCompanyAdmin(
 export async function deleteCompanyFromSupabase(
   companyId: string
 ): Promise<boolean> {
-  // First delete related data (profiles linked to this company, etc.)
-  // Update profiles to unlink from company before deleting
-  await (supabase.from("profiles") as any)
+  // First unlink profiles from this company
+  await (supabase
+    .from("profiles") as any)
     .update({ company_id: null })
     .eq("company_id", companyId);
 
-  // Delete the company
-  const { error } = await (supabase.from("companies") as any)
+  // Delete user_roles for users linked to this company
+  const { data: linkedProfiles } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("company_id", companyId);
+
+  if (linkedProfiles && linkedProfiles.length > 0) {
+    const userIds = linkedProfiles.map((p: any) => p.id);
+    await supabase
+      .from("user_roles")
+      .delete()
+      .in("user_id", userIds);
+  }
+
+  // Delete the company — use .select() to get affected rows back
+  const { data, error } = await supabase
+    .from("companies")
     .delete()
-    .eq("id", companyId);
+    .eq("id", companyId)
+    .select("id");
 
   if (error) {
     console.error("Error deleting company:", error);
+    return false;
+  }
+
+  // If no rows were returned, the delete didn't actually happen (likely RLS)
+  if (!data || data.length === 0) {
+    console.error("Delete returned no rows — company was NOT deleted. Check RLS policies.");
     return false;
   }
 
