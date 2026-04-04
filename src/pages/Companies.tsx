@@ -87,9 +87,11 @@ export default function Companies() {
     loadCompanies();
   }, [loadCompanies]);
 
-  useEffect(() => {
-    if (!createDialogOpen) loadCompanies();
-  }, [createDialogOpen, loadCompanies]);
+  // Reload when dialog closes after a company is created
+  const handleCreateDialogChange = (open: boolean) => {
+    setCreateDialogOpen(open);
+    if (!open) loadCompanies();
+  };
 
   // Listen for company changes from CreateCompanyDialog
   useEffect(() => {
