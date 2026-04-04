@@ -211,13 +211,17 @@ export default function Companies() {
   };
 
   // Handle company deactivation/reactivation
-  const handleToggleActive = (company: CompanyState) => {
+  const handleToggleActive = async (company: CompanyState) => {
     const isCurrentlyActive = company.active !== false;
-    const allCompanies = getCompanies();
-    const updated = allCompanies.map(c =>
-      c.id === company.id ? { ...c, active: !isCurrentlyActive } : c
-    );
-    setCompanies(updated);
+    const success = isCurrentlyActive
+      ? await deactivateCompanyInSupabase(company.id)
+      : await reactivateCompanyInSupabase(company.id);
+
+    if (!success) {
+      toast({ title: "Erro", description: "Não foi possível alterar o status da empresa.", variant: "destructive" });
+      return;
+    }
+
     addOperationalEvent({
       type: isCurrentlyActive ? "company_deactivated" : "company_reactivated",
       title: isCurrentlyActive ? "Empresa inativada" : "Empresa reativada",
@@ -237,7 +241,7 @@ export default function Companies() {
         : `${company.name} foi reativada e pode acessar o portal novamente.`,
     });
     setDeactivateCompany(null);
-    setRefreshKey(k => k + 1);
+    loadCompanies();
   };
 
   // Filter
