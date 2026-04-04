@@ -19,7 +19,7 @@ import {
 import { Building2, User, Mail, Lock, FileDown, CheckCircle2, Upload, Image } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { type CompanyState } from "@/lib/storage";
-import { createCompanyInSupabase } from "@/lib/companyService";
+import { createCompanyInSupabase, createCompanyAdmin } from "@/lib/companyService";
 import { generateAccessPDF } from "@/lib/pdfGenerator";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAdminRoleForUser, addCompanyToManager } from "@/lib/permissions";

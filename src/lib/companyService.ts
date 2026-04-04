@@ -1,10 +1,14 @@
 /**
  * Company Service — Supabase as source of truth for companies.
- * Operational data (cycles, turmas, etc.) still in localStorage (TEMPORARY).
+ * Includes user creation for company admins via signUp.
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 import type { CompanyState } from "./storage";
+
+const SUPABASE_URL = "https://bmzrismxolxwgahzfeer.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_dbNonN1GclUy2p6yq045eQ_9EMPE3eP";
 
 // ============================================================
 // Supabase → CompanyState adapter
@@ -134,6 +138,107 @@ export async function createCompanyInSupabase(company: CompanyState): Promise<{
   return { success: true, id: (data as any)?.id };
 }
 
+// ============================================================
+// Create admin_empresa user in Supabase Auth + profile + role
+// Uses a separate client to avoid signing out the current admin
+// ============================================================
+
+export async function createCompanyAdmin(
+  email: string,
+  password: string,
+  fullName: string,
+  companyId: string
+): Promise<{ success: boolean; userId?: string; error?: string }> {
+  // Create a separate Supabase client that does NOT persist sessions
+  // This prevents the admin_mvp from being signed out
+  const isolatedClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+
+  // 1. Create the user in Supabase Auth
+  const { data: signUpData, error: signUpError } = await isolatedClient.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        full_name: fullName,
+      },
+    },
+  });
+
+  if (signUpError) {
+    console.error("Error creating auth user:", signUpError);
+    return { success: false, error: signUpError.message };
+  }
+
+  const userId = signUpData.user?.id;
+  if (!userId) {
+    return { success: false, error: "Usuário criado mas ID não retornado." };
+  }
+
+  // 2. Create profile linked to the company
+  // Using the main authenticated client (admin session) for DB operations
+  const { error: profileError } = await (supabase.from("profiles") as any)
+    .upsert({
+      id: userId,
+      full_name: fullName,
+      company_id: companyId,
+    }, { onConflict: "id" });
+
+  if (profileError) {
+    console.error("Error creating profile:", profileError);
+    // User was created but profile failed - log but continue
+  }
+
+  // 3. Create user_role = admin_empresa
+  const { error: roleError } = await (supabase.from("user_roles") as any)
+    .insert({
+      user_id: userId,
+      role: "admin_empresa",
+    });
+
+  if (roleError) {
+    console.error("Error creating user role:", roleError);
+    // User was created but role failed - log but continue
+  }
+
+  return { success: true, userId };
+}
+
+// ============================================================
+// Delete company from Supabase
+// ============================================================
+
+export async function deleteCompanyFromSupabase(
+  companyId: string
+): Promise<boolean> {
+  // First delete related data (profiles linked to this company, etc.)
+  // Update profiles to unlink from company before deleting
+  await (supabase.from("profiles") as any)
+    .update({ company_id: null })
+    .eq("company_id", companyId);
+
+  // Delete the company
+  const { error } = await (supabase.from("companies") as any)
+    .delete()
+    .eq("id", companyId);
+
+  if (error) {
+    console.error("Error deleting company:", error);
+    return false;
+  }
+
+  return true;
+}
+
+// ============================================================
+// Update & status operations
+// ============================================================
+
 export async function updateCompanyInSupabase(
   companyId: string,
   updates: Partial<{
@@ -149,13 +254,11 @@ export async function updateCompanyInSupabase(
     owner_name: string;
   }>
 ): Promise<boolean> {
-  // Map onboarding_status if present
   const dbUpdates: any = { ...updates };
   if (updates.onboarding_status) {
     dbUpdates.onboarding_status = mapOnboardingToDB(updates.onboarding_status);
   }
 
-  // @ts-ignore - dynamic update fields
   const { error } = await (supabase
     .from("companies") as any)
     .update(dbUpdates)
