@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -26,8 +26,8 @@ import {
 import { cn } from "@/lib/utils";
 import { CreateCompanyDialog } from "@/components/companies/CreateCompanyDialog";
 import { EditCompanyDialog } from "@/components/companies/EditCompanyDialog";
-import { getCompanies, setCompanies, type CompanyState } from "@/lib/storage";
-import { fetchCompanies, deleteCompanyFromSupabase, deactivateCompanyInSupabase, reactivateCompanyInSupabase } from "@/lib/companyService";
+import { type CompanyState } from "@/lib/storage";
+import { fetchCompanies, deleteCompanyFromSupabase, deactivateCompanyInSupabase, reactivateCompanyInSupabase, updateCompanyInSupabase } from "@/lib/companyService";
 import { Badge } from "@/components/ui/badge";
 import {
   getEnrichedCompanies,
@@ -64,43 +64,79 @@ export default function Companies() {
   const [deleteCompany, setDeleteCompany] = useState<CompanyState | null>(null);
   const [deactivateCompany, setDeactivateCompany] = useState<CompanyState | null>(null);
   const [editCompany, setEditCompany] = useState<CompanyState | null>(null);
+  const loadRequestIdRef = useRef(0);
 
   const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
   const canReassign = adminRole === "admin_master" || adminRole === "admin_mvp";
   const canDelete = hasPermission(adminRole, "deleteCompanies");
   const canEdit = adminRole === "admin_master" || adminRole === "admin_mvp";
 
-  // Load companies from Supabase and sync to localStorage for enrichment compatibility
+  // Load companies only from Supabase — this screen must not rehydrate the list from local state
   const [supabaseCompanies, setSupabaseCompanies] = useState<CompanyState[]>([]);
   const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
 
-  const loadCompanies = useCallback(async () => {
+  const loadCompanies = useCallback(async (reason: string = "manual"): Promise<CompanyState[]> => {
+    const requestId = ++loadRequestIdRef.current;
     setIsLoadingCompanies(true);
+    console.log("[Companies] Loading companies from Supabase", { reason, requestId });
+
     const companies = await fetchCompanies();
+
+    console.log("[Companies] Supabase response received", {
+      reason,
+      requestId,
+      count: companies.length,
+      companies: companies.map((company) => ({ id: company.id, name: company.name, adminEmail: company.adminEmail })),
+    });
+
+    if (requestId !== loadRequestIdRef.current) {
+      console.log("[Companies] Ignoring stale company response", {
+        reason,
+        requestId,
+        latestRequestId: loadRequestIdRef.current,
+      });
+      return companies;
+    }
+
     setSupabaseCompanies(companies);
-    // Sync to localStorage for backward compatibility with enrichment functions
-    setCompanies(companies);
     setIsLoadingCompanies(false);
+    return companies;
   }, []);
 
   useEffect(() => {
-    loadCompanies();
+    void loadCompanies("initial-mount");
   }, [loadCompanies]);
+
+  useEffect(() => {
+    console.log("[Companies] Table source of truth = Supabase", {
+      count: supabaseCompanies.length,
+      companies: supabaseCompanies.map((company) => ({ id: company.id, name: company.name })),
+    });
+  }, [supabaseCompanies]);
 
   // Reload when dialog closes after a company is created
   const handleCreateDialogChange = (open: boolean) => {
     setCreateDialogOpen(open);
-    if (!open) loadCompanies();
+    if (!open) void loadCompanies("create-dialog-close");
   };
 
   // Listen for company changes from CreateCompanyDialog
   useEffect(() => {
-    const handler = () => loadCompanies();
+    const handler = () => {
+      void loadCompanies("mvp_company_changed-event");
+    };
     window.addEventListener("mvp_company_changed", handler);
     return () => window.removeEventListener("mvp_company_changed", handler);
   }, [loadCompanies]);
 
   const enriched = useMemo(() => getEnrichedCompanies(user?.email, adminRole, supabaseCompanies), [supabaseCompanies, user?.email, adminRole]);
+
+  useEffect(() => {
+    console.log("[Companies] Enriched list generated from current Supabase snapshot", {
+      supabaseCount: supabaseCompanies.length,
+      enrichedCount: enriched.length,
+    });
+  }, [supabaseCompanies.length, enriched.length]);
 
   // Available managers for reassignment
   const availableManagers = useMemo(() => {
@@ -118,17 +154,11 @@ export default function Companies() {
   }, [enriched]);
 
   // Handle manager reassignment
-  const handleReassignManager = () => {
+  const handleReassignManager = async () => {
     if (!reassignCompany || !selectedManager) return;
     const manager = availableManagers.find(m => m.email === selectedManager);
     if (!manager) return;
 
-    const allCompanies = getCompanies();
-    const updated = allCompanies.map(c =>
-      c.id === reassignCompany.id
-        ? { ...c, ownerEmail: manager.email, ownerName: manager.email === "admin@radarmvp.com" ? "Admin Master" : (availableManagers.find(m => m.email === manager.email)?.email || manager.email) }
-        : c
-    );
     // Resolve name from managed users
     let managerName = manager.email;
     try {
@@ -141,10 +171,31 @@ export default function Companies() {
     } catch {}
     if (manager.email === "admin@radarmvp.com") managerName = "Admin Master";
 
-    const finalCompanies = updated.map(c =>
-      c.id === reassignCompany.id ? { ...c, ownerName: managerName } : c
-    );
-    setCompanies(finalCompanies);
+    const updated = await updateCompanyInSupabase(reassignCompany.id, {
+      owner_email: manager.email,
+      owner_name: managerName,
+    });
+
+    if (!updated) {
+      toast({
+        title: "Erro ao alterar gerente",
+        description: "Não foi possível salvar o novo responsável no Supabase.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSupabaseCompanies(current => current.map(company =>
+      company.id === reassignCompany.id
+        ? { ...company, ownerEmail: manager.email, ownerName: managerName }
+        : company
+    ));
+
+    console.log("[Companies] Company reassigned in Supabase", {
+      companyId: reassignCompany.id,
+      ownerEmail: manager.email,
+      ownerName: managerName,
+    });
 
     emitManagerChanged(reassignCompany.name, reassignCompany.id, managerName, manager.email);
     auditCompanyAction(
@@ -161,6 +212,7 @@ export default function Companies() {
     });
     setReassignCompany(null);
     setSelectedManager("");
+    await loadCompanies("manager-reassigned");
     setRefreshKey(k => k + 1);
   };
 
@@ -184,45 +236,76 @@ export default function Companies() {
   // Handle company deletion
   const handleDeleteCompany = async () => {
     if (!deleteCompany) return;
+    const companyToDelete = deleteCompany;
     
-    console.log("Attempting to delete company:", deleteCompany.id, deleteCompany.name);
+    console.log("[Companies] Attempting to delete company", {
+      companyId: companyToDelete.id,
+      companyName: companyToDelete.name,
+      visibleCompaniesBeforeDelete: supabaseCompanies.length,
+    });
     
     try {
-      const deleted = await deleteCompanyFromSupabase(deleteCompany.id);
+      const deleted = await deleteCompanyFromSupabase(companyToDelete.id);
       
       if (!deleted) {
-        console.error("deleteCompanyFromSupabase returned false for:", deleteCompany.id);
+        console.error("[Companies] Supabase delete returned false", { companyId: companyToDelete.id });
         toast({ 
           title: "Erro ao excluir", 
           description: "Não foi possível excluir a empresa. Verifique as permissões (RLS) no Supabase.", 
           variant: "destructive" 
         });
-        setDeleteCompany(null);
         return;
       }
 
-      console.log("Company deleted successfully from Supabase:", deleteCompany.id);
+      setSupabaseCompanies(current => {
+        const next = current.filter(company => company.id !== companyToDelete.id);
+        console.log("[Companies] Local table updated after delete", {
+          before: current.length,
+          after: next.length,
+          deletedCompanyId: companyToDelete.id,
+        });
+        return next;
+      });
+
+      console.log("[Companies] Company deleted in Supabase, validating fresh snapshot", {
+        companyId: companyToDelete.id,
+      });
 
       // Clean up localStorage operational data
-      try { localStorage.removeItem(`mvp_portal_company_${deleteCompany.id}`); } catch {}
+      try { localStorage.removeItem(`mvp_portal_company_${companyToDelete.id}`); } catch {}
+      setDeleteCompany(null);
+
+      const refreshedCompanies = await loadCompanies("delete-success-validation");
+      const companyStillVisible = refreshedCompanies.some(company => company.id === companyToDelete.id);
+
+      if (companyStillVisible) {
+        console.error("[Companies] Deleted company was returned again after refetch", {
+          companyId: companyToDelete.id,
+          refreshedCount: refreshedCompanies.length,
+        });
+        toast({
+          title: "Erro ao atualizar a lista",
+          description: "A empresa foi removida do banco, mas a tela recebeu um estado inconsistente ao recarregar.",
+          variant: "destructive",
+        });
+        return;
+      }
       
       addOperationalEvent({
         type: "company_deleted",
         title: "Empresa excluída",
-        message: `A empresa ${deleteCompany.name} foi excluída por ${user?.name || user?.email}.`,
-        companyId: deleteCompany.id,
-        companyName: deleteCompany.name,
+        message: `A empresa ${companyToDelete.name} foi excluída por ${user?.name || user?.email}.`,
+        companyId: companyToDelete.id,
+        companyName: companyToDelete.name,
       });
       auditCompanyAction(
         user?.email || "", user?.name || "Admin",
-        "company_deleted", deleteCompany.id, deleteCompany.name,
+        "company_deleted", companyToDelete.id, companyToDelete.name,
         `Excluída por ${user?.name || user?.email}`
       );
-      toast({ title: "Empresa excluída", description: `${deleteCompany.name} foi removida permanentemente.` });
-      setDeleteCompany(null);
-      await loadCompanies(); // Reload from Supabase to confirm
+      toast({ title: "Empresa excluída", description: `${companyToDelete.name} foi removida permanentemente.` });
     } catch (err) {
-      console.error("Exception during company deletion:", err);
+      console.error("[Companies] Exception during company deletion", err);
       toast({ 
         title: "Erro ao excluir", 
         description: "Ocorreu um erro inesperado ao excluir a empresa.", 
@@ -600,7 +683,7 @@ export default function Companies() {
               {sorted.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                    Nenhuma empresa encontrada
+                    {isLoadingCompanies ? "Carregando empresas do Supabase..." : "Nenhuma empresa encontrada"}
                   </TableCell>
                 </TableRow>
               )}
