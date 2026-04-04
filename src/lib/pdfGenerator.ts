@@ -79,7 +79,7 @@ export function generateAccessPDF(company: CompanyState): void {
   doc.setFont('helvetica', 'normal');
   doc.text('Link de acesso:', 25, 210);
   doc.setFont('helvetica', 'bold');
-  doc.text('https://mvp-portal.lovable.app', 80, 210);
+  doc.text('https://portalradarmvp.lovable.app', 80, 210);
   
   // Instructions
   doc.setTextColor(...textColor);
