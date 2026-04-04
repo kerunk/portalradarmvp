@@ -180,14 +180,19 @@ export default function Companies() {
   };
 
   // Handle company deletion
-  const handleDeleteCompany = () => {
+  const handleDeleteCompany = async () => {
     if (!deleteCompany) return;
-    const allCompanies = getCompanies();
-    const updated = allCompanies.map(c =>
-      c.id === deleteCompany.id ? { ...c, active: false, deleted: true } : c
-    );
-    setCompanies(updated);
+    
+    const deleted = await deleteCompanyFromSupabase(deleteCompany.id);
+    if (!deleted) {
+      toast({ title: "Erro ao excluir", description: "Não foi possível excluir a empresa do banco de dados.", variant: "destructive" });
+      setDeleteCompany(null);
+      return;
+    }
+
+    // Clean up localStorage operational data
     try { localStorage.removeItem(`mvp_portal_company_${deleteCompany.id}`); } catch {}
+    
     addOperationalEvent({
       type: "company_deleted",
       title: "Empresa excluída",
@@ -202,7 +207,7 @@ export default function Companies() {
     );
     toast({ title: "Empresa excluída", description: `${deleteCompany.name} foi removida da plataforma.` });
     setDeleteCompany(null);
-    setRefreshKey(k => k + 1);
+    loadCompanies();
   };
 
   // Handle company deactivation/reactivation
