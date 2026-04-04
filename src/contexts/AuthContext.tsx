@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { supabase } from "@/integrations/supabase/client";
 import type { AppRole } from "@/types/supabase";
 import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
+import { fetchCompanyById } from "@/lib/companyService";
 
 // ============================================================
 // Portal MVP v2 — Supabase Auth Context
