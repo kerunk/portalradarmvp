@@ -133,7 +133,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
     addCompany(company);
     
     // Save credentials to the credentials store for consistent auth
-    registerCredential(company.adminEmail, tempPassword, true);
+    // v2: credentials are managed via Supabase Auth — no local registration needed
     
     // Auto-assign to gerente_conta if applicable
     if (user?.email) {

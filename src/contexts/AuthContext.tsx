@@ -55,7 +55,7 @@ async function buildUserFromSession(supabaseUser: SupabaseUser): Promise<User | 
     // Fetch profile
     const { data: profile } = await supabase
       .from("profiles")
-      .select("*")
+      .select("full_name, avatar_url, company_id")
       .eq("id", supabaseUser.id)
       .single();
 
@@ -66,12 +66,12 @@ async function buildUserFromSession(supabaseUser: SupabaseUser): Promise<User | 
       .eq("user_id", supabaseUser.id)
       .single();
 
-    const role: UserRole = (userRole?.role as UserRole) || "lideranca";
+    const role: UserRole = (userRole?.role as UserRole) ?? "lideranca";
 
     // Fetch company if profile has company_id
     let companyName: string | undefined;
     let companyLogo: string | undefined;
-    const companyId = profile?.company_id ?? undefined;
+    const companyId: string | undefined = profile?.company_id ?? undefined;
     if (companyId) {
       const { data: company } = await supabase
         .from("companies")
@@ -79,14 +79,14 @@ async function buildUserFromSession(supabaseUser: SupabaseUser): Promise<User | 
         .eq("id", companyId)
         .single();
       if (company) {
-        companyName = company.name || undefined;
-        companyLogo = company.logo_url || undefined;
+        companyName = (company as any).name ?? undefined;
+        companyLogo = (company as any).logo_url ?? undefined;
       }
     }
 
     return {
       id: supabaseUser.id,
-      name: profile?.full_name ?? supabaseUser.email?.split("@")[0] ?? "Usuário",
+      name: (profile as any)?.full_name ?? supabaseUser.email?.split("@")[0] ?? "Usuário",
       email: supabaseUser.email || "",
       role,
       companyId,
