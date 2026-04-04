@@ -6,42 +6,26 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Eye, EyeOff, LogIn, Shield, AlertTriangle } from "lucide-react";
+import { Eye, EyeOff, LogIn } from "lucide-react";
 import logoMvp from "@/assets/logo-mvp.jpeg";
 
 export default function Login() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [lockoutSeconds, setLockoutSeconds] = useState(0);
 
-  // Lockout countdown
-  useEffect(() => {
-    if (lockoutSeconds <= 0) return;
-    const timer = setInterval(() => {
-      setLockoutSeconds(prev => {
-        if (prev <= 1) return 0;
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [lockoutSeconds]);
-
-  // If already authenticated, redirect
   useEffect(() => {
     if (isAuthenticated) {
       navigate("/");
     }
   }, [isAuthenticated, navigate]);
 
-  if (isAuthenticated) {
-    return null;
-  }
+  if (isAuthenticated) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,8 +39,6 @@ export default function Login() {
       return;
     }
 
-    if (lockoutSeconds > 0) return;
-
     setIsLoading(true);
     
     const result = await login(email, password);
@@ -67,34 +49,15 @@ export default function Login() {
         description: "Login realizado com sucesso.",
       });
       navigate("/");
-    } else if (result.inactive) {
-      toast({
-        title: "Conta desativada",
-        description: "Conta desativada. Entre em contato com o Administrador MVP.",
-        variant: "destructive",
-      });
-    } else if (result.locked) {
-      setLockoutSeconds(result.remainingSeconds || 300);
-      toast({
-        title: "Conta temporariamente bloqueada",
-        description: `Muitas tentativas inválidas. Aguarde ${Math.ceil((result.remainingSeconds || 300) / 60)} minuto(s).`,
-        variant: "destructive",
-      });
     } else {
       toast({
-        title: "Credenciais inválidas",
-        description: "Verifique seu email e senha e tente novamente.",
+        title: "Erro no login",
+        description: result.error || "Verifique seu email e senha e tente novamente.",
         variant: "destructive",
       });
     }
     
     setIsLoading(false);
-  };
-
-  const formatLockout = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -119,21 +82,6 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Lockout Warning */}
-        {lockoutSeconds > 0 && (
-          <Card className="p-4 border-destructive/50 bg-destructive/5">
-            <div className="flex items-center gap-3">
-              <AlertTriangle size={20} className="text-destructive" />
-              <div>
-                <p className="text-sm font-medium text-destructive">Conta bloqueada temporariamente</p>
-                <p className="text-xs text-muted-foreground">
-                  Muitas tentativas inválidas. Tente novamente em {formatLockout(lockoutSeconds)}.
-                </p>
-              </div>
-            </div>
-          </Card>
-        )}
-
         {/* Login Card */}
         <Card className="p-6 shadow-elevated">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -147,7 +95,7 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
-                  disabled={isLoading || lockoutSeconds > 0}
+                  disabled={isLoading}
                 />
               </div>
 
@@ -161,7 +109,7 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="current-password"
-                    disabled={isLoading || lockoutSeconds > 0}
+                    disabled={isLoading}
                   />
                   <Button
                     type="button"
@@ -179,12 +127,10 @@ export default function Login() {
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading || lockoutSeconds > 0}
+              disabled={isLoading || authLoading}
             >
               {isLoading ? (
                 "Entrando..."
-              ) : lockoutSeconds > 0 ? (
-                `Bloqueado (${formatLockout(lockoutSeconds)})`
               ) : (
                 <>
                   <LogIn size={18} className="mr-2" />
@@ -196,23 +142,8 @@ export default function Login() {
 
           <div className="mt-6 pt-6 border-t border-border">
             <p className="text-xs text-center text-muted-foreground">
-              Acesso restrito. Se você é administrador de uma empresa cliente, 
-              utilize as credenciais fornecidas pelo MVP.
+              Acesso restrito. Utilize as credenciais fornecidas pelo administrador MVP.
             </p>
-          </div>
-        </Card>
-
-        {/* Demo Access Info */}
-        <Card className="p-4 bg-muted/50 border-dashed">
-          <div className="flex items-start gap-3">
-            <Shield size={20} className="text-primary mt-0.5" />
-            <div className="text-sm">
-              <p className="font-medium text-foreground mb-1">Acesso de Demonstração</p>
-              <div className="space-y-1 text-muted-foreground text-xs">
-                <p><strong>Admin MVP Master:</strong> admin@radarmvp.com / admin123</p>
-                <p><strong>Cliente:</strong> admin@alpha.com / cliente123</p>
-              </div>
-            </div>
           </div>
         </Card>
 
