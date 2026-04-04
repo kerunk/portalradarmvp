@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { isOnboardingCompleted } from "@/lib/companyOnboarding";
 import { Eye, EyeOff, Lock, CheckCircle2, LogOut } from "lucide-react";
 import logoMvp from "@/assets/logo-mvp.jpeg";
 
@@ -72,10 +73,10 @@ export default function ChangePassword() {
       });
       
       // Redirect to onboarding if not completed, otherwise dashboard
-      if (user.onboardingStatus !== 'completed') {
+      if (!isOnboardingCompleted(user.onboarding_status)) {
         navigate("/onboarding");
       } else {
-        navigate("/");
+        navigate("/dashboard");
       }
     } else {
       toast({
