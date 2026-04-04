@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { MetricCard } from "./MetricCard";
 import { ProgressCard } from "./ProgressCard";
 import { SmartAlerts } from "./SmartAlerts";
@@ -15,12 +15,13 @@ import { FirstStepsGuide } from "./FirstStepsGuide";
 import { ImplementationChecklist } from "./ImplementationChecklist";
 import { ImplementationJourney } from "./ImplementationJourney";
 import { ClientSuggestions } from "./ClientSuggestions";
+import { OnboardingGate } from "./OnboardingGate";
 import { Card } from "@/components/ui/card";
 import { Users, Target, CheckCircle, TrendingUp, GraduationCap, Shield, UserCheck, AlertTriangle, CheckCircle2, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPopulationStats, getPopulation } from "@/lib/companyStorage";
 import { obterIndicadoresGlobais, obterIndicadoresTodosCiclos } from "@/lib/governance";
-import { getState } from "@/lib/storage";
+import { getState, setActiveCompany, getCompanyById } from "@/lib/storage";
 import { generateInsights, calculateCultureScore } from "@/lib/reportData";
 
 interface ClientDashboardProps {
@@ -31,11 +32,23 @@ interface ClientDashboardProps {
 }
 
 export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDismissed }: ClientDashboardProps) {
+  // Ensure active company is set before any state reads
+  useEffect(() => {
+    setActiveCompany(companyId);
+    return () => { setActiveCompany(null); };
+  }, [companyId]);
+
+  // Check if onboarding has started
+  const company = useMemo(() => getCompanyById(companyId), [companyId, refreshKey]);
+  const onboardingStarted = company?.onboardingStatus !== 'not_started';
+
+  // All hooks must be called unconditionally (React rules)
   const popStats = useMemo(() => getPopulationStats(companyId), [companyId, refreshKey]);
-  const globalIndicators = useMemo(() => obterIndicadoresGlobais(), [refreshKey]);
-  const cycleIndicators = useMemo(() => obterIndicadoresTodosCiclos(), [refreshKey]);
+  const globalIndicators = useMemo(() => { setActiveCompany(companyId); return obterIndicadoresGlobais(); }, [companyId, refreshKey]);
+  const cycleIndicators = useMemo(() => { setActiveCompany(companyId); return obterIndicadoresTodosCiclos(); }, [companyId, refreshKey]);
 
   const trainingStats = useMemo(() => {
+    setActiveCompany(companyId);
     const state = getState();
     const turmas = state.turmas;
     const turmasRealizadas = turmas.filter(t => t.status === "completed").length;
@@ -52,7 +65,7 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
       return sum + Object.values(t.attendance).filter(s => s === "present").length;
     }, 0);
     return { turmasTotal: turmas.length, turmasRealizadas, pessoasTreinadas: trainedIds.size, totalPresences };
-  }, [refreshKey]);
+  }, [companyId, refreshKey]);
 
   const activePopulation = popStats.total;
   const coveragePercent = activePopulation > 0 ? Math.round((trainingStats.pessoasTreinadas / activePopulation) * 100) : 0;
@@ -95,16 +108,21 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
     pending: globalIndicators.pendingActions,
   };
 
+  // Gate: block portal if onboarding not started
+  if (!onboardingStarted) {
+    return <OnboardingGate companyName={companyName} />;
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* First Steps Guide */}
       <FirstStepsGuide completedSteps={
         [
+          ...(popStats.sectors > 0 || popStats.units > 0 ? [1] : []),
           ...(activePopulation > 0 ? [2] : []),
           ...(popStats.nucleoCount > 0 ? [3] : []),
           ...(trainingStats.turmasTotal > 0 ? [4] : []),
           ...(globalIndicators.completedActions > 0 ? [5] : []),
-          ...(popStats.sectors > 0 ? [1] : []),
         ]
       } />
 
