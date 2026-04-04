@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAdminRoleForUser, hasPermission, type AdminPermissions } from "@/lib/permissions";
+import { isOnboardingCompleted } from "@/lib/companyOnboarding";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -33,7 +34,7 @@ export function ProtectedRoute({ children, requireAdmin = false, requirePermissi
 
   // User needs onboarding (only for clients with incomplete onboarding)
   if (
-    user.onboardingStatus !== 'completed' && 
+    !isOnboardingCompleted(user.onboarding_status) && 
     user.role === "admin_empresa" && 
     location.pathname !== "/onboarding" &&
     location.pathname !== "/alterar-senha"

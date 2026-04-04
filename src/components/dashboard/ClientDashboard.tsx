@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { getPopulationStats, getPopulation } from "@/lib/companyStorage";
 import { obterIndicadoresGlobais, obterIndicadoresTodosCiclos } from "@/lib/governance";
 import { getState, setActiveCompany } from "@/lib/storage";
-import { fetchCompanyById } from "@/lib/companyService";
+import { fetchCompanyOnboarding, isOnboardingCompleted, type CompanyOnboardingRow } from "@/lib/companyOnboarding";
 import { generateInsights, calculateCultureScore } from "@/lib/reportData";
 
 interface ClientDashboardProps {
@@ -41,17 +41,19 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
   }, [companyId]);
 
   // Load company from Supabase for onboarding gate
-  const [companyFromDB, setCompanyFromDB] = useState<{ onboardingStatus: string } | null>(null);
+  const [companyFromDB, setCompanyFromDB] = useState<CompanyOnboardingRow | null>(null);
   const [loadingCompany, setLoadingCompany] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoadingCompany(true);
-    fetchCompanyById(companyId)
-      .then(c => {
+    fetchCompanyOnboarding(companyId)
+      .then(company => {
         if (!cancelled) {
-          console.log("[Portal] onboarding_status:", c?.onboardingStatus ?? "not_found");
-          setCompanyFromDB(c ? { onboardingStatus: c.onboardingStatus } : null);
+          console.log("[Portal] onboarding_status recebido do banco:", company?.onboarding_status ?? "not_found");
+          const destination = isOnboardingCompleted(company?.onboarding_status) ? "/dashboard" : "/onboarding";
+          console.log("[Portal] redirect decidido para:", destination);
+          setCompanyFromDB(company);
           setLoadingCompany(false);
         }
       })
@@ -65,7 +67,7 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
     return () => { cancelled = true; };
   }, [companyId, refreshKey]);
 
-  const onboardingCompleted = companyFromDB?.onboardingStatus === 'completed';
+  const onboardingCompleted = isOnboardingCompleted(companyFromDB?.onboarding_status);
 
   // All hooks must be called unconditionally (React rules), but guard reads with company scope
   const popStats = useMemo(() => { setActiveCompany(companyId); return getPopulationStats(companyId); }, [companyId, refreshKey]);

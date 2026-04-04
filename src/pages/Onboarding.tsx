@@ -40,7 +40,7 @@ import {
   generateEmployeeCSVTemplate,
   parseEmployeeCSV,
 } from "@/lib/employeeService";
-import { fetchCompanyById } from "@/lib/companyService";
+import { fetchCompanyOnboarding, isOnboardingCompleted } from "@/lib/companyOnboarding";
 import logoMvp from "@/assets/logo-mvp.jpeg";
 
 export default function Onboarding() {
@@ -79,14 +79,16 @@ export default function Onboarding() {
 
     (async () => {
       try {
-        const company = await fetchCompanyById(companyId);
+        const company = await fetchCompanyOnboarding(companyId);
         if (cancelled) return;
 
-        console.log("[Onboarding] status carregado:", company?.onboardingStatus ?? "not_found");
+        console.log("[Portal] onboarding_status recebido do banco:", company?.onboarding_status ?? "not_found");
+        const destination = isOnboardingCompleted(company?.onboarding_status) ? "/dashboard" : "/onboarding";
+        console.log("[Portal] redirect decidido para:", destination);
 
-        if (company?.onboardingStatus === "completed") {
+        if (destination === "/dashboard") {
           setIsRestoring(false);
-          navigate("/", { replace: true });
+          navigate("/dashboard", { replace: true });
           return;
         }
 
@@ -311,6 +313,13 @@ export default function Onboarding() {
   const handleComplete = async () => {
     setIsLoading(true);
     try {
+      if (!companyId) {
+        throw new Error("Empresa não vinculada ao usuário");
+      }
+
+      console.log("[Onboarding] botão finalizar clicado");
+      console.log("[Onboarding] companyId:", companyId);
+
       // Save to localStorage (legacy compatibility)
       setNucleo(companyId, nucleoMembers);
       const finalPopulation = mergeNucleoIntoPopulation();
@@ -347,10 +356,18 @@ export default function Onboarding() {
 
       // CRITICAL: Update company onboarding status — this MUST succeed
       console.log("[Onboarding] calling completeOnboarding...");
-      await completeOnboarding();
+      const company = await completeOnboarding();
+      console.log("[Portal] onboarding_status recebido do banco:", company?.onboarding_status ?? "not_found");
+      const destination = isOnboardingCompleted(company?.onboarding_status) ? "/dashboard" : "/onboarding";
+      console.log("[Portal] redirect decidido para:", destination);
+
+      if (destination !== "/dashboard") {
+        throw new Error("onboarding_status não confirmado como concluido");
+      }
+
       console.log("[Onboarding] Completed! All data saved to Supabase.");
       toast({ title: "Configuração concluída!", description: "Bem-vindo ao Portal MVP." });
-      navigate("/", { replace: true });
+      navigate(destination, { replace: true });
     } catch (err) {
       console.error("[Onboarding] Error completing:", err);
       toast({ title: "Erro ao finalizar", description: "Tente novamente.", variant: "destructive" });
