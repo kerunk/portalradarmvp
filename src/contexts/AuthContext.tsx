@@ -71,22 +71,25 @@ async function buildUserFromSession(supabaseUser: SupabaseUser): Promise<User | 
     // Fetch company if profile has company_id
     let companyName: string | undefined;
     let companyLogo: string | undefined;
-    if (profile?.company_id) {
+    const companyId = profile?.company_id ?? undefined;
+    if (companyId) {
       const { data: company } = await supabase
         .from("companies")
         .select("name, logo_url")
-        .eq("id", profile.company_id)
+        .eq("id", companyId)
         .single();
-      companyName = company?.name || undefined;
-      companyLogo = company?.logo_url || undefined;
+      if (company) {
+        companyName = company.name || undefined;
+        companyLogo = company.logo_url || undefined;
+      }
     }
 
     return {
       id: supabaseUser.id,
-      name: profile?.full_name || supabaseUser.email?.split("@")[0] || "Usuário",
+      name: profile?.full_name ?? supabaseUser.email?.split("@")[0] ?? "Usuário",
       email: supabaseUser.email || "",
       role,
-      companyId: profile?.company_id || undefined,
+      companyId,
       companyName,
       companyLogo,
       mustChangePassword: false,

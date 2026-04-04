@@ -242,20 +242,7 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
 
       {/* Footer */}
       <div className="px-3 py-4 border-t border-sidebar-border space-y-2">
-        {!collapsed && isAdminMVP && !isReadOnly && (
-          <Select 
-            value={user?.role || "admin_mvp"} 
-            onValueChange={(value) => switchRole(value as "admin_mvp" | "cliente")}
-          >
-            <SelectTrigger className="h-8 text-xs bg-sidebar-accent border-sidebar-border text-sidebar-foreground">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="admin_mvp">👑 Admin MVP</SelectItem>
-              <SelectItem value="cliente">🏢 Portal Cliente</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
+        {/* Role switching disabled in v2 — users must log in with their own credentials */}
         
         <div className="flex items-center gap-3 px-3 py-2.5">
           <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center flex-shrink-0">

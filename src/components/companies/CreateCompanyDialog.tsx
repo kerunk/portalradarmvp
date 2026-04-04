@@ -23,7 +23,7 @@ import { generateAccessPDF } from "@/lib/pdfGenerator";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAdminRoleForUser, addCompanyToManager, getAdminRoleAssignments } from "@/lib/permissions";
 import { emitCompanyCreated } from "@/lib/operationalEvents";
-import { registerCredential } from "@/contexts/AuthContext";
+// registerCredential removed — v2 uses Supabase Auth
 
 interface CreateCompanyDialogProps {
   open: boolean;
