@@ -106,21 +106,23 @@ export async function createCompanyInSupabase(company: CompanyState): Promise<{
 }> {
   const slug = toSlug(company.name) + "-" + Date.now();
 
+  const insertData: any = {
+    name: company.name,
+    slug,
+    sector: company.sector || null,
+    employee_count: company.employees || null,
+    admin_name: company.adminName || null,
+    admin_email: company.adminEmail || null,
+    logo_url: company.logo || null,
+    onboarding_status: mapOnboardingToDB(company.onboardingStatus || "not_started"),
+    owner_email: company.ownerEmail || null,
+    owner_name: company.ownerName || null,
+    active: true,
+  };
+
   const { data, error } = await supabase
     .from("companies")
-    .insert({
-      name: company.name,
-      slug,
-      sector: company.sector || null,
-      employee_count: company.employees || null,
-      admin_name: company.adminName || null,
-      admin_email: company.adminEmail || null,
-      logo_url: company.logo || null,
-      onboarding_status: mapOnboardingToDB(company.onboardingStatus || "not_started"),
-      owner_email: company.ownerEmail || null,
-      owner_name: company.ownerName || null,
-      active: true,
-    } as any)
+    .insert(insertData)
     .select("id")
     .single();
 
@@ -129,7 +131,7 @@ export async function createCompanyInSupabase(company: CompanyState): Promise<{
     return { success: false, error: error.message };
   }
 
-  return { success: true, id: data?.id };
+  return { success: true, id: (data as any)?.id };
 }
 
 export async function updateCompanyInSupabase(
