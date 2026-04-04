@@ -8,17 +8,19 @@ import { cn } from "@/lib/utils";
 import { getEnrichedCompanies } from "@/lib/portfolioUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAdminRoleForUser } from "@/lib/permissions";
+import type { CompanyState } from "@/lib/storage";
 
 interface StrategicOverviewProps {
   refreshKey?: number;
+  companies?: CompanyState[];
 }
 
-export function StrategicOverview({ refreshKey }: StrategicOverviewProps) {
+export function StrategicOverview({ refreshKey, companies }: StrategicOverviewProps) {
   const { user } = useAuth();
   const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
 
   const stats = useMemo(() => {
-    const enriched = getEnrichedCompanies(user?.email, adminRole);
+    const enriched = getEnrichedCompanies(user?.email, adminRole, companies);
     const total = enriched.length;
     const healthy = enriched.filter(e => e.riskLevel === "healthy").length;
     const warning = enriched.filter(e => e.riskLevel === "warning").length;
@@ -30,7 +32,7 @@ export function StrategicOverview({ refreshKey }: StrategicOverviewProps) {
     const activeCycles = enriched.reduce((s, e) => s + e.riskData.cyclesInProgress, 0);
 
     return { total, healthy, warning, risk, avgMaturity, evolving, activeCycles };
-  }, [refreshKey, user?.email, adminRole]);
+  }, [refreshKey, user?.email, adminRole, companies]);
 
   const items = [
     { label: "Total de Empresas", value: stats.total, icon: Building2, color: "text-primary", bg: "bg-primary/10" },

@@ -5,25 +5,26 @@ import { Badge } from "@/components/ui/badge";
 import { Trophy, Building2, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getEnrichedCompanies } from "@/lib/portfolioUtils";
+import type { CompanyState } from "@/lib/storage";
 
 interface EvolutionRankingProps {
   refreshKey?: number;
+  companies?: CompanyState[];
 }
 
-export function EvolutionRanking({ refreshKey }: EvolutionRankingProps) {
+export function EvolutionRanking({ refreshKey, companies }: EvolutionRankingProps) {
   const navigate = useNavigate();
 
   const ranked = useMemo(() => {
-    const enriched = getEnrichedCompanies();
+    const enriched = getEnrichedCompanies(undefined, undefined, companies);
     return [...enriched]
       .sort((a, b) => {
-        // Sort by maturity desc, then completed actions desc
         if (b.riskData.maturityScore !== a.riskData.maturityScore)
           return b.riskData.maturityScore - a.riskData.maturityScore;
         return b.riskData.completedActions - a.riskData.completedActions;
       })
       .slice(0, 5);
-  }, [refreshKey]);
+  }, [refreshKey, companies]);
 
   const medalColors = [
     "bg-amber-500/15 text-amber-500 border-amber-500/30",

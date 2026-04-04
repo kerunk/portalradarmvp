@@ -5,6 +5,7 @@ import { getEnrichedCompanies } from "@/lib/portfolioUtils";
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip,
 } from "recharts";
+import type { CompanyState } from "@/lib/storage";
 
 const USERS_MGMT_KEY = "mvp_managed_users_v2";
 
@@ -19,16 +20,17 @@ const COLORS = [
 
 interface LoadDistributionProps {
   refreshKey?: number;
+  companies?: CompanyState[];
 }
 
-export function LoadDistribution({ refreshKey }: LoadDistributionProps) {
+export function LoadDistribution({ refreshKey, companies }: LoadDistributionProps) {
   const data = useMemo(() => {
     let users: any[] = [];
     try {
       users = JSON.parse(localStorage.getItem(USERS_MGMT_KEY) || "[]");
     } catch {}
 
-    const enriched = getEnrichedCompanies();
+    const enriched = getEnrichedCompanies(undefined, undefined, companies);
     const distribution: { name: string; value: number }[] = [];
 
     const gerentUsers = users.filter((u: any) => u.role === "gerente_conta" && u.active !== false);
@@ -50,7 +52,7 @@ export function LoadDistribution({ refreshKey }: LoadDistributionProps) {
     }
 
     return distribution;
-  }, [refreshKey]);
+  }, [refreshKey, companies]);
 
   return (
     <Card className="p-5">

@@ -4,19 +4,21 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { AlertCircle, Building2, ArrowRight } from "lucide-react";
-import { getActiveCompaniesFiltered } from "@/lib/storage";
 import { getNextRecommendedAction, getImplementationProgress } from "@/lib/implementationEngine";
+import type { CompanyState } from "@/lib/storage";
 
 interface Props {
   refreshKey: number;
+  companies?: CompanyState[];
 }
 
-export function CompaniesNeedingAction({ refreshKey }: Props) {
+export function CompaniesNeedingAction({ refreshKey, companies }: Props) {
   const navigate = useNavigate();
 
   const companiesWithActions = useMemo(() => {
-    const companies = getActiveCompaniesFiltered();
-    return companies
+    const source = (companies || []).filter(c => c.active !== false && !c.deleted);
+    console.log("[CompaniesNeedingAction] empresas da fonte Supabase:", source.length);
+    return source
       .map(c => ({
         company: c,
         nextAction: getNextRecommendedAction(c.id),
@@ -25,7 +27,7 @@ export function CompaniesNeedingAction({ refreshKey }: Props) {
       .filter(c => c.progress < 100)
       .sort((a, b) => a.progress - b.progress)
       .slice(0, 8);
-  }, [refreshKey]);
+  }, [refreshKey, companies]);
 
   if (companiesWithActions.length === 0) return null;
 

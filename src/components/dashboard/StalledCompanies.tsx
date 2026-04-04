@@ -5,23 +5,25 @@ import { Badge } from "@/components/ui/badge";
 import { Pause, Building2, ArrowRight, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getEnrichedCompanies, getLastActivityLabel } from "@/lib/portfolioUtils";
+import type { CompanyState } from "@/lib/storage";
 
 interface StalledCompaniesProps {
   refreshKey?: number;
+  companies?: CompanyState[];
 }
 
-export function StalledCompanies({ refreshKey }: StalledCompaniesProps) {
+export function StalledCompanies({ refreshKey, companies }: StalledCompaniesProps) {
   const navigate = useNavigate();
 
   const stalled = useMemo(() => {
-    const enriched = getEnrichedCompanies();
+    const enriched = getEnrichedCompanies(undefined, undefined, companies);
     return enriched
       .filter(ec => {
         if (ec.lastActivityDays === null) return ec.company.onboardingStatus === "completed";
         return ec.lastActivityDays >= 30;
       })
       .sort((a, b) => (b.lastActivityDays ?? 999) - (a.lastActivityDays ?? 999));
-  }, [refreshKey]);
+  }, [refreshKey, companies]);
 
   const critical = stalled.filter(ec => (ec.lastActivityDays ?? 999) >= 45);
   const attention = stalled.filter(ec => {
