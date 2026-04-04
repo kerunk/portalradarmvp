@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Layers } from "lucide-react";
 import {
   getPipelineStats,
@@ -11,17 +10,19 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAdminRoleForUser } from "@/lib/permissions";
+import type { CompanyState } from "@/lib/storage";
 
 interface ImplementationPipelineProps {
   refreshKey?: number;
+  companies?: CompanyState[];
 }
 
 const stageOrder: ImplementationStage[] = ["onboarding", "implementacao", "consolidacao", "finalizado"];
 
-export function ImplementationPipeline({ refreshKey }: ImplementationPipelineProps) {
+export function ImplementationPipeline({ refreshKey, companies }: ImplementationPipelineProps) {
   const { user } = useAuth();
   const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
-  const stats = useMemo(() => getPipelineStats(user?.email, adminRole), [refreshKey, user?.email, adminRole]);
+  const stats = useMemo(() => getPipelineStats(user?.email, adminRole, companies), [refreshKey, user?.email, adminRole, companies]);
   const total = stageOrder.reduce((s, k) => s + stats[k], 0);
 
   return (

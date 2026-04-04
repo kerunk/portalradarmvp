@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MetricCard } from "./MetricCard";
 import { MaturityGaugePremium } from "./MaturityGaugePremium";
@@ -17,13 +17,14 @@ import {
   ShieldAlert, ShieldCheck, AlertCircle, ArrowRight,
   Layers, Clock, PowerOff,
 } from "lucide-react";
-import { getCompanies, setActiveCompany, getState } from "@/lib/storage";
+import { setActiveCompany, getState } from "@/lib/storage";
 import { getCompanyRiskData, type CompanyRiskData } from "@/lib/adminNotifications";
 import type { CompanyState } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAdminRoleForUser } from "@/lib/permissions";
 import { CYCLE_IDS } from "@/lib/constants";
+import { fetchCompanies } from "@/lib/companyService";
 import {
   ResponsiveContainer, PieChart, Pie, Cell,
   Tooltip as ReTooltip,
@@ -136,22 +137,40 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
   const navigate = useNavigate();
   const { user } = useAuth();
   const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
-  
+
+  // ======= SUPABASE AS SOURCE OF TRUTH =======
+  const [supabaseCompanies, setSupabaseCompanies] = useState<CompanyState[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetchCompanies().then(companies => {
+      if (!cancelled) {
+        console.log("[AdminDashboard] empresas carregadas do Supabase:", companies.length);
+        setSupabaseCompanies(companies);
+        setLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [refreshKey]);
+
   const companies = useMemo(() => {
-    const all = getCompanies().filter(c => c.active !== false && !c.deleted);
+    const all = supabaseCompanies.filter(c => c.active !== false && !c.deleted);
     if (adminRole === "gerente_conta" && user?.email) {
       return all.filter(c => c.ownerEmail?.toLowerCase() === user.email.toLowerCase());
     }
+    console.log("[AdminDashboard] empresas ativas filtradas:", all.length);
     return all;
-  }, [refreshKey, adminRole, user?.email]);
+  }, [supabaseCompanies, adminRole, user?.email]);
 
   const inactiveCompaniesCount = useMemo(() => {
-    const all = getCompanies().filter(c => c.active === false && !c.deleted);
+    const all = supabaseCompanies.filter(c => c.active === false && !c.deleted);
     if (adminRole === "gerente_conta" && user?.email) {
       return all.filter(c => c.ownerEmail?.toLowerCase() === user.email.toLowerCase()).length;
     }
     return all.length;
-  }, [refreshKey, adminRole, user?.email]);
+  }, [supabaseCompanies, adminRole, user?.email]);
 
   const companiesCompleted = companies.filter(c => c.onboardingStatus === "completed").length;
   const companiesPending = companies.filter(c => c.onboardingStatus !== "completed").length;
@@ -166,7 +185,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
         currentCycle: getCurrentCycle(data),
       };
     });
-  }, [companies, refreshKey]);
+  }, [companies]);
 
   // Aggregated totals
   const totalEmployeesAll = companyData.reduce((s, c) => s + c.data.totalEmployees, 0);
@@ -219,7 +238,6 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
       groups.get(a.alertType)!.push(a);
     });
 
-    // Sort groups: delayed first, then coverage, maturity, stalled
     const order: AlertType[] = ["delayed", "low-coverage", "low-maturity", "stalled-cycle"];
     return order
       .filter(t => groups.has(t))
@@ -246,6 +264,14 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
     if (score >= 51) return { label: "Evoluindo", color: "bg-primary/15 text-primary" };
     if (score >= 26) return { label: "Estruturando", color: "bg-amber-500/15 text-amber-400" };
     return { label: "Inicial", color: "bg-muted text-muted-foreground" };
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <p className="text-muted-foreground">Carregando dashboard...</p>
+      </div>
+    );
   }
 
   return (
@@ -352,7 +378,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
       </div>
 
       {/* Pipeline de Implementação */}
-      <ImplementationPipeline refreshKey={refreshKey} />
+      <ImplementationPipeline refreshKey={refreshKey} companies={supabaseCompanies} />
 
       {/* BLOCO 2 — Saúde da Carteira de Implementação */}
       <Card className="p-5">
@@ -638,21 +664,21 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
       </div>
 
       {/* BLOCO 6 — Visão Estratégica */}
-      <StrategicOverview refreshKey={refreshKey} />
+      <StrategicOverview refreshKey={refreshKey} companies={supabaseCompanies} />
 
       {/* BLOCO 6.5 — Empresas que Precisam de Ação */}
-      <CompaniesNeedingAction refreshKey={refreshKey} />
+      <CompaniesNeedingAction refreshKey={refreshKey} companies={supabaseCompanies} />
 
       {/* BLOCO 7 — Ranking + Empresas Paradas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <EvolutionRanking refreshKey={refreshKey} />
-        <StalledCompanies refreshKey={refreshKey} />
+        <EvolutionRanking refreshKey={refreshKey} companies={supabaseCompanies} />
+        <StalledCompanies refreshKey={refreshKey} companies={supabaseCompanies} />
       </div>
 
       {/* BLOCO 8 — Gerentes + Distribuição de Carga */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ManagerRanking refreshKey={refreshKey} />
-        <LoadDistribution refreshKey={refreshKey} />
+        <ManagerRanking refreshKey={refreshKey} companies={supabaseCompanies} />
+        <LoadDistribution refreshKey={refreshKey} companies={supabaseCompanies} />
       </div>
     </div>
   );

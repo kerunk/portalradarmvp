@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Users, ChevronRight, ShieldAlert, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getEnrichedCompanies, type EnrichedCompany } from "@/lib/portfolioUtils";
+import type { CompanyState } from "@/lib/storage";
 
 const USERS_MGMT_KEY = "mvp_managed_users_v2";
 
@@ -20,9 +21,10 @@ interface ManagerStats {
 
 interface ManagerRankingProps {
   refreshKey?: number;
+  companies?: CompanyState[];
 }
 
-export function ManagerRanking({ refreshKey }: ManagerRankingProps) {
+export function ManagerRanking({ refreshKey, companies }: ManagerRankingProps) {
   const navigate = useNavigate();
 
   const managers = useMemo((): ManagerStats[] => {
@@ -32,28 +34,28 @@ export function ManagerRanking({ refreshKey }: ManagerRankingProps) {
     } catch {}
 
     const gerentUsers = users.filter((u: any) => u.role === "gerente_conta" && u.active !== false);
-    const enriched = getEnrichedCompanies();
+    const enriched = getEnrichedCompanies(undefined, undefined, companies);
 
     return gerentUsers.map((u: any) => {
-      const companies = enriched.filter(
+      const managerCompanies = enriched.filter(
         ec => ec.company.ownerEmail?.toLowerCase() === u.email.toLowerCase()
       );
-      const avgMaturity = companies.length > 0
-        ? Math.round(companies.reduce((s, c) => s + c.riskData.maturityScore, 0) / companies.length)
+      const avgMaturity = managerCompanies.length > 0
+        ? Math.round(managerCompanies.reduce((s, c) => s + c.riskData.maturityScore, 0) / managerCompanies.length)
         : 0;
-      const riskCount = companies.filter(c => c.riskLevel === "risk").length;
+      const riskCount = managerCompanies.filter(c => c.riskLevel === "risk").length;
 
       return {
         id: u.id,
         name: u.name,
         email: u.email,
-        companies,
+        companies: managerCompanies,
         avgMaturity,
         riskCount,
-        totalCompanies: companies.length,
+        totalCompanies: managerCompanies.length,
       };
     }).sort((a, b) => b.avgMaturity - a.avgMaturity);
-  }, [refreshKey]);
+  }, [refreshKey, companies]);
 
   return (
     <Card className="p-5">
@@ -66,7 +68,6 @@ export function ManagerRanking({ refreshKey }: ManagerRankingProps) {
         <p className="text-sm text-muted-foreground text-center py-6">Nenhum gerente de conta cadastrado</p>
       ) : (
         <div className="space-y-0">
-          {/* Header */}
           <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider border-b border-border/50">
             <div className="col-span-4">Gerente</div>
             <div className="col-span-2 text-center">Empresas</div>
