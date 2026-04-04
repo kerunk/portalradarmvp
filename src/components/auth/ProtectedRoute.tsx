@@ -34,7 +34,7 @@ export function ProtectedRoute({ children, requireAdmin = false, requirePermissi
   // User needs onboarding (only for clients with incomplete onboarding)
   if (
     user.onboardingStatus !== 'completed' && 
-    user.role === "cliente" && 
+    user.role === "admin_empresa" && 
     location.pathname !== "/onboarding" &&
     location.pathname !== "/alterar-senha"
   ) {
