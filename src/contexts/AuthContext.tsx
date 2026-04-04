@@ -66,12 +66,12 @@ async function buildUserFromSession(supabaseUser: SupabaseUser): Promise<User | 
       .eq("user_id", supabaseUser.id)
       .single();
 
-    const role: UserRole = (userRole?.role as UserRole) ?? "lideranca";
+    const role: UserRole = ((userRole as any)?.role as UserRole) ?? "lideranca";
 
     // Fetch company if profile has company_id
     let companyName: string | undefined;
     let companyLogo: string | undefined;
-    const companyId: string | undefined = profile?.company_id ?? undefined;
+    const companyId: string | undefined = (profile as any)?.company_id ?? undefined;
     if (companyId) {
       const { data: company } = await supabase
         .from("companies")
