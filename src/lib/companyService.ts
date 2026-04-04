@@ -157,7 +157,7 @@ export async function updateCompanyInSupabase(
 
   const { error } = await supabase
     .from("companies")
-    .update(dbUpdates)
+    .update(dbUpdates as any)
     .eq("id", companyId);
 
   if (error) {
