@@ -608,7 +608,7 @@ export default function Companies() {
           </Table>
         </Card>
 
-        <CreateCompanyDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+        <CreateCompanyDialog open={createDialogOpen} onOpenChange={handleCreateDialogChange} />
         <EditCompanyDialog
           company={editCompany}
           open={!!editCompany}
