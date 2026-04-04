@@ -256,8 +256,8 @@ export interface PipelineStats {
   finalizado: number;
 }
 
-export function getPipelineStats(filterEmail?: string, filterRole?: string): PipelineStats {
-  let companies = getCompanies();
+export function getPipelineStats(filterEmail?: string, filterRole?: string, externalCompanies?: CompanyState[]): PipelineStats {
+  let companies = externalCompanies ? [...externalCompanies] : getCompanies();
   // Filter out inactive companies
   companies = companies.filter(c => c.active !== false);
   if (filterRole === "gerente_conta" && filterEmail) {
