@@ -332,7 +332,7 @@ export default function Onboarding() {
           </div>
         ))}
       </div>
-      <Button onClick={() => setStep(2)} size="lg" className="min-w-48">
+      <Button onClick={() => advanceStep(2)} size="lg" className="min-w-48">
         Iniciar Configuração <ArrowRight size={18} className="ml-2" />
       </Button>
     </div>
