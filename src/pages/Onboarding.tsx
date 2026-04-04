@@ -248,15 +248,57 @@ export default function Onboarding() {
     });
   };
 
+  // Save progress when advancing steps
+  const advanceStep = async (nextStep: number) => {
+    setStep(nextStep);
+    if (!companyId) return;
+    // Save nucleus when leaving step 2
+    if (nextStep === 3 && nucleoMembers.length > 0) {
+      await saveNucleusToSupabase(companyId, nucleoMembers);
+    }
+    // Save employees when leaving step 3
+    if (nextStep === 4 && populationMembers.length > 0) {
+      await saveEmployeesToSupabase(companyId, populationMembers);
+    }
+    await saveOnboardingProgress(companyId, {
+      currentStep: nextStep,
+      welcomeCompleted: nextStep > 1,
+      nucleusCompleted: nextStep > 2,
+      populationCompleted: nextStep > 3,
+      confirmationCompleted: false,
+    });
+  };
+
   const handleComplete = async () => {
     setIsLoading(true);
-    setNucleo(companyId, nucleoMembers);
-    const finalPopulation = mergeNucleoIntoPopulation();
-    setPopulation(companyId, finalPopulation);
-    await completeOnboarding();
-    toast({ title: "Configuração concluída!", description: "Bem-vindo ao Portal MVP." });
-    navigate("/");
-    setIsLoading(false);
+    try {
+      // Save to localStorage (legacy compatibility)
+      setNucleo(companyId, nucleoMembers);
+      const finalPopulation = mergeNucleoIntoPopulation();
+      setPopulation(companyId, finalPopulation);
+
+      // Save to Supabase
+      await saveNucleusToSupabase(companyId, nucleoMembers);
+      await saveEmployeesToSupabase(companyId, finalPopulation);
+      await saveOnboardingProgress(companyId, {
+        currentStep: 4,
+        welcomeCompleted: true,
+        nucleusCompleted: true,
+        populationCompleted: true,
+        confirmationCompleted: true,
+      });
+
+      // Update company onboarding status in Supabase
+      await completeOnboarding();
+      console.log("[Onboarding] Completed! All data saved to Supabase.");
+      toast({ title: "Configuração concluída!", description: "Bem-vindo ao Portal MVP." });
+      navigate("/");
+    } catch (err) {
+      console.error("[Onboarding] Error completing:", err);
+      toast({ title: "Erro ao finalizar", description: "Tente novamente.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // ========== RENDER STEPS ==========
