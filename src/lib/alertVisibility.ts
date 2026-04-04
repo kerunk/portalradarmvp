@@ -49,7 +49,7 @@ const ADMIN_ONLY_EVENT_TYPES: string[] = [
 export function getVisibleAlertsForUser(user: User | null): UnifiedAlert[] {
   if (!user) return [];
 
-  const isClient = user.role === "cliente";
+  const isClient = user.role === "admin_empresa" || user.role === "nucleo" || user.role === "lideranca";
 
   if (isClient) {
     return getClientAlerts(user);
