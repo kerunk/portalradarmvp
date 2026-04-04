@@ -21,7 +21,8 @@ import { Users, Target, CheckCircle, TrendingUp, GraduationCap, Shield, UserChec
 import { cn } from "@/lib/utils";
 import { getPopulationStats, getPopulation } from "@/lib/companyStorage";
 import { obterIndicadoresGlobais, obterIndicadoresTodosCiclos } from "@/lib/governance";
-import { getState, setActiveCompany, getCompanyById } from "@/lib/storage";
+import { getState, setActiveCompany } from "@/lib/storage";
+import { fetchCompanyById } from "@/lib/companyService";
 import { generateInsights, calculateCultureScore } from "@/lib/reportData";
 
 interface ClientDashboardProps {
