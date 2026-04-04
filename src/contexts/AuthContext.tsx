@@ -226,33 +226,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const completeOnboarding = async (): Promise<void> => {
     if (user?.companyId) {
-      console.log("[Onboarding] salvando status concluido", user.companyId);
+      console.log("[Onboarding] salvando status concluido, companyId:", user.companyId);
 
+      // FIX: Only update onboarding_status — do NOT send onboarding_completed_at
+      // as that column may not exist in the DB schema
       const updateResult = await (supabase.from("companies") as any)
-        .update({
-          onboarding_status: "concluido",
-          onboarding_completed_at: new Date().toISOString(),
-        })
+        .update({ onboarding_status: "concluido" })
         .eq("id", user.companyId)
-        .select("id, onboarding_status")
-        .single();
+        .select("id, onboarding_status");
+
+      console.log("[Onboarding] Supabase response:", JSON.stringify(updateResult));
 
       if (updateResult.error) {
         console.error("[Onboarding] failed to persist completed status", updateResult.error);
         throw updateResult.error;
       }
 
-      console.log("[Auth] onboarding_status persisted", updateResult.data?.onboarding_status);
+      console.log("[Onboarding] status persisted successfully:", updateResult.data);
 
+      // Refresh user from session to pick up new status
       const { data: authData } = await supabase.auth.getUser();
       if (authData.user) {
         const refreshedUser = await buildUserFromSession(authData.user);
         if (refreshedUser) {
+          console.log("[Onboarding] refreshed user onboardingStatus:", refreshedUser.onboardingStatus);
           setUser(refreshedUser);
           return;
         }
       }
 
+      // Fallback: set locally
       setUser({ ...user, onboardingStatus: "completed" });
     }
   };
