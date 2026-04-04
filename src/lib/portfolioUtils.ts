@@ -284,11 +284,12 @@ export interface EnrichedCompany {
   cycleDelays: CycleDelayInfo[];
 }
 
-export function getEnrichedCompanies(filterEmail?: string, filterRole?: string): EnrichedCompany[] {
-  let companies = getCompanies();
+export function getEnrichedCompanies(filterEmail?: string, filterRole?: string, externalCompanies?: CompanyState[]): EnrichedCompany[] {
+  // Use externally provided companies (from Supabase) if available, otherwise fall back to localStorage
+  let companies = externalCompanies ? [...externalCompanies] : getCompanies();
   
-  // Filter out deleted and inactive companies from operational views
-  companies = companies.filter(c => !c.deleted && c.active !== false);
+  // Filter out deleted companies only (keep inactive for visibility in the list)
+  companies = companies.filter(c => !c.deleted);
   
   // Gerente de Conta only sees their own companies
   if (filterRole === "gerente_conta" && filterEmail) {

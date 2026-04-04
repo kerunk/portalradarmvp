@@ -98,7 +98,7 @@ export default function Companies() {
     return () => window.removeEventListener("mvp_company_changed", handler);
   }, [loadCompanies]);
 
-  const enriched = useMemo(() => getEnrichedCompanies(user?.email, adminRole), [supabaseCompanies, user?.email, adminRole]);
+  const enriched = useMemo(() => getEnrichedCompanies(user?.email, adminRole, supabaseCompanies), [supabaseCompanies, user?.email, adminRole]);
 
   // Available managers for reassignment
   const availableManagers = useMemo(() => {
