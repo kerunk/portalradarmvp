@@ -108,16 +108,21 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
     pending: globalIndicators.pendingActions,
   };
 
+  // Gate: block portal if onboarding not started
+  if (!onboardingStarted) {
+    return <OnboardingGate companyName={companyName} />;
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* First Steps Guide */}
       <FirstStepsGuide completedSteps={
         [
+          ...(popStats.sectors > 0 || popStats.units > 0 ? [1] : []),
           ...(activePopulation > 0 ? [2] : []),
           ...(popStats.nucleoCount > 0 ? [3] : []),
           ...(trainingStats.turmasTotal > 0 ? [4] : []),
           ...(globalIndicators.completedActions > 0 ? [5] : []),
-          ...(popStats.sectors > 0 ? [1] : []),
         ]
       } />
 
