@@ -157,20 +157,13 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
 
   const companies = useMemo(() => {
     const all = supabaseCompanies.filter(c => c.active !== false && !c.deleted);
-    if (adminRole === "gerente_conta" && user?.email) {
-      return all.filter(c => c.ownerEmail?.toLowerCase() === user.email.toLowerCase());
-    }
     console.log("[AdminDashboard] empresas ativas filtradas:", all.length);
     return all;
-  }, [supabaseCompanies, adminRole, user?.email]);
+  }, [supabaseCompanies]);
 
   const inactiveCompaniesCount = useMemo(() => {
-    const all = supabaseCompanies.filter(c => c.active === false && !c.deleted);
-    if (adminRole === "gerente_conta" && user?.email) {
-      return all.filter(c => c.ownerEmail?.toLowerCase() === user.email.toLowerCase()).length;
-    }
-    return all.length;
-  }, [supabaseCompanies, adminRole, user?.email]);
+    return supabaseCompanies.filter(c => c.active === false && !c.deleted).length;
+  }, [supabaseCompanies]);
 
   const companiesCompleted = companies.filter(c => c.onboardingStatus === "completed").length;
   const companiesPending = companies.filter(c => c.onboardingStatus !== "completed").length;
