@@ -279,7 +279,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
               Painel Estratégico da Carteira MVP
             </p>
             <p className="text-sm font-medium text-foreground">
-              {companies.length} empresas na carteira — {companiesCompleted} ativas, {companiesPending} em onboarding
+              {companies.length} empresas na carteira
             </p>
           </div>
         </div>
