@@ -1,14 +1,13 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { OnboardingStatus } from "@/types/supabase";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
-import { ONBOARDING_STATUS, fetchCompanyOnboarding, updateCompanyOnboarding } from "@/lib/companyOnboarding";
 
 // ============================================================
-// Portal MVP v2 — Supabase Auth Context
+// Portal MVP — Supabase Auth Context (Simplified)
+// Only two roles: admin_mvp | admin_empresa
 // ============================================================
 
-export type UserRole = "admin_mvp" | "admin_empresa" | "nucleo" | "lideranca";
+export type UserRole = "admin_mvp" | "admin_empresa";
 
 export interface User {
   id: string;
@@ -19,7 +18,6 @@ export interface User {
   companyName?: string;
   companyLogo?: string;
   mustChangePassword?: boolean;
-  onboarding_status?: OnboardingStatus;
 }
 
 export interface LoginResult {
@@ -40,8 +38,6 @@ interface AuthContextType {
   logout: () => void;
   switchRole: (role: UserRole) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
-  startOnboarding: () => Promise<void>;
-  completeOnboarding: () => Promise<{ id: string; onboarding_status: OnboardingStatus }>;
   updateCompanyLogo: (logoUrl: string) => void;
 }
 
@@ -67,23 +63,23 @@ async function buildUserFromSession(supabaseUser: SupabaseUser): Promise<User | 
       .eq("user_id", supabaseUser.id)
       .single();
 
-    const role: UserRole = ((userRole as any)?.role as UserRole) ?? "lideranca";
+    const rawRole = (userRole as any)?.role;
+    // Only accept admin_mvp or admin_empresa; default to admin_empresa
+    const role: UserRole = rawRole === "admin_mvp" ? "admin_mvp" : "admin_empresa";
 
     // Fetch company if profile has company_id
     let companyName: string | undefined;
     let companyLogo: string | undefined;
-    let onboarding_status: OnboardingStatus = ONBOARDING_STATUS.NOT_STARTED;
     const companyId: string | undefined = (profile as any)?.company_id ?? undefined;
     if (companyId) {
       const { data: company } = await supabase
         .from("companies")
-        .select("name, logo_url, onboarding_status")
+        .select("name, logo_url")
         .eq("id", companyId)
         .single();
       if (company) {
         companyName = (company as any).name ?? undefined;
         companyLogo = (company as any).logo_url ?? undefined;
-        onboarding_status = ((company as any).onboarding_status as OnboardingStatus | undefined) ?? ONBOARDING_STATUS.NOT_STARTED;
       }
     }
 
@@ -96,7 +92,6 @@ async function buildUserFromSession(supabaseUser: SupabaseUser): Promise<User | 
       companyName,
       companyLogo,
       mustChangePassword: false,
-      onboarding_status,
     };
   } catch (err) {
     console.error("Error building user from session:", err);
@@ -113,11 +108,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
-          // Use setTimeout to avoid Supabase client deadlock
           setTimeout(async () => {
             const appUser = await buildUserFromSession(session.user);
             setUser(appUser);
@@ -130,7 +123,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // 2. Then check existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         const appUser = await buildUserFromSession(session.user);
@@ -178,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const switchRole = (_role: UserRole) => {
-    // Disabled in production — users must log in with their own credentials
+    // Disabled — users must log in with their own credentials
   };
 
   const changePassword = async (_currentPassword: string, newPassword: string): Promise<boolean> => {
@@ -193,46 +185,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
-  const startOnboarding = async (): Promise<void> => {
-    if (user?.companyId) {
-      const result = await updateCompanyOnboarding(user.companyId, ONBOARDING_STATUS.IN_PROGRESS);
-      if (result.error) {
-        throw result.error;
-      }
-      setUser({ ...user, onboarding_status: ONBOARDING_STATUS.IN_PROGRESS });
-    }
-  };
-
-  const completeOnboarding = async (): Promise<{ id: string; onboarding_status: OnboardingStatus }> => {
-    if (!user?.companyId) {
-      throw new Error("Usuário sem empresa vinculada");
-    }
-
-    console.log("[Onboarding] companyId:", user.companyId);
-    console.log("[Onboarding] salvando onboarding_status=concluido");
-
-    const result = await updateCompanyOnboarding(user.companyId, ONBOARDING_STATUS.COMPLETED);
-
-    console.log("[Onboarding] update result:", result);
-
-    if (result.error) {
-      console.error("[Onboarding] erro do Supabase:", result.error);
-      throw result.error;
-    }
-
-    const company = await fetchCompanyOnboarding(user.companyId);
-
-    console.log("[Portal] onboarding_status recebido do banco:", company?.onboarding_status ?? "not_found");
-
-    if (!company || company.onboarding_status !== ONBOARDING_STATUS.COMPLETED) {
-      throw new Error("onboarding_status não retornou como concluido após o update");
-    }
-
-    setUser({ ...user, onboarding_status: company.onboarding_status });
-
-    return company;
-  };
-
   const updateCompanyLogo = (logoUrl: string) => {
     if (user) {
       setUser({ ...user, companyLogo: logoUrl });
@@ -245,14 +197,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     isAuthenticated: !!user,
     isAdminMVP,
-    isCliente: user?.role === "admin_empresa" || user?.role === "nucleo" || user?.role === "lideranca",
+    isCliente: user?.role === "admin_empresa",
     isLoading,
     login,
     logout,
     switchRole,
     changePassword,
-    startOnboarding,
-    completeOnboarding,
     updateCompanyLogo,
   };
 
