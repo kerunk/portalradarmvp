@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils";
 import { getPopulationStats, getPopulation } from "@/lib/companyStorage";
 import { obterIndicadoresGlobais, obterIndicadoresTodosCiclos } from "@/lib/governance";
 import { getState, setActiveCompany } from "@/lib/storage";
-import { fetchCompanyOnboarding, isOnboardingCompleted, type CompanyOnboardingRow } from "@/lib/companyOnboarding";
 import { generateInsights, calculateCultureScore } from "@/lib/reportData";
 
 interface ClientDashboardProps {
