@@ -288,11 +288,11 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
       {/* BLOCO 1 — KPIs da Carteira */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <MetricCard
-          title="Empresas Ativas"
-          value={companiesCompleted}
+          title="Empresas"
+          value={companiesTotal}
           icon={Building2}
-          subtitle={`${companiesPending} em onboarding`}
-          tooltip="Empresas com onboarding concluído"
+          subtitle="na carteira"
+          tooltip="Total de empresas cadastradas"
           variant="default"
           onClick={() => navigate("/empresas")}
         />
