@@ -162,13 +162,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
       });
     }
     
-    // Auto-assign to gerente_conta if applicable
-    if (user?.email) {
-      const role = getAdminRoleForUser(user.email);
-      if (role === "gerente_conta") {
-        addCompanyToManager(user.email, company.id);
-      }
-    }
+    // No intermediate roles — admin_master creates all companies
 
     // Emit operational event
     emitCompanyCreated(company.name, company.id, user?.name, user?.email);

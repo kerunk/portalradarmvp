@@ -141,7 +141,7 @@ export default function Companies() {
   // Available managers for reassignment
   const availableManagers = useMemo(() => {
     const assignments = getAdminRoleAssignments();
-    return assignments.filter(a => a.adminRole === "gerente_conta" || a.adminRole === "admin_mvp" || a.adminRole === "admin_master");
+    return assignments.filter(a => a.adminRole === "admin_master");
   }, [refreshKey]);
 
   // Unique owners

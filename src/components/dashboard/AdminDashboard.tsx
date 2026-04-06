@@ -165,8 +165,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
     return supabaseCompanies.filter(c => c.active === false && !c.deleted).length;
   }, [supabaseCompanies]);
 
-  const companiesCompleted = companies.filter(c => c.onboardingStatus === "completed").length;
-  const companiesPending = companies.filter(c => c.onboardingStatus !== "completed").length;
+  const companiesTotal = companies.length;
 
   const companyData = useMemo(() => {
     return companies.map(c => {
