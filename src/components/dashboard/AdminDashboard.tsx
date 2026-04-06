@@ -97,7 +97,7 @@ function getCompanyAlerts(data: CompanyRiskData, health: HealthStatus): CompanyA
       navigateTo: `/empresas/${company.id}?tab=indicadores`,
     });
   }
-  if (data.cyclesInProgress === 0 && data.closedCycles === 0 && data.company.onboardingStatus === "completed") {
+  if (data.cyclesInProgress === 0 && data.closedCycles === 0) {
     alerts.push({
       company,
       health,
