@@ -88,7 +88,7 @@ function getCompanyAlerts(data: CompanyRiskData, health: HealthStatus): CompanyA
       navigateTo: `/empresas/${company.id}?tab=turmas`,
     });
   }
-  if (data.maturityScore < 20 && data.company.onboardingStatus === "completed") {
+  if (data.maturityScore < 20) {
     alerts.push({
       company,
       health,
