@@ -37,9 +37,7 @@ export default function AdminTurmas() {
 
   const { rows, companies, totals } = useMemo(() => {
     const allCompanies = getCompanies().filter(c => c.active !== false && !c.deleted);
-    const filtered = adminRole === "gerente_conta" && user?.email
-      ? allCompanies.filter(c => c.ownerEmail?.toLowerCase() === user.email.toLowerCase())
-      : allCompanies;
+    const filtered = allCompanies;
 
     const rows: CompanyTurmaRow[] = [];
     filtered.forEach(company => {

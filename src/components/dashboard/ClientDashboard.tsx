@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect } from "react";
 import { MetricCard } from "./MetricCard";
 import { ProgressCard } from "./ProgressCard";
 import { SmartAlerts } from "./SmartAlerts";
@@ -15,14 +15,13 @@ import { FirstStepsGuide } from "./FirstStepsGuide";
 import { ImplementationChecklist } from "./ImplementationChecklist";
 import { ImplementationJourney } from "./ImplementationJourney";
 import { ClientSuggestions } from "./ClientSuggestions";
-import { OnboardingGate } from "./OnboardingGate";
+
 import { Card } from "@/components/ui/card";
 import { Users, Target, CheckCircle, TrendingUp, GraduationCap, Shield, UserCheck, AlertTriangle, CheckCircle2, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPopulationStats, getPopulation } from "@/lib/companyStorage";
 import { obterIndicadoresGlobais, obterIndicadoresTodosCiclos } from "@/lib/governance";
 import { getState, setActiveCompany } from "@/lib/storage";
-import { fetchCompanyOnboarding, isOnboardingCompleted, type CompanyOnboardingRow } from "@/lib/companyOnboarding";
 import { generateInsights, calculateCultureScore } from "@/lib/reportData";
 
 interface ClientDashboardProps {
@@ -40,34 +39,6 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
     return () => { setActiveCompany(null); };
   }, [companyId]);
 
-  // Load company from Supabase for onboarding gate
-  const [companyFromDB, setCompanyFromDB] = useState<CompanyOnboardingRow | null>(null);
-  const [loadingCompany, setLoadingCompany] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingCompany(true);
-    fetchCompanyOnboarding(companyId)
-      .then(company => {
-        if (!cancelled) {
-          console.log("[Portal] onboarding_status recebido do banco:", company?.onboarding_status ?? "not_found");
-          const destination = isOnboardingCompleted(company?.onboarding_status) ? "/dashboard" : "/onboarding";
-          console.log("[Portal] redirect decidido para:", destination);
-          setCompanyFromDB(company);
-          setLoadingCompany(false);
-        }
-      })
-      .catch(error => {
-        if (!cancelled) {
-          console.error("[Portal] error loading onboarding status:", error);
-          setCompanyFromDB(null);
-          setLoadingCompany(false);
-        }
-      });
-    return () => { cancelled = true; };
-  }, [companyId, refreshKey]);
-
-  const onboardingCompleted = isOnboardingCompleted(companyFromDB?.onboarding_status);
 
   // All hooks must be called unconditionally (React rules), but guard reads with company scope
   const popStats = useMemo(() => { setActiveCompany(companyId); return getPopulationStats(companyId); }, [companyId, refreshKey]);
@@ -135,18 +106,6 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
     pending: globalIndicators.pendingActions,
   };
 
-  // Gate: block portal while loading or if onboarding not started
-  if (loadingCompany) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-muted-foreground">Carregando dados da empresa...</p>
-      </div>
-    );
-  }
-
-  if (!onboardingCompleted) {
-    return <OnboardingGate companyName={companyName} />;
-  }
 
   return (
     <div className="space-y-6 animate-fade-in">

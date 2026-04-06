@@ -49,7 +49,7 @@ const ADMIN_ONLY_EVENT_TYPES: string[] = [
 export function getVisibleAlertsForUser(user: User | null): UnifiedAlert[] {
   if (!user) return [];
 
-  const isClient = user.role === "admin_empresa" || user.role === "nucleo" || user.role === "lideranca";
+  const isClient = user.role === "admin_empresa";
 
   if (isClient) {
     return getClientAlerts(user);
@@ -110,30 +110,16 @@ export function isEventVisibleToUser(
   event: OperationalEvent,
   user: User
 ): boolean {
-  const isClient = user.role === "admin_empresa" || user.role === "nucleo" || user.role === "lideranca";
+  const isClient = user.role === "admin_empresa";
 
-  // Clients never see admin-only events
   if (isClient && ADMIN_ONLY_EVENT_TYPES.includes(event.type)) {
     return false;
   }
 
-  // Clients only see events for their own company
   if (isClient) {
     return event.companyId === user.companyId;
   }
 
-  // Gerente: only sees events for companies in their portfolio
-  const adminRole = getAdminRoleForUser(user.email);
-  if (adminRole === "gerente_conta") {
-    const companies = getCompanies();
-    const myCompanyIds = new Set(
-      companies
-        .filter(c => c.ownerEmail?.toLowerCase() === user.email.toLowerCase())
-        .map(c => c.id)
-    );
-    return !event.companyId || myCompanyIds.has(event.companyId);
-  }
-
-  // Admin master/admin: sees everything
+  // Admin master sees everything
   return true;
 }

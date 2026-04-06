@@ -63,7 +63,7 @@ export function BulkTransferDialog({
     return allUsers.filter(u =>
       u.id !== sourceUser.id &&
       u.active &&
-      (u.adminRole === "gerente_conta" || u.adminRole === "admin_mvp" || u.adminRole === "admin_master")
+      u.adminRole === "admin_master"
     );
   }, [sourceUser, allUsers]);
 

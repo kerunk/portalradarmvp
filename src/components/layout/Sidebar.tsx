@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   BarChart3,
   FileText,
-  TrendingUp,
   Building2,
   Settings,
   ChevronLeft,
@@ -15,96 +14,64 @@ import {
   Rocket,
   Target,
   BookOpen,
-  FolderOpen,
   ShieldCheck,
   Database,
   Layers,
-  UserCog,
-  BookMarked,
-  SlidersHorizontal,
   HelpCircle,
-  FileCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useReadOnly } from "@/contexts/ReadOnlyContext";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import logoMvp from "@/assets/logo-mvp.jpeg";
-import { getAdminRoleForUser, getPermissions, ADMIN_ROLE_LABELS, type AdminRole } from "@/lib/permissions";
+
+interface NavItem {
+  name: string;
+  href: string;
+  icon: React.ElementType;
+}
 
 interface NavSection {
   label: string;
-  items: { name: string; href: string; icon: React.ElementType }[];
+  items: NavItem[];
 }
 
-function getAdminSections(adminRole: AdminRole): NavSection[] {
-  const perms = getPermissions(adminRole);
-  const sections: NavSection[] = [];
+// Admin Master menu — simplified
+const adminSections: NavSection[] = [
+  {
+    label: "CONTROLE DA PLATAFORMA",
+    items: [
+      { name: "Dashboard", href: "/", icon: LayoutDashboard },
+      { name: "Empresas", href: "/empresas", icon: Building2 },
+    ],
+  },
+  {
+    label: "INTELIGÊNCIA",
+    items: [
+      { name: "Indicadores", href: "/indicadores", icon: BarChart3 },
+      { name: "Relatórios", href: "/relatorios", icon: FileText },
+    ],
+  },
+  {
+    label: "ADMINISTRAÇÃO",
+    items: [
+      { name: "Fatores de Sucesso", href: "/fatores-globais", icon: Layers },
+      { name: "Prateleira de Práticas", href: "/praticas", icon: BookOpen },
+      { name: "Configurações", href: "/configuracoes", icon: Settings },
+      { name: "Ajuda da Plataforma", href: "/admin-ajuda", icon: HelpCircle },
+    ],
+  },
+];
 
-  // Control section
-  const controlItems: NavSection["items"] = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  ];
-  if (perms.viewAllCompanies || perms.viewAssignedCompanies) {
-    controlItems.push({ name: "Empresas", href: "/empresas", icon: Building2 });
-  }
-  if (perms.manageAdminUsers) {
-    controlItems.push({ name: "Usuários", href: "/usuarios", icon: UserCog });
-  }
-  controlItems.push({ name: "Notificações", href: "/notificacoes", icon: FileCheck });
-  sections.push({ label: "CONTROLE DA PLATAFORMA", items: controlItems });
-
-  // Intelligence section
-  if (perms.viewIndicators || perms.viewReports) {
-    const intItems: NavSection["items"] = [];
-    if (perms.viewIndicators) intItems.push({ name: "Indicadores", href: "/indicadores", icon: BarChart3 });
-    if (perms.viewReports) intItems.push({ name: "Relatórios", href: "/relatorios", icon: FileText });
-    sections.push({ label: "INTELIGÊNCIA", items: intItems });
-  }
-
-  // System admin section (only for roles with edit permissions)
-  if (perms.editGlobalShelf || perms.editPlatformSettings) {
-    const sysItems: NavSection["items"] = [];
-    if (perms.editGlobalShelf) {
-      sysItems.push({ name: "Fatores de Sucesso", href: "/fatores-globais", icon: Layers });
-      sysItems.push({ name: "Prateleira de Práticas", href: "/praticas", icon: BookOpen });
-    }
-    if (perms.editGlobalManual) sysItems.push({ name: "Manual Global MVP", href: "/manual-editor", icon: BookMarked });
-    if (perms.editIndicatorSettings) sysItems.push({ name: "Config. Indicadores", href: "/config-indicadores", icon: SlidersHorizontal });
-    if (perms.editAdminHelp) sysItems.push({ name: "Ajuda da Plataforma", href: "/admin-ajuda", icon: HelpCircle });
-    if (perms.editPlatformSettings) sysItems.push({ name: "Configurações", href: "/configuracoes", icon: Settings });
-    if (sysItems.length > 0) {
-      sections.push({ label: "ADMINISTRAÇÃO DO SISTEMA", items: sysItems });
-    }
-  }
-
-  // Help / Manual — always visible for all admin roles
-  if (!perms.editAdminHelp) {
-    // If not already in system admin section, add standalone
-    sections.push({ label: "APOIO", items: [
-      { name: "Manual da Plataforma", href: "/admin-ajuda", icon: HelpCircle },
-    ]});
-  }
-
-  return sections;
-}
-
-// Navigation for Client Portal
-const clientNavigation = [
+// Client portal menu
+const clientNavigation: NavItem[] = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Estrutura da Empresa", href: "/estrutura", icon: Layers },
   { name: "Base Populacional", href: "/base-populacional", icon: Database },
   { name: "Governança do Núcleo", href: "/nucleo", icon: ShieldCheck },
   { name: "Ciclos MVP", href: "/ciclos", icon: Rocket },
   { name: "Turmas", href: "/turmas", icon: Users },
-  { name: "Ações & Alertas", href: "/indicadores", icon: Target },
+  { name: "Ações e Alertas", href: "/indicadores", icon: Target },
   { name: "Relatórios", href: "/relatorios", icon: FileText },
   { name: "Configurações", href: "/configuracoes", icon: Settings },
   { name: "Manual MVP", href: "/ajuda", icon: BookOpen },
@@ -118,18 +85,14 @@ interface SidebarProps {
 export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAdminMVP, switchRole, logout } = useAuth();
+  const { user, isAdminMVP, logout } = useAuth();
   const { isReadOnly, mirrorCompanyName } = useReadOnly();
   
   const [internalCollapsed, setInternalCollapsed] = React.useState(false);
   const collapsed = controlledCollapsed ?? internalCollapsed;
   const setCollapsed = onCollapsedChange ?? setInternalCollapsed;
 
-  // When in mirror mode, show client navigation regardless of role
   const showClientNav = !isAdminMVP || isReadOnly;
-  
-  const adminRole: AdminRole = isAdminMVP ? getAdminRoleForUser(user?.email || "") : "admin_master";
-  const adminSections = getAdminSections(adminRole);
 
   const handleLogout = () => {
     logout();
@@ -164,7 +127,7 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
         </button>
       </div>
 
-      {/* Role / Mirror indicator */}
+      {/* Role indicator */}
       {!collapsed && (
         <div className="px-3 py-2 border-b border-sidebar-border">
           {isReadOnly ? (
@@ -185,8 +148,8 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
                   : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
               )}
             >
-          {isAdminMVP ? (
-                <><ShieldCheck size={12} className="mr-1" /> {ADMIN_ROLE_LABELS[adminRole]}</>
+              {isAdminMVP ? (
+                <><ShieldCheck size={12} className="mr-1" /> Administrador Master</>
               ) : (
                 <><Building2 size={12} className="mr-1" /> {user?.companyName || "Portal Cliente"}</>
               )}
@@ -242,8 +205,6 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
 
       {/* Footer */}
       <div className="px-3 py-4 border-t border-sidebar-border space-y-2">
-        {/* Role switching disabled in v2 — users must log in with their own credentials */}
-        
         <div className="flex items-center gap-3 px-3 py-2.5">
           <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center flex-shrink-0">
             <User size={16} className="text-sidebar-accent-foreground" />
@@ -251,7 +212,7 @@ export function Sidebar({ collapsed: controlledCollapsed, onCollapsedChange }: S
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-sidebar-foreground truncate">{user?.name || "Usuário"}</p>
-              <p className="text-xs text-sidebar-foreground/60 truncate">{user?.email || "user@mvp.com"}</p>
+              <p className="text-xs text-sidebar-foreground/60 truncate">{user?.email || ""}</p>
             </div>
           )}
           {!collapsed && (

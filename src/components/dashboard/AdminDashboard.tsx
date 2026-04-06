@@ -88,7 +88,7 @@ function getCompanyAlerts(data: CompanyRiskData, health: HealthStatus): CompanyA
       navigateTo: `/empresas/${company.id}?tab=turmas`,
     });
   }
-  if (data.maturityScore < 20 && data.company.onboardingStatus === "completed") {
+  if (data.maturityScore < 20) {
     alerts.push({
       company,
       health,
@@ -97,7 +97,7 @@ function getCompanyAlerts(data: CompanyRiskData, health: HealthStatus): CompanyA
       navigateTo: `/empresas/${company.id}?tab=indicadores`,
     });
   }
-  if (data.cyclesInProgress === 0 && data.closedCycles === 0 && data.company.onboardingStatus === "completed") {
+  if (data.cyclesInProgress === 0 && data.closedCycles === 0) {
     alerts.push({
       company,
       health,
@@ -157,23 +157,15 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
 
   const companies = useMemo(() => {
     const all = supabaseCompanies.filter(c => c.active !== false && !c.deleted);
-    if (adminRole === "gerente_conta" && user?.email) {
-      return all.filter(c => c.ownerEmail?.toLowerCase() === user.email.toLowerCase());
-    }
     console.log("[AdminDashboard] empresas ativas filtradas:", all.length);
     return all;
-  }, [supabaseCompanies, adminRole, user?.email]);
+  }, [supabaseCompanies]);
 
   const inactiveCompaniesCount = useMemo(() => {
-    const all = supabaseCompanies.filter(c => c.active === false && !c.deleted);
-    if (adminRole === "gerente_conta" && user?.email) {
-      return all.filter(c => c.ownerEmail?.toLowerCase() === user.email.toLowerCase()).length;
-    }
-    return all.length;
-  }, [supabaseCompanies, adminRole, user?.email]);
+    return supabaseCompanies.filter(c => c.active === false && !c.deleted).length;
+  }, [supabaseCompanies]);
 
-  const companiesCompleted = companies.filter(c => c.onboardingStatus === "completed").length;
-  const companiesPending = companies.filter(c => c.onboardingStatus !== "completed").length;
+  const companiesTotal = companies.length;
 
   const companyData = useMemo(() => {
     return companies.map(c => {
@@ -287,7 +279,7 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
               Painel Estratégico da Carteira MVP
             </p>
             <p className="text-sm font-medium text-foreground">
-              {companies.length} empresas na carteira — {companiesCompleted} ativas, {companiesPending} em onboarding
+              {companies.length} empresas na carteira
             </p>
           </div>
         </div>
@@ -296,11 +288,11 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
       {/* BLOCO 1 — KPIs da Carteira */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <MetricCard
-          title="Empresas Ativas"
-          value={companiesCompleted}
+          title="Empresas"
+          value={companiesTotal}
           icon={Building2}
-          subtitle={`${companiesPending} em onboarding`}
-          tooltip="Empresas com onboarding concluído"
+          subtitle="na carteira"
+          tooltip="Total de empresas cadastradas"
           variant="default"
           onClick={() => navigate("/empresas")}
         />
