@@ -39,34 +39,6 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
     return () => { setActiveCompany(null); };
   }, [companyId]);
 
-  // Load company from Supabase for onboarding gate
-  const [companyFromDB, setCompanyFromDB] = useState<CompanyOnboardingRow | null>(null);
-  const [loadingCompany, setLoadingCompany] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingCompany(true);
-    fetchCompanyOnboarding(companyId)
-      .then(company => {
-        if (!cancelled) {
-          console.log("[Portal] onboarding_status recebido do banco:", company?.onboarding_status ?? "not_found");
-          const destination = isOnboardingCompleted(company?.onboarding_status) ? "/dashboard" : "/onboarding";
-          console.log("[Portal] redirect decidido para:", destination);
-          setCompanyFromDB(company);
-          setLoadingCompany(false);
-        }
-      })
-      .catch(error => {
-        if (!cancelled) {
-          console.error("[Portal] error loading onboarding status:", error);
-          setCompanyFromDB(null);
-          setLoadingCompany(false);
-        }
-      });
-    return () => { cancelled = true; };
-  }, [companyId, refreshKey]);
-
-  const onboardingCompleted = isOnboardingCompleted(companyFromDB?.onboarding_status);
 
   // All hooks must be called unconditionally (React rules), but guard reads with company scope
   const popStats = useMemo(() => { setActiveCompany(companyId); return getPopulationStats(companyId); }, [companyId, refreshKey]);
