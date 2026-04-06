@@ -15,7 +15,7 @@ import { FirstStepsGuide } from "./FirstStepsGuide";
 import { ImplementationChecklist } from "./ImplementationChecklist";
 import { ImplementationJourney } from "./ImplementationJourney";
 import { ClientSuggestions } from "./ClientSuggestions";
-import { OnboardingGate } from "./OnboardingGate";
+
 import { Card } from "@/components/ui/card";
 import { Users, Target, CheckCircle, TrendingUp, GraduationCap, Shield, UserCheck, AlertTriangle, CheckCircle2, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
