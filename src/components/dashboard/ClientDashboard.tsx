@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { MetricCard } from "./MetricCard";
 import { ProgressCard } from "./ProgressCard";
 import { SmartAlerts } from "./SmartAlerts";
@@ -19,10 +19,8 @@ import { ClientSuggestions } from "./ClientSuggestions";
 import { Card } from "@/components/ui/card";
 import { Users, Target, CheckCircle, TrendingUp, GraduationCap, Shield, UserCheck, AlertTriangle, CheckCircle2, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getPopulationStats, getPopulation } from "@/lib/companyStorage";
-import { obterIndicadoresGlobais, obterIndicadoresTodosCiclos } from "@/lib/governance";
-import { getState, setActiveCompany } from "@/lib/storage";
-import { generateInsights, calculateCultureScore } from "@/lib/reportData";
+import { fetchCompanyOperationalData, calculateCycleProgress } from "@/lib/supabaseDataService";
+import { CYCLE_IDS } from "@/lib/constants";
 
 interface ClientDashboardProps {
   companyId: string;
@@ -32,91 +30,98 @@ interface ClientDashboardProps {
 }
 
 export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDismissed }: ClientDashboardProps) {
-  // Set active company synchronously before any data reads
-  setActiveCompany(companyId);
+  const [loading, setLoading] = useState(true);
+  const [opData, setOpData] = useState<Awaited<ReturnType<typeof fetchCompanyOperationalData>> | null>(null);
+
   useEffect(() => {
-    setActiveCompany(companyId);
-    return () => { setActiveCompany(null); };
-  }, [companyId]);
-
-
-  // All hooks must be called unconditionally (React rules), but guard reads with company scope
-  const popStats = useMemo(() => { setActiveCompany(companyId); return getPopulationStats(companyId); }, [companyId, refreshKey]);
-  const globalIndicators = useMemo(() => { setActiveCompany(companyId); return obterIndicadoresGlobais(); }, [companyId, refreshKey]);
-  const cycleIndicators = useMemo(() => { setActiveCompany(companyId); return obterIndicadoresTodosCiclos(); }, [companyId, refreshKey]);
-
-  const trainingStats = useMemo(() => {
-    setActiveCompany(companyId);
-    const state = getState();
-    const turmas = state.turmas;
-    const turmasRealizadas = turmas.filter(t => t.status === "completed").length;
-    const trainedIds = new Set<string>();
-    turmas.forEach(t => {
-      if (t.attendance) {
-        Object.entries(t.attendance).forEach(([id, status]) => {
-          if (status === "present") trainedIds.add(id);
-        });
+    let cancelled = false;
+    setLoading(true);
+    fetchCompanyOperationalData(companyId).then(data => {
+      if (!cancelled) {
+        setOpData(data);
+        setLoading(false);
+        console.log("[DataSource] ClientDashboard loaded from Supabase for company:", companyId);
       }
     });
-    const totalPresences = turmas.reduce((sum, t) => {
-      if (!t.attendance) return sum;
-      return sum + Object.values(t.attendance).filter(s => s === "present").length;
-    }, 0);
-    return { turmasTotal: turmas.length, turmasRealizadas, pessoasTreinadas: trainedIds.size, totalPresences };
+    return () => { cancelled = true; };
   }, [companyId, refreshKey]);
 
-  const activePopulation = popStats.total;
-  const coveragePercent = activePopulation > 0 ? Math.round((trainingStats.pessoasTreinadas / activePopulation) * 100) : 0;
+  if (loading || !opData) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <p className="text-muted-foreground">Carregando dashboard...</p>
+      </div>
+    );
+  }
 
-  // Culture Score
-  const cultureScore = useMemo(() => calculateCultureScore(companyId), [companyId, refreshKey]);
+  const activePopulation = opData.populationTotal;
+  const coveragePercent = opData.coveragePercent;
+  const maturityScore = opData.maturityScore;
+
+  // Culture score (simplified — derive from operational data)
+  const cultureScore = {
+    score: Math.round(
+      (coveragePercent * 0.3) +
+      (opData.overallCompletionPercent * 0.3) +
+      (maturityScore * 0.4)
+    ),
+  };
 
   // Phase progress for timeline
   const timelinePhases = useMemo(() => {
     const buildPhase = (id: string, name: string, cycleIds: string[]) => {
-      const cycles = cycleIndicators.filter(c => cycleIds.includes(c.cycleId));
-      const allClosed = cycles.every(c => c.status === "closed");
-      const anyActive = cycles.some(c => c.status === "in_progress" || c.status === "ready_to_close");
-      const avgProgress = cycles.reduce((s, c) => s + c.completionPercent, 0) / (cycles.length || 1);
-      return { id, name, cycles: cycleIds, status: allClosed ? "completed" as const : anyActive ? "in-progress" as const : "pending" as const, progress: Math.round(avgProgress) };
+      const cycleStates = opData.cycleStates.filter(c => cycleIds.includes(c.cycle_id));
+      const allClosed = cycleStates.length === cycleIds.length && cycleStates.every(c => c.closure_status === "closed");
+      const anyActive = cycleStates.some(c => c.closure_status === "in_progress" || c.closure_status === "ready_to_close");
+      
+      // Calculate progress per cycle using 70/30 rule
+      const cycleProgresses = cycleIds.map(cid => {
+        const actions = opData.cycleActions.filter(a => a.cycle_id === cid && a.enabled);
+        const completed = actions.filter(a => a.status === "completed").length;
+        return calculateCycleProgress(activePopulation, opData.pessoasTreinadas, actions.length, completed);
+      });
+      const avgProgress = cycleProgresses.reduce((s, p) => s + p, 0) / (cycleProgresses.length || 1);
+
+      return {
+        id, name, cycles: cycleIds,
+        status: allClosed ? "completed" as const : anyActive ? "in-progress" as const : "pending" as const,
+        progress: Math.round(avgProgress),
+      };
     };
     return [
       buildPhase("M", "Monitorar", ["M1", "M2", "M3"]),
       buildPhase("V", "Validar", ["V1", "V2", "V3"]),
       buildPhase("P", "Perpetuar", ["P1", "P2", "P3"]),
     ];
-  }, [cycleIndicators]);
-
-  // Maturity score
-  const maturityScore = useMemo(() => {
-    const popScore = activePopulation > 0 ? 15 : 0;
-    const nucleoScore = popStats.nucleoCount > 0 ? 10 : 0;
-    const facScore = popStats.facilitators > 0 ? 5 : 0;
-    const cycleScore = Math.min(30, (globalIndicators.closedCycles / globalIndicators.totalCycles) * 30);
-    const actionScore = Math.min(25, (globalIndicators.overallCompletionPercent / 100) * 25);
-    const coverageScore = Math.min(15, (coveragePercent / 100) * 15);
-    return Math.round(popScore + nucleoScore + facScore + cycleScore + actionScore + coverageScore);
-  }, [activePopulation, popStats, globalIndicators, coveragePercent]);
+  }, [opData, activePopulation]);
 
   const progressData = {
-    total: globalIndicators.totalActions || 1,
-    completed: globalIndicators.completedActions,
-    inProgress: globalIndicators.inProgressActions,
-    delayed: globalIndicators.delayedActions,
-    pending: globalIndicators.pendingActions,
+    total: opData.enabledActions || 1,
+    completed: opData.completedActions,
+    inProgress: opData.inProgressActions,
+    delayed: opData.delayedActions,
+    pending: opData.pendingActions,
   };
 
+  // Decision conversion rate
+  const decisions = opData.records.filter(r => r.type === "decision");
+  const decisionsWithActions = decisions.filter(r => r.creates_actions && (r.linked_action_ids?.length || 0) > 0).length;
+  const decisionConversionRate = decisions.length > 0
+    ? Math.round((decisionsWithActions / decisions.length) * 100)
+    : 0;
+
+  const cyclesReadyToClose = opData.cycleStates.filter(c => c.closure_status === "ready_to_close").length;
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* First Steps Guide */}
       <FirstStepsGuide completedSteps={
         [
-          ...(popStats.sectors > 0 || popStats.units > 0 ? [1] : []),
+          ...(opData.sectorsCount > 0 || opData.unitsCount > 0 ? [1] : []),
           ...(activePopulation > 0 ? [2] : []),
-          ...(popStats.nucleoCount > 0 ? [3] : []),
-          ...(trainingStats.turmasTotal > 0 ? [4] : []),
-          ...(globalIndicators.completedActions > 0 ? [5] : []),
+          ...(opData.nucleoCount > 0 ? [3] : []),
+          ...(opData.turmasTotal > 0 ? [4] : []),
+          ...(opData.completedActions > 0 ? [5] : []),
         ]
       } />
 
@@ -124,30 +129,30 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
       <ExecutiveSummary
         companyName={companyName}
         populationTotal={activePopulation}
-        nucleoCount={popStats.nucleoCount}
-        facilitatorsCount={popStats.facilitators}
-        turmasRealizadas={trainingStats.turmasRealizadas}
-        closedCycles={globalIndicators.closedCycles}
-        totalCycles={globalIndicators.totalCycles}
-        completionPercent={globalIndicators.overallCompletionPercent}
-        delayedActions={globalIndicators.delayedActions}
+        nucleoCount={opData.nucleoCount}
+        facilitatorsCount={opData.facilitatorsCount}
+        turmasRealizadas={opData.turmasRealizadas}
+        closedCycles={opData.closedCycles}
+        totalCycles={opData.totalCycles}
+        completionPercent={opData.overallCompletionPercent}
+        delayedActions={opData.delayedActions}
         coveragePercent={coveragePercent}
       />
 
       {/* Row 1: People & Structure */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard title="Base Populacional" value={activePopulation} icon={Users} subtitle={`${popStats.sectors} setores · ${popStats.units} unidades`} variant="default" tooltip="Total de colaboradores ativos cadastrados na base populacional da empresa." />
-        <MetricCard title="Núcleo de Sustentação" value={popStats.nucleoCount} icon={Shield} subtitle={`${popStats.leaders} lideranças`} variant="default" tooltip="Membros do núcleo que conduzem e sustentam o programa na organização." />
-        <MetricCard title="Facilitadores" value={popStats.facilitators} icon={UserCheck} subtitle="habilitados" variant={popStats.facilitators > 0 ? "success" : "default"} tooltip="Facilitadores habilitados para aplicar turmas e práticas do programa MVP." />
-        <MetricCard title="Turmas Realizadas" value={`${trainingStats.turmasRealizadas}/${trainingStats.turmasTotal}`} icon={GraduationCap} subtitle={`${trainingStats.pessoasTreinadas} pessoas treinadas`} variant="default" tooltip="Turmas de treinamento concluídas em relação ao total planejado." />
+        <MetricCard title="Base Populacional" value={activePopulation} icon={Users} subtitle={`${opData.sectorsCount} setores · ${opData.unitsCount} unidades`} variant="default" tooltip="Total de colaboradores ativos cadastrados na base populacional da empresa." />
+        <MetricCard title="Núcleo de Sustentação" value={opData.nucleoCount} icon={Shield} subtitle={`${opData.leadersCount} lideranças`} variant="default" tooltip="Membros do núcleo que conduzem e sustentam o programa na organização." />
+        <MetricCard title="Facilitadores" value={opData.facilitatorsCount} icon={UserCheck} subtitle="habilitados" variant={opData.facilitatorsCount > 0 ? "success" : "default"} tooltip="Facilitadores habilitados para aplicar turmas e práticas do programa MVP." />
+        <MetricCard title="Turmas Realizadas" value={`${opData.turmasRealizadas}/${opData.turmasTotal}`} icon={GraduationCap} subtitle={`${opData.pessoasTreinadas} pessoas treinadas`} variant="default" tooltip="Turmas de treinamento concluídas em relação ao total planejado." />
       </div>
 
       {/* Row 2: Execution */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard title="Ciclos Encerrados" value={`${globalIndicators.closedCycles}/${globalIndicators.totalCycles}`} icon={Target} subtitle={`${globalIndicators.cyclesReadyToClose} prontos para encerrar`} variant={globalIndicators.closedCycles > 0 ? "success" : "default"} tooltip="Ciclos MVP finalizados. Cada ciclo encerrado indica progresso na implementação." />
-        <MetricCard title="Ações Concluídas" value={`${globalIndicators.completedActions}/${globalIndicators.totalActions}`} icon={CheckCircle} subtitle={`${globalIndicators.overallCompletionPercent}% do plano`} variant="success" tooltip="Ações práticas executadas em relação ao total planejado no programa." />
-        <MetricCard title="Ações Atrasadas" value={globalIndicators.delayedActions} icon={AlertTriangle} subtitle={`${globalIndicators.actionBacklog} no backlog`} variant={globalIndicators.delayedActions > 0 ? "danger" : "default"} tooltip="Ações com prazo vencido que precisam de atenção imediata." />
-        <MetricCard title="Taxa Decisão→Ação" value={`${globalIndicators.decisionConversionRate}%`} icon={TrendingUp} subtitle={`${globalIndicators.decisionsWithActions} decisões convertidas`} variant={globalIndicators.decisionConversionRate >= 50 ? "success" : "warning"} tooltip="Percentual de decisões tomadas nos ciclos que foram convertidas em ações concretas. Acima de 50% é considerado saudável." />
+        <MetricCard title="Ciclos Encerrados" value={`${opData.closedCycles}/${opData.totalCycles}`} icon={Target} subtitle={`${cyclesReadyToClose} prontos para encerrar`} variant={opData.closedCycles > 0 ? "success" : "default"} tooltip="Ciclos MVP finalizados." />
+        <MetricCard title="Ações Concluídas" value={`${opData.completedActions}/${opData.enabledActions}`} icon={CheckCircle} subtitle={`${opData.overallCompletionPercent}% do plano`} variant="success" tooltip="Ações práticas executadas em relação ao total planejado." />
+        <MetricCard title="Ações Atrasadas" value={opData.delayedActions} icon={AlertTriangle} subtitle={`${opData.pendingActions + opData.inProgressActions + opData.delayedActions} no backlog`} variant={opData.delayedActions > 0 ? "danger" : "default"} tooltip="Ações com prazo vencido." />
+        <MetricCard title="Taxa Decisão→Ação" value={`${decisionConversionRate}%`} icon={TrendingUp} subtitle={`${decisionsWithActions} decisões convertidas`} variant={decisionConversionRate >= 50 ? "success" : "warning"} tooltip="Percentual de decisões convertidas em ações concretas." />
       </div>
 
       {/* Row 3: Culture Score + Coverage + Maturity + Alerts */}
@@ -155,7 +160,7 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
         <CultureScoreGauge score={cultureScore.score} />
         <CoverageDonut
           title="Cobertura do Programa"
-          value={trainingStats.pessoasTreinadas}
+          value={opData.pessoasTreinadas}
           total={activePopulation}
           label="colaboradores treinados da base ativa"
           color={coveragePercent >= 70 ? "success" : coveragePercent >= 40 ? "warning" : "primary"}
@@ -179,13 +184,13 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
         />
         <SmartRecommendations
           coveragePercent={coveragePercent}
-          completionPercent={globalIndicators.overallCompletionPercent}
-          delayedActions={globalIndicators.delayedActions}
-          facilitators={popStats.facilitators}
-          nucleoCount={popStats.nucleoCount}
-          turmasRealizadas={trainingStats.turmasRealizadas}
-          closedCycles={globalIndicators.closedCycles}
-          totalCycles={globalIndicators.totalCycles}
+          completionPercent={opData.overallCompletionPercent}
+          delayedActions={opData.delayedActions}
+          facilitators={opData.facilitatorsCount}
+          nucleoCount={opData.nucleoCount}
+          turmasRealizadas={opData.turmasRealizadas}
+          closedCycles={opData.closedCycles}
+          totalCycles={opData.totalCycles}
         />
       </div>
 
@@ -202,7 +207,7 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ProgramEvolutionChart
           coveragePercent={coveragePercent}
-          completionPercent={globalIndicators.overallCompletionPercent}
+          completionPercent={opData.overallCompletionPercent}
           maturityScore={maturityScore}
         />
         <CulturalMaturityRadar companyId={companyId} refreshKey={refreshKey} />
@@ -217,13 +222,13 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
       {/* Row 9: Program Insights */}
       <InsightsPanel
         coveragePercent={coveragePercent}
-        completionPercent={globalIndicators.overallCompletionPercent}
-        delayedActions={globalIndicators.delayedActions}
-        closedCycles={globalIndicators.closedCycles}
-        turmasRealizadas={trainingStats.turmasRealizadas}
-        nucleoCount={popStats.nucleoCount}
-        facilitators={popStats.facilitators}
-        totalActions={globalIndicators.totalActions}
+        completionPercent={opData.overallCompletionPercent}
+        delayedActions={opData.delayedActions}
+        closedCycles={opData.closedCycles}
+        turmasRealizadas={opData.turmasRealizadas}
+        nucleoCount={opData.nucleoCount}
+        facilitators={opData.facilitatorsCount}
+        totalActions={opData.enabledActions}
       />
     </div>
   );
@@ -239,7 +244,17 @@ function InsightsPanel(props: {
   facilitators: number;
   totalActions: number;
 }) {
-  const insights = useMemo(() => generateInsights(props), [props]);
+  const insights = useMemo(() => {
+    const result: Array<{ type: "positive" | "warning" | "reinforcement"; message: string }> = [];
+    if (props.coveragePercent >= 70) result.push({ type: "positive", message: `Cobertura de treinamento em ${props.coveragePercent}% — excelente abrangência.` });
+    else if (props.coveragePercent < 20 && props.totalActions > 0) result.push({ type: "warning", message: `Cobertura de treinamento em apenas ${props.coveragePercent}%. Considere ampliar turmas.` });
+    if (props.delayedActions > 0) result.push({ type: "warning", message: `${props.delayedActions} ações atrasadas precisam de atenção imediata.` });
+    if (props.closedCycles >= 3) result.push({ type: "positive", message: `${props.closedCycles} ciclos concluídos — fase de consolidação atingida.` });
+    if (props.nucleoCount === 0 && props.totalActions > 0) result.push({ type: "reinforcement", message: "Defina membros do Núcleo de Sustentação para garantir continuidade." });
+    if (props.facilitators === 0 && props.totalActions > 0) result.push({ type: "reinforcement", message: "Habilite facilitadores para conduzir treinamentos." });
+    if (props.completionPercent >= 80) result.push({ type: "positive", message: `${props.completionPercent}% das ações concluídas — programa em alta performance.` });
+    return result;
+  }, [props]);
 
   if (insights.length === 0) return null;
 
