@@ -94,8 +94,7 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
     ),
   };
 
-
-
+  const progressData = {
     total: opData.enabledActions || 1,
     completed: opData.completedActions,
     inProgress: opData.inProgressActions,
