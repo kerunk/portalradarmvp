@@ -3,12 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { MetricCard } from "./MetricCard";
 import { MaturityGaugePremium } from "./MaturityGaugePremium";
 import { ImplementationPipeline } from "./ImplementationPipeline";
-import { EvolutionRanking } from "./EvolutionRanking";
-import { ManagerRanking } from "./ManagerRanking";
-import { LoadDistribution } from "./LoadDistribution";
-import { StalledCompanies } from "./StalledCompanies";
-import { StrategicOverview } from "./StrategicOverview";
-import { CompaniesNeedingAction } from "./CompaniesNeedingAction";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,14 +11,13 @@ import {
   ShieldAlert, ShieldCheck, AlertCircle, ArrowRight,
   Layers, Clock, PowerOff,
 } from "lucide-react";
-import { setActiveCompany, getState } from "@/lib/storage";
-import { getCompanyRiskData, type CompanyRiskData } from "@/lib/adminNotifications";
 import type { CompanyState } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAdminRoleForUser } from "@/lib/permissions";
 import { CYCLE_IDS } from "@/lib/constants";
 import { fetchCompanies } from "@/lib/companyService";
+import { fetchCompanyOperationalData } from "@/lib/supabaseDataService";
 import {
   ResponsiveContainer, PieChart, Pie, Cell,
   Tooltip as ReTooltip,
@@ -37,11 +30,24 @@ interface AdminDashboardProps {
 
 type HealthStatus = "healthy" | "warning" | "risk";
 
-function classifyHealth(data: CompanyRiskData): HealthStatus {
-  const coverage = data.totalEmployees > 0
-    ? (data.trainedCount / data.totalEmployees) * 100 : 0;
-  if (data.delayedActions >= 3 || coverage < 5) return "risk";
-  if (data.delayedActions >= 1 || coverage < 15 || data.maturityScore < 20) return "warning";
+interface CompanyMetrics {
+  company: CompanyState;
+  totalEmployees: number;
+  trainedCount: number;
+  totalTurmas: number;
+  completedActions: number;
+  delayedActions: number;
+  totalActions: number;
+  closedCycles: number;
+  cyclesInProgress: number;
+  maturityScore: number;
+  coveragePercent: number;
+  currentCycle: string;
+}
+
+function classifyHealth(m: CompanyMetrics): HealthStatus {
+  if (m.delayedActions >= 3 || m.coveragePercent < 5) return "risk";
+  if (m.delayedActions >= 1 || m.coveragePercent < 15 || m.maturityScore < 20) return "warning";
   return "healthy";
 }
 
@@ -64,101 +70,105 @@ interface CompanyAlert {
   navigateTo: string;
 }
 
-function getCompanyAlerts(data: CompanyRiskData, health: HealthStatus): CompanyAlert[] {
+function getCompanyAlerts(m: CompanyMetrics, health: HealthStatus): CompanyAlert[] {
   const alerts: CompanyAlert[] = [];
-  const company = data.company;
-  const coverage = data.totalEmployees > 0
-    ? Math.round((data.trainedCount / data.totalEmployees) * 100) : 0;
+  const company = m.company;
 
-  if (data.delayedActions > 0) {
-    alerts.push({
-      company,
-      health,
-      alertType: "delayed",
-      message: `${data.delayedActions} ${data.delayedActions === 1 ? "ação atrasada" : "ações atrasadas"}`,
-      navigateTo: `/empresas/${company.id}?tab=registros`,
-    });
+  if (m.delayedActions > 0) {
+    alerts.push({ company, health, alertType: "delayed", message: `${m.delayedActions} ${m.delayedActions === 1 ? "ação atrasada" : "ações atrasadas"}`, navigateTo: `/empresas/${company.id}?tab=registros` });
   }
-  if (coverage < 15 && data.totalEmployees > 0) {
-    alerts.push({
-      company,
-      health,
-      alertType: "low-coverage",
-      message: `Cobertura de treinamento em ${coverage}%`,
-      navigateTo: `/empresas/${company.id}?tab=turmas`,
-    });
+  if (m.coveragePercent < 15 && m.totalEmployees > 0) {
+    alerts.push({ company, health, alertType: "low-coverage", message: `Cobertura de treinamento em ${m.coveragePercent}%`, navigateTo: `/empresas/${company.id}?tab=turmas` });
   }
-  if (data.maturityScore < 20) {
-    alerts.push({
-      company,
-      health,
-      alertType: "low-maturity",
-      message: `Maturidade em ${data.maturityScore}%`,
-      navigateTo: `/empresas/${company.id}?tab=indicadores`,
-    });
+  if (m.maturityScore < 20) {
+    alerts.push({ company, health, alertType: "low-maturity", message: `Maturidade em ${m.maturityScore}%`, navigateTo: `/empresas/${company.id}?tab=indicadores` });
   }
-  if (data.cyclesInProgress === 0 && data.closedCycles === 0) {
-    alerts.push({
-      company,
-      health,
-      alertType: "stalled-cycle",
-      message: "Nenhum ciclo iniciado",
-      navigateTo: `/empresas/${company.id}?tab=ciclos`,
-    });
+  if (m.cyclesInProgress === 0 && m.closedCycles === 0) {
+    alerts.push({ company, health, alertType: "stalled-cycle", message: "Nenhum ciclo iniciado", navigateTo: `/empresas/${company.id}?tab=ciclos` });
   }
   return alerts;
 }
-
-function getCurrentCycle(data: CompanyRiskData): string {
-  const company = data.company;
-  setActiveCompany(company.id);
-  const state = getState();
-  let currentCycle = "—";
-  for (let i = CYCLE_IDS.length - 1; i >= 0; i--) {
-    const cid = CYCLE_IDS[i];
-    const cs = state.cycles[cid];
-    if (cs && (cs.closureStatus === "closed" || cs.factors.some(f => f.actions.some(a => a.enabled)))) {
-      currentCycle = cid;
-      break;
-    }
-  }
-  setActiveCompany(null);
-  return currentCycle;
-}
-
-const alertTypeConfig: Record<AlertType, { label: string; icon: typeof AlertTriangle; color: string }> = {
-  delayed: { label: "Ações Atrasadas", icon: Clock, color: "text-destructive" },
-  "low-coverage": { label: "Cobertura de Treinamento Baixa", icon: GraduationCap, color: "text-amber-500" },
-  "low-maturity": { label: "Maturidade Baixa", icon: TrendingUp, color: "text-amber-500" },
-  "stalled-cycle": { label: "Ciclos Parados", icon: Rocket, color: "text-muted-foreground" },
-};
 
 export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
 
-  // ======= SUPABASE AS SOURCE OF TRUTH =======
   const [supabaseCompanies, setSupabaseCompanies] = useState<CompanyState[]>([]);
+  const [companyMetrics, setCompanyMetrics] = useState<CompanyMetrics[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetchCompanies().then(companies => {
+    
+    fetchCompanies().then(async (companies) => {
+      if (cancelled) return;
+      console.log("[AdminDashboard] empresas carregadas do Supabase:", companies.length);
+      setSupabaseCompanies(companies);
+
+      const activeCompanies = companies.filter(c => c.active !== false && !c.deleted);
+      
+      // Fetch operational data for each company from Supabase
+      const metrics: CompanyMetrics[] = [];
+      for (const company of activeCompanies) {
+        try {
+          const opData = await fetchCompanyOperationalData(company.id);
+          
+          // Determine current cycle
+          let currentCycle = "—";
+          for (let i = CYCLE_IDS.length - 1; i >= 0; i--) {
+            const cid = CYCLE_IDS[i];
+            const cs = opData.cycleStates.find(s => s.cycle_id === cid);
+            if (cs && (cs.closure_status === "closed" || cs.closure_status !== "not_started")) {
+              currentCycle = cid;
+              break;
+            }
+            // Check if there are actions for this cycle
+            const hasActions = opData.cycleActions.some(a => a.cycle_id === cid && a.enabled);
+            if (hasActions) {
+              currentCycle = cid;
+              break;
+            }
+          }
+
+          metrics.push({
+            company,
+            totalEmployees: opData.populationTotal,
+            trainedCount: opData.pessoasTreinadas,
+            totalTurmas: opData.turmasTotal,
+            completedActions: opData.completedActions,
+            delayedActions: opData.delayedActions,
+            totalActions: opData.enabledActions,
+            closedCycles: opData.closedCycles,
+            cyclesInProgress: opData.cyclesInProgress,
+            maturityScore: opData.maturityScore,
+            coveragePercent: opData.coveragePercent,
+            currentCycle,
+          });
+        } catch (err) {
+          console.error(`Error fetching data for company ${company.id}:`, err);
+          metrics.push({
+            company,
+            totalEmployees: 0, trainedCount: 0, totalTurmas: 0,
+            completedActions: 0, delayedActions: 0, totalActions: 0,
+            closedCycles: 0, cyclesInProgress: 0,
+            maturityScore: 0, coveragePercent: 0, currentCycle: "—",
+          });
+        }
+      }
+
       if (!cancelled) {
-        console.log("[AdminDashboard] empresas carregadas do Supabase:", companies.length);
-        setSupabaseCompanies(companies);
+        setCompanyMetrics(metrics);
         setLoading(false);
       }
     });
+
     return () => { cancelled = true; };
   }, [refreshKey]);
 
   const companies = useMemo(() => {
-    const all = supabaseCompanies.filter(c => c.active !== false && !c.deleted);
-    console.log("[AdminDashboard] empresas ativas filtradas:", all.length);
-    return all;
+    return supabaseCompanies.filter(c => c.active !== false && !c.deleted);
   }, [supabaseCompanies]);
 
   const inactiveCompaniesCount = useMemo(() => {
@@ -168,38 +178,34 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
   const companiesTotal = companies.length;
 
   const companyData = useMemo(() => {
-    return companies.map(c => {
-      const data = getCompanyRiskData(c);
-      return {
-        company: c,
-        data,
-        health: classifyHealth(data),
-        currentCycle: getCurrentCycle(data),
-      };
-    });
-  }, [companies]);
+    return companyMetrics.map(m => ({
+      company: m.company,
+      metrics: m,
+      health: classifyHealth(m),
+      currentCycle: m.currentCycle,
+    }));
+  }, [companyMetrics]);
 
   // Aggregated totals
-  const totalEmployeesAll = companyData.reduce((s, c) => s + c.data.totalEmployees, 0);
-  const totalTrained = companyData.reduce((s, c) => s + c.data.trainedCount, 0);
-  const totalTurmasAll = companyData.reduce((s, c) => s + c.data.totalTurmas, 0);
-  const totalActionsCompleted = companyData.reduce((s, c) => s + c.data.completedActions, 0);
-  const totalActionsDelayed = companyData.reduce((s, c) => s + c.data.delayedActions, 0);
-  const avgMaturity = companyData.length > 0
-    ? Math.round(companyData.reduce((s, c) => s + c.data.maturityScore, 0) / companyData.length)
+  const totalEmployeesAll = companyMetrics.reduce((s, m) => s + m.totalEmployees, 0);
+  const totalTrained = companyMetrics.reduce((s, m) => s + m.trainedCount, 0);
+  const totalTurmasAll = companyMetrics.reduce((s, m) => s + m.totalTurmas, 0);
+  const totalActionsCompleted = companyMetrics.reduce((s, m) => s + m.completedActions, 0);
+  const totalActionsDelayed = companyMetrics.reduce((s, m) => s + m.delayedActions, 0);
+  const avgMaturity = companyMetrics.length > 0
+    ? Math.round(companyMetrics.reduce((s, m) => s + m.maturityScore, 0) / companyMetrics.length)
     : 0;
 
   // Health counts
   const healthCounts = { healthy: 0, warning: 0, risk: 0 };
   companyData.forEach(c => healthCounts[c.health]++);
 
-  // Coverage data
+  // Coverage
   const avgCoverage = useMemo(() => {
-    const withEmployees = companyData.filter(c => c.data.totalEmployees > 0);
+    const withEmployees = companyMetrics.filter(m => m.totalEmployees > 0);
     if (withEmployees.length === 0) return 0;
-    return Math.round(withEmployees.reduce((s, c) =>
-      s + (c.data.trainedCount / c.data.totalEmployees) * 100, 0) / withEmployees.length);
-  }, [companyData]);
+    return Math.round(withEmployees.reduce((s, m) => s + m.coveragePercent, 0) / withEmployees.length);
+  }, [companyMetrics]);
 
   // Maturity distribution
   const maturityDistribution = useMemo(() => {
@@ -209,19 +215,19 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
       { name: "Evoluindo", min: 51, max: 75, count: 0, fill: "hsl(var(--primary))" },
       { name: "Consolidando", min: 76, max: 100, count: 0, fill: "hsl(142, 71%, 45%)" },
     ];
-    companyData.forEach(c => {
-      const s = c.data.maturityScore;
+    companyMetrics.forEach(m => {
+      const s = m.maturityScore;
       const l = levels.find(l => s >= l.min && s <= l.max);
       if (l) l.count++;
     });
     return levels;
-  }, [companyData]);
+  }, [companyMetrics]);
 
-  // Strategic alerts grouped by type
+  // Grouped alerts
   const groupedAlerts = useMemo(() => {
     const allAlerts: CompanyAlert[] = [];
     companyData.forEach(cd => {
-      allAlerts.push(...getCompanyAlerts(cd.data, cd.health));
+      allAlerts.push(...getCompanyAlerts(cd.metrics, cd.health));
     });
 
     const groups = new Map<AlertType, CompanyAlert[]>();
@@ -238,15 +244,13 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
 
   const totalAlerts = groupedAlerts.reduce((s, g) => s + g.alerts.length, 0);
 
-  // Companies with most delayed actions
   const criticalCompanies = useMemo(() => {
     return [...companyData]
-      .filter(c => c.data.delayedActions > 0)
-      .sort((a, b) => b.data.delayedActions - a.data.delayedActions)
+      .filter(c => c.metrics.delayedActions > 0)
+      .sort((a, b) => b.metrics.delayedActions - a.metrics.delayedActions)
       .slice(0, 5);
   }, [companyData]);
 
-  // Drill-down: set company context then navigate
   const drillDown = useCallback((companyId: string, path: string) => {
     navigate(path);
   }, [navigate]);
@@ -257,6 +261,13 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
     if (score >= 26) return { label: "Estruturando", color: "bg-amber-500/15 text-amber-400" };
     return { label: "Inicial", color: "bg-muted text-muted-foreground" };
   }
+
+  const alertTypeConfig: Record<AlertType, { label: string; icon: typeof AlertTriangle; color: string }> = {
+    delayed: { label: "Ações Atrasadas", icon: Clock, color: "text-destructive" },
+    "low-coverage": { label: "Cobertura Baixa", icon: GraduationCap, color: "text-amber-500" },
+    "low-maturity": { label: "Maturidade Baixa", icon: TrendingUp, color: "text-amber-500" },
+    "stalled-cycle": { label: "Ciclos Parados", icon: Rocket, color: "text-muted-foreground" },
+  };
 
   if (loading) {
     return (
@@ -285,94 +296,27 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
         </div>
       </div>
 
-      {/* BLOCO 1 — KPIs da Carteira */}
+      {/* BLOCO 1 — KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <MetricCard
-          title="Empresas"
-          value={companiesTotal}
-          icon={Building2}
-          subtitle="na carteira"
-          tooltip="Total de empresas cadastradas"
-          variant="default"
-          onClick={() => navigate("/empresas")}
-        />
-        <MetricCard
-          title="Empresas Inativas"
-          value={inactiveCompaniesCount}
-          icon={PowerOff}
-          subtitle="acesso bloqueado"
-          tooltip="Empresas inativadas — não impactam KPIs operacionais"
-          variant={inactiveCompaniesCount > 0 ? "warning" : "default"}
-          onClick={() => navigate("/empresas")}
-        />
-        <MetricCard
-          title="Colaboradores"
-          value={totalEmployeesAll}
-          icon={Users}
-          subtitle={`${totalTrained} treinados`}
-          tooltip="Total de colaboradores cadastrados e treinados na carteira"
-          variant="default"
-        />
-        <MetricCard
-          title="Maturidade Média"
-          value={`${avgMaturity}%`}
-          icon={TrendingUp}
-          subtitle={getMaturityLevel(avgMaturity).label}
-          tooltip="Índice médio de maturidade de todas as empresas"
-          variant={avgMaturity >= 50 ? "success" : avgMaturity >= 25 ? "warning" : "default"}
-        />
-        <MetricCard
-          title="Cobertura Média"
-          value={`${avgCoverage}%`}
-          icon={GraduationCap}
-          subtitle="treinamento da carteira"
-          tooltip="Média de cobertura de treinamento das empresas"
-          variant={avgCoverage >= 50 ? "success" : avgCoverage >= 20 ? "warning" : "danger"}
-        />
+        <MetricCard title="Empresas" value={companiesTotal} icon={Building2} subtitle="na carteira" tooltip="Total de empresas cadastradas" variant="default" onClick={() => navigate("/empresas")} />
+        <MetricCard title="Empresas Inativas" value={inactiveCompaniesCount} icon={PowerOff} subtitle="acesso bloqueado" tooltip="Empresas inativadas" variant={inactiveCompaniesCount > 0 ? "warning" : "default"} onClick={() => navigate("/empresas")} />
+        <MetricCard title="Colaboradores" value={totalEmployeesAll} icon={Users} subtitle={`${totalTrained} treinados`} tooltip="Total de colaboradores cadastrados e treinados" variant="default" />
+        <MetricCard title="Maturidade Média" value={`${avgMaturity}%`} icon={TrendingUp} subtitle={getMaturityLevel(avgMaturity).label} tooltip="Índice médio de maturidade" variant={avgMaturity >= 50 ? "success" : avgMaturity >= 25 ? "warning" : "default"} />
+        <MetricCard title="Cobertura Média" value={`${avgCoverage}%`} icon={GraduationCap} subtitle="treinamento da carteira" tooltip="Média de cobertura de treinamento" variant={avgCoverage >= 50 ? "success" : avgCoverage >= 20 ? "warning" : "danger"} />
       </div>
 
       {/* KPIs secundários */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MetricCard
-          title="Turmas Realizadas"
-          value={totalTurmasAll}
-          icon={Layers}
-          subtitle="na carteira"
-          tooltip="Total de turmas em todas as empresas"
-          variant="default"
-        />
-        <MetricCard
-          title="Ações Concluídas"
-          value={totalActionsCompleted}
-          icon={CheckCircle}
-          subtitle="na carteira"
-          tooltip="Total de ações concluídas em todas as empresas"
-          variant="success"
-        />
-        <MetricCard
-          title="Ações Atrasadas"
-          value={totalActionsDelayed}
-          icon={AlertTriangle}
-          subtitle="na carteira"
-          tooltip="Total de ações atrasadas em todas as empresas"
-          variant={totalActionsDelayed > 0 ? "danger" : "default"}
-          onClick={totalActionsDelayed > 0 ? () => navigate("/acoes-atrasadas") : undefined}
-        />
-        <MetricCard
-          title="Ciclos em Andamento"
-          value={companyData.reduce((s, c) => s + c.data.cyclesInProgress, 0)}
-          icon={Rocket}
-          subtitle="na carteira"
-          tooltip="Total de ciclos em progresso"
-          variant="default"
-          onClick={() => navigate("/ciclos-ativos")}
-        />
+        <MetricCard title="Turmas Realizadas" value={totalTurmasAll} icon={Layers} subtitle="na carteira" tooltip="Total de turmas" variant="default" />
+        <MetricCard title="Ações Concluídas" value={totalActionsCompleted} icon={CheckCircle} subtitle="na carteira" tooltip="Total de ações concluídas" variant="success" />
+        <MetricCard title="Ações Atrasadas" value={totalActionsDelayed} icon={AlertTriangle} subtitle="na carteira" tooltip="Total de ações atrasadas" variant={totalActionsDelayed > 0 ? "danger" : "default"} onClick={totalActionsDelayed > 0 ? () => navigate("/acoes-atrasadas") : undefined} />
+        <MetricCard title="Ciclos em Andamento" value={companyMetrics.reduce((s, m) => s + m.cyclesInProgress, 0)} icon={Rocket} subtitle="na carteira" tooltip="Total de ciclos em progresso" variant="default" onClick={() => navigate("/ciclos-ativos")} />
       </div>
 
-      {/* Pipeline de Implementação */}
+      {/* Pipeline */}
       <ImplementationPipeline refreshKey={refreshKey} companies={supabaseCompanies} />
 
-      {/* BLOCO 2 — Saúde da Carteira de Implementação */}
+      {/* Saúde da Carteira */}
       <Card className="p-5">
         <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
           <ShieldCheck size={18} className="text-primary" />
@@ -397,18 +341,15 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
         </div>
       </Card>
 
-      {/* BLOCO 3 — Empresas que Precisam de Atenção + Alertas Estratégicos */}
+      {/* Empresas que precisam de atenção */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <Card className="p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-medium text-foreground">Empresas que Precisam de Atenção</h3>
-              <button onClick={() => navigate("/empresas")} className="text-xs text-primary hover:text-primary/80 font-medium">
-                Ver todas →
-              </button>
+              <button onClick={() => navigate("/empresas")} className="text-xs text-primary hover:text-primary/80 font-medium">Ver todas →</button>
             </div>
             <div className="space-y-0">
-              {/* Table header */}
               <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider border-b border-border/50">
                 <div className="col-span-3">Empresa</div>
                 <div className="col-span-1 text-center">Ciclo</div>
@@ -416,12 +357,11 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
                 <div className="col-span-2 text-center">Maturidade</div>
                 <div className="col-span-4">Alerta Principal</div>
               </div>
-              {companyData.map(({ company, data, health, currentCycle }) => {
+              {companyData.map(({ company, metrics, health, currentCycle }) => {
                 const healthInfo = getHealthLabel(health);
                 const HealthIcon = healthInfo.icon;
-                const alerts = getCompanyAlerts(data, health);
+                const alerts = getCompanyAlerts(metrics, health);
                 const mainAlert = alerts.length > 0 ? alerts[0] : null;
-                const mainAlertMsg = mainAlert ? mainAlert.message : "Sem pendências";
                 return (
                   <div
                     key={company.id}
@@ -438,239 +378,101 @@ export function AdminDashboard({ refreshKey, onAlertDismissed }: AdminDashboardP
                       <Badge variant="outline" className="text-xs">{currentCycle}</Badge>
                     </div>
                     <div className="col-span-2 text-center">
-                      <Badge className={cn("text-xs gap-1", healthInfo.color)}>
-                        <HealthIcon size={10} />
+                      <Badge className={cn("text-xs", healthInfo.color)}>
+                        <HealthIcon size={12} className="mr-1" />
                         {healthInfo.label}
                       </Badge>
                     </div>
-                    <div className="col-span-2 flex items-center justify-center gap-1">
-                      <div className="flex-1 max-w-[60px] h-2 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${data.maturityScore}%` }} />
-                      </div>
-                      <span className="text-xs font-medium text-foreground">{data.maturityScore}%</span>
+                    <div className="col-span-2 text-center">
+                      <span className="text-sm font-medium">{metrics.maturityScore}%</span>
                     </div>
                     <div className="col-span-4">
-                      <p className={cn("text-xs", health === "risk" ? "text-destructive font-medium" : health === "warning" ? "text-amber-500" : "text-muted-foreground")}>
-                        {healthInfo.emoji} {mainAlertMsg}
-                      </p>
+                      <p className="text-xs text-muted-foreground truncate">{mainAlert?.message || "Sem pendências"}</p>
                     </div>
                   </div>
                 );
               })}
-              {companies.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-6">Nenhuma empresa cadastrada</p>
+              {companyData.length === 0 && (
+                <div className="py-8 text-center text-muted-foreground text-sm">
+                  Nenhuma empresa cadastrada.
+                </div>
               )}
             </div>
           </Card>
         </div>
 
-        {/* Alertas Estratégicos agrupados por tipo */}
+        {/* Alertas Estratégicos */}
         <Card className="p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-medium text-foreground flex items-center gap-2">
-              <AlertCircle size={16} className="text-destructive" />
-              Alertas Estratégicos
-            </h3>
-            {totalAlerts > 0 && (
-              <Badge variant="destructive" className="text-xs">
-                {totalAlerts}
-              </Badge>
+          <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
+            <AlertCircle size={18} className="text-warning" />
+            Alertas Estratégicos
+            {totalAlerts > 0 && <Badge variant="destructive" className="text-xs ml-auto">{totalAlerts}</Badge>}
+          </h3>
+          <div className="space-y-3">
+            {groupedAlerts.map(group => {
+              const config = alertTypeConfig[group.type];
+              const GroupIcon = config.icon;
+              return (
+                <div key={group.type} className="rounded-lg border border-border/50 p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <GroupIcon size={14} className={config.color} />
+                    <span className="text-xs font-medium text-foreground">{config.label}</span>
+                    <Badge variant="outline" className="text-xs ml-auto">{group.alerts.length}</Badge>
+                  </div>
+                  <div className="space-y-1">
+                    {group.alerts.slice(0, 3).map((alert, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                        onClick={() => navigate(alert.navigateTo)}
+                      >
+                        <span className="truncate">{alert.company.name}</span>
+                        <ArrowRight size={12} className="shrink-0 ml-1" />
+                      </div>
+                    ))}
+                    {group.alerts.length > 3 && (
+                      <p className="text-xs text-muted-foreground">+{group.alerts.length - 3} mais</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {groupedAlerts.length === 0 && (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                <ShieldCheck size={24} className="mx-auto mb-2 text-success" />
+                Nenhum alerta ativo
+              </div>
             )}
           </div>
-          {groupedAlerts.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <CheckCircle size={28} className="mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Nenhuma empresa em risco</p>
-              <p className="text-xs mt-1">Carteira saudável</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {groupedAlerts.map(({ type, alerts }) => {
-                const config = alertTypeConfig[type];
-                const TypeIcon = config.icon;
-                return (
-                  <div key={type}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <TypeIcon size={14} className={config.color} />
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        {config.label}
-                      </span>
-                      <Badge variant="outline" className="text-[10px] h-4">{alerts.length}</Badge>
-                    </div>
-                    <div className="space-y-1.5">
-                      {alerts.map((alert, idx) => {
-                        const info = getHealthLabel(alert.health);
-                        return (
-                          <button
-                            key={`${alert.company.id}-${idx}`}
-                            onClick={() => drillDown(alert.company.id, alert.navigateTo)}
-                            className={cn(
-                              "w-full p-2.5 rounded-lg border text-left transition-all hover:opacity-90 hover:shadow-sm",
-                              alert.health === "risk"
-                                ? "bg-destructive/5 border-destructive/15"
-                                : "bg-amber-500/5 border-amber-500/15"
-                            )}
-                          >
-                            <div className="flex items-center gap-2">
-                              <Building2 size={12} className="text-muted-foreground shrink-0" />
-                              <span className="text-sm font-medium text-foreground flex-1 truncate">{alert.company.name}</span>
-                              <ArrowRight size={12} className="text-muted-foreground shrink-0" />
-                            </div>
-                            <p className={cn("text-xs mt-0.5 ml-5", alert.health === "risk" ? "text-destructive" : "text-amber-500")}>
-                              {info.emoji} {alert.message}
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </Card>
       </div>
 
-      {/* BLOCO 4 — Maturidade + Cobertura */}
+      {/* Maturity Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Distribuição de Maturidade da Carteira */}
         <Card className="p-5">
-          <h3 className="font-medium text-foreground mb-4">Distribuição de Maturidade da Carteira</h3>
-          <div className="h-56 flex items-center">
-            <div className="w-1/2 h-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={maturityDistribution.filter(d => d.count > 0)}
-                    dataKey="count"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={75}
-                    paddingAngle={3}
-                  >
-                    {maturityDistribution.filter(d => d.count > 0).map((entry, i) => (
-                      <Cell key={i} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <ReTooltip
-                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="w-1/2 space-y-2">
-              {maturityDistribution.map(level => (
-                <div key={level.name} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: level.fill }} />
-                  <span className="text-sm text-muted-foreground flex-1">{level.name}</span>
-                  <span className="text-sm font-semibold text-foreground">{level.count}</span>
-                </div>
-              ))}
-            </div>
+          <h3 className="font-medium text-foreground mb-4">Distribuição de Maturidade</h3>
+          <div className="h-52">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={maturityDistribution.filter(d => d.count > 0)} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="count">
+                  {maturityDistribution.filter(d => d.count > 0).map((entry, i) => (
+                    <Cell key={i} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <ReTooltip formatter={(value: number, name: string) => [`${value} empresas`, name]} />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
-        </Card>
-
-        {/* Cobertura Média de Treinamento da Carteira */}
-        <Card className="p-5">
-          <h3 className="font-medium text-foreground mb-4">Cobertura Média de Treinamento da Carteira</h3>
-          <div className="flex items-center gap-6">
-            <div className="relative w-28 h-28 shrink-0">
-              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--muted))" strokeWidth="10" />
-                <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--primary))" strokeWidth="10"
-                  strokeDasharray={`${avgCoverage * 2.64} ${264 - avgCoverage * 2.64}`}
-                  strokeLinecap="round" />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-2xl font-bold text-foreground">{avgCoverage}%</span>
+          <div className="flex flex-wrap gap-3 mt-2 justify-center">
+            {maturityDistribution.map(l => (
+              <div key={l.name} className="flex items-center gap-1.5 text-xs">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: l.fill }} />
+                <span className="text-muted-foreground">{l.name}: {l.count}</span>
               </div>
-            </div>
-            <div className="flex-1 space-y-3">
-              <p className="text-sm text-muted-foreground">Cobertura por empresa</p>
-              {companyData.filter(c => c.data.totalEmployees > 0).slice(0, 4).map(c => {
-                const cov = Math.round((c.data.trainedCount / c.data.totalEmployees) * 100);
-                return (
-                  <div key={c.company.id} className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-24 truncate">{c.company.name}</span>
-                    <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${cov}%` }} />
-                    </div>
-                    <span className="text-xs font-medium text-foreground w-10 text-right">{cov}%</span>
-                  </div>
-                );
-              })}
-            </div>
+            ))}
           </div>
         </Card>
-      </div>
-
-      {/* BLOCO 5 — Ações Críticas + Maturidade Gauge */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-5">
-          <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
-            <AlertCircle size={16} className="text-destructive" />
-            Empresas com Mais Ações Atrasadas
-          </h3>
-          {criticalCompanies.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <CheckCircle size={28} className="mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Nenhuma empresa com ações atrasadas</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {criticalCompanies.map(c => (
-                <div
-                  key={c.company.id}
-                  className="flex items-center gap-3 p-2.5 rounded-lg bg-destructive/5 border border-destructive/10 cursor-pointer hover:bg-destructive/8 transition-colors"
-                  onClick={() => drillDown(c.company.id, `/empresas/${c.company.id}?tab=registros`)}
-                >
-                  <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
-                    <AlertTriangle size={14} className="text-destructive" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{c.company.name}</p>
-                  </div>
-                  <Badge className="bg-destructive/15 text-destructive text-xs">
-                    {c.data.delayedActions} atrasada{c.data.delayedActions > 1 ? "s" : ""}
-                  </Badge>
-                  <ArrowRight size={14} className="text-muted-foreground shrink-0" />
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-
-        <Card className="p-5">
-          <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
-            <TrendingUp size={18} className="text-primary" />
-            Índice Médio de Maturidade da Carteira MVP
-          </h3>
-          <div className="flex justify-center">
-            <div className="max-w-md w-full">
-              <MaturityGaugePremium score={avgMaturity} />
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* BLOCO 6 — Visão Estratégica */}
-      <StrategicOverview refreshKey={refreshKey} companies={supabaseCompanies} />
-
-      {/* BLOCO 6.5 — Empresas que Precisam de Ação */}
-      <CompaniesNeedingAction refreshKey={refreshKey} companies={supabaseCompanies} />
-
-      {/* BLOCO 7 — Ranking + Empresas Paradas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <EvolutionRanking refreshKey={refreshKey} companies={supabaseCompanies} />
-        <StalledCompanies refreshKey={refreshKey} companies={supabaseCompanies} />
-      </div>
-
-      {/* BLOCO 8 — Gerentes + Distribuição de Carga */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ManagerRanking refreshKey={refreshKey} companies={supabaseCompanies} />
-        <LoadDistribution refreshKey={refreshKey} companies={supabaseCompanies} />
+        <MaturityGaugePremium score={avgMaturity} />
       </div>
     </div>
   );
