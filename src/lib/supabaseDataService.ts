@@ -3,7 +3,10 @@
  * Replaces localStorage-based storage.ts and companyStorage.ts.
  */
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as typedSupabase } from "@/integrations/supabase/client";
+
+// Use an untyped reference for new tables not yet in the generated types
+const supabase = typedSupabase as any;
 
 // ============================================================
 // TYPES
