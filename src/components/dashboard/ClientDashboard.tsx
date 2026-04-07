@@ -94,35 +94,8 @@ export function ClientDashboard({ companyId, companyName, refreshKey, onAlertDis
     ),
   };
 
-  // Phase progress for timeline
-  const timelinePhases = useMemo(() => {
-    const buildPhase = (id: string, name: string, cycleIds: string[]) => {
-      const cycleStates = opData.cycleStates.filter(c => cycleIds.includes(c.cycle_id));
-      const allClosed = cycleStates.length === cycleIds.length && cycleStates.every(c => c.closure_status === "closed");
-      const anyActive = cycleStates.some(c => c.closure_status === "in_progress" || c.closure_status === "ready_to_close");
-      
-      // Calculate progress per cycle using 70/30 rule
-      const cycleProgresses = cycleIds.map(cid => {
-        const actions = opData.cycleActions.filter(a => a.cycle_id === cid && a.enabled);
-        const completed = actions.filter(a => a.status === "completed").length;
-        return calculateCycleProgress(activePopulation, opData.pessoasTreinadas, actions.length, completed);
-      });
-      const avgProgress = cycleProgresses.reduce((s, p) => s + p, 0) / (cycleProgresses.length || 1);
 
-      return {
-        id, name, cycles: cycleIds,
-        status: allClosed ? "completed" as const : anyActive ? "in-progress" as const : "pending" as const,
-        progress: Math.round(avgProgress),
-      };
-    };
-    return [
-      buildPhase("M", "Monitorar", ["M1", "M2", "M3"]),
-      buildPhase("V", "Validar", ["V1", "V2", "V3"]),
-      buildPhase("P", "Perpetuar", ["P1", "P2", "P3"]),
-    ];
-  }, [opData, activePopulation]);
 
-  const progressData = {
     total: opData.enabledActions || 1,
     completed: opData.completedActions,
     inProgress: opData.inProgressActions,
