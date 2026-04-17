@@ -7,73 +7,31 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
-  Building2,
-  Plus,
-  Pencil,
-  Archive,
-  ArchiveRestore,
-  Layers,
-  Clock,
-  Briefcase,
-  Users,
-  ChevronDown,
-  ChevronRight,
-  Info,
-  Loader2,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
+} from "@/components/ui/table";
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Building2, Plus, Pencil, Archive, ArchiveRestore,
+  Layers, Clock, Briefcase, Users, ChevronDown, ChevronRight, Info, Loader2,
 } from "lucide-react";
 import {
-  fetchOrgStructure,
-  upsertOrgItem,
-  deleteOrgItem,
-  fetchPopulation,
-  type OrgStructure,
-  type OrgItem,
+  fetchOrgStructure, upsertOrgItem, deleteOrgItem, fetchPopulation,
+  type OrgStructure, type OrgItem,
 } from "@/lib/db";
 
 type OrgCategory = "units" | "sectors" | "shifts" | "positions";
 
-const categoryConfig: Record<
-  OrgCategory,
-  {
-    label: string;
-    singular: string;
-    icon: any;
-    description: string;
-    populationField: keyof import("@/lib/db").PopulationMember;
-  }
-> = {
-  units: {
-    label: "Unidades",
-    singular: "Unidade",
-    icon: Building2,
-    description: "Unidades operacionais da empresa",
-    populationField: "unit",
-  },
-  sectors: {
-    label: "Setores",
-    singular: "Setor",
-    icon: Layers,
-    description: "Setores e departamentos",
-    populationField: "sector",
-  },
-  shifts: {
-    label: "Turnos",
-    singular: "Turno",
-    icon: Clock,
-    description: "Turnos de trabalho",
-    populationField: "shift",
-  },
-  positions: {
-    label: "Cargos",
-    singular: "Cargo",
-    icon: Briefcase,
-    description: "Cargos e funções da empresa",
-    populationField: "role",
-  },
+const categoryConfig: Record<OrgCategory, { label: string; singular: string; icon: any; description: string; populationField: keyof import("@/lib/db").PopulationMember }> = {
+  units:     { label: "Unidades",  singular: "Unidade",  icon: Building2, description: "Unidades operacionais da empresa",  populationField: "unit" },
+  sectors:   { label: "Setores",   singular: "Setor",    icon: Layers,    description: "Setores e departamentos",           populationField: "sector" },
+  shifts:    { label: "Turnos",    singular: "Turno",    icon: Clock,     description: "Turnos de trabalho",                populationField: "shift" },
+  positions: { label: "Cargos",    singular: "Cargo",    icon: Briefcase, description: "Cargos e funções da empresa",       populationField: "role" },
 };
 
 export default function OrgStructure() {
@@ -85,12 +43,7 @@ export default function OrgStructure() {
   const [saving, setSaving] = useState(false);
   const [structure, setStructure] = useState<OrgStructure>({ units: [], sectors: [], shifts: [], positions: [] });
   const [populationCounts, setPopulationCounts] = useState<Record<string, Record<string, number>>>({});
-  const [openSections, setOpenSections] = useState<Record<OrgCategory, boolean>>({
-    units: true,
-    sectors: true,
-    shifts: false,
-    positions: false,
-  });
+  const [openSections, setOpenSections] = useState<Record<OrgCategory, boolean>>({ units: true, sectors: true, shifts: false, positions: false });
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<OrgCategory>("sectors");
@@ -100,24 +53,25 @@ export default function OrgStructure() {
   const loadData = async () => {
     if (!companyId) return;
     setLoading(true);
-    const [org, pop] = await Promise.all([fetchOrgStructure(companyId), fetchPopulation(companyId)]);
+    const [org, pop] = await Promise.all([
+      fetchOrgStructure(companyId),
+      fetchPopulation(companyId),
+    ]);
     setStructure(org);
 
     // Conta colaboradores por campo de org
     const counts: Record<string, Record<string, number>> = { units: {}, sectors: {}, shifts: {}, positions: {} };
-    for (const m of pop.filter((p) => p.active)) {
-      if (m.unit) counts.units[m.unit] = (counts.units[m.unit] || 0) + 1;
-      if (m.sector) counts.sectors[m.sector] = (counts.sectors[m.sector] || 0) + 1;
-      if (m.shift) counts.shifts[m.shift] = (counts.shifts[m.shift] || 0) + 1;
-      if (m.role) counts.positions[m.role] = (counts.positions[m.role] || 0) + 1;
+    for (const m of pop.filter(p => p.active)) {
+      if (m.unit)   counts.units[m.unit]         = (counts.units[m.unit] || 0) + 1;
+      if (m.sector) counts.sectors[m.sector]     = (counts.sectors[m.sector] || 0) + 1;
+      if (m.shift)  counts.shifts[m.shift]       = (counts.shifts[m.shift] || 0) + 1;
+      if (m.role)   counts.positions[m.role]     = (counts.positions[m.role] || 0) + 1;
     }
     setPopulationCounts(counts);
     setLoading(false);
   };
 
-  useEffect(() => {
-    loadData();
-  }, [companyId]);
+  useEffect(() => { loadData(); }, [companyId]);
 
   const openAdd = (cat: OrgCategory) => {
     setEditingCategory(cat);
@@ -135,8 +89,7 @@ export default function OrgStructure() {
 
   const handleSave = async () => {
     if (!itemName.trim()) {
-      toast({ title: "Nome é obrigatório", variant: "destructive" });
-      return;
+      toast({ title: "Nome é obrigatório", variant: "destructive" }); return;
     }
     setSaving(true);
     const list = structure[editingCategory];
@@ -148,8 +101,7 @@ export default function OrgStructure() {
     });
     setSaving(false);
     if (!result) {
-      toast({ title: "Erro ao salvar", variant: "destructive" });
-      return;
+      toast({ title: "Erro ao salvar", variant: "destructive" }); return;
     }
     toast({ title: editingItem ? "Atualizado!" : "Adicionado!" });
     setDialogOpen(false);
@@ -162,7 +114,7 @@ export default function OrgStructure() {
     await loadData();
   };
 
-  const toggleSection = (cat: OrgCategory) => setOpenSections((p) => ({ ...p, [cat]: !p[cat] }));
+  const toggleSection = (cat: OrgCategory) => setOpenSections(p => ({ ...p, [cat]: !p[cat] }));
 
   if (loading) {
     return (
@@ -179,23 +131,24 @@ export default function OrgStructure() {
   return (
     <AppLayout title="Estrutura da Empresa" subtitle={`Visão consolidada — ${user?.companyName || "Empresa"}`}>
       <div className="space-y-6 animate-fade-in">
+
         <Card className="p-4 bg-primary/5 border-primary/20">
           <div className="flex items-start gap-3">
             <Info size={18} className="text-primary mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-sm font-medium text-foreground">Estrutura organizacional da empresa</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Cadastre unidades, setores, turnos e cargos. Os valores também são criados automaticamente ao cadastrar
-                colaboradores na Base Populacional.
+                Cadastre unidades, setores, turnos e cargos. Os valores também são criados automaticamente
+                ao cadastrar colaboradores na Base Populacional.
               </p>
             </div>
           </div>
         </Card>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {(Object.keys(categoryConfig) as OrgCategory[]).map((cat) => {
+          {(Object.keys(categoryConfig) as OrgCategory[]).map(cat => {
             const cfg = categoryConfig[cat];
-            const active = structure[cat].filter((i) => !i.archived).length;
+            const active = structure[cat].filter(i => !i.archived).length;
             return (
               <Card key={cat} className="p-4">
                 <div className="flex items-center gap-2">
@@ -208,11 +161,11 @@ export default function OrgStructure() {
           })}
         </div>
 
-        {(Object.keys(categoryConfig) as OrgCategory[]).map((cat) => {
+        {(Object.keys(categoryConfig) as OrgCategory[]).map(cat => {
           const cfg = categoryConfig[cat];
           const items = structure[cat];
-          const active = items.filter((i) => !i.archived);
-          const archived = items.filter((i) => i.archived);
+          const active = items.filter(i => !i.archived);
+          const archived = items.filter(i => i.archived);
           return (
             <Card key={cat}>
               <Collapsible open={openSections[cat]} onOpenChange={() => toggleSection(cat)}>
@@ -221,40 +174,21 @@ export default function OrgStructure() {
                     <div className="flex items-center gap-2">
                       <cfg.icon size={16} className="text-primary" />
                       <span className="font-semibold text-foreground">{cfg.label}</span>
-                      <Badge variant="secondary">
-                        {active.length} ativo{active.length !== 1 ? "s" : ""}
-                      </Badge>
-                      {archived.length > 0 && (
-                        <Badge variant="outline" className="text-muted-foreground">
-                          {archived.length} arquivado{archived.length !== 1 ? "s" : ""}
-                        </Badge>
-                      )}
+                      <Badge variant="secondary">{active.length} ativo{active.length !== 1 ? "s" : ""}</Badge>
+                      {archived.length > 0 && <Badge variant="outline" className="text-muted-foreground">{archived.length} arquivado{archived.length !== 1 ? "s" : ""}</Badge>}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openAdd(cat);
-                        }}
-                      >
+                      <Button size="sm" variant="outline" onClick={e => { e.stopPropagation(); openAdd(cat); }}>
                         <Plus size={14} className="mr-1" /> Adicionar {cfg.singular}
                       </Button>
-                      {openSections[cat] ? (
-                        <ChevronDown size={16} className="text-muted-foreground" />
-                      ) : (
-                        <ChevronRight size={16} className="text-muted-foreground" />
-                      )}
+                      {openSections[cat] ? <ChevronDown size={16} className="text-muted-foreground" /> : <ChevronRight size={16} className="text-muted-foreground" />}
                     </div>
                   </div>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="border-t border-border">
                     {items.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-6">
-                        Nenhum(a) {cfg.singular.toLowerCase()} cadastrado(a).
-                      </p>
+                      <p className="text-sm text-muted-foreground text-center py-6">Nenhum(a) {cfg.singular.toLowerCase()} cadastrado(a).</p>
                     ) : (
                       <Table>
                         <TableHeader>
@@ -266,7 +200,7 @@ export default function OrgStructure() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {items.map((item) => {
+                          {items.map(item => {
                             const count = (populationCounts[cat] ?? {})[item.name] ?? 0;
                             return (
                               <TableRow key={item.id} className={item.archived ? "opacity-50" : ""}>
@@ -311,24 +245,20 @@ export default function OrgStructure() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {editingItem
-                  ? `Editar ${categoryConfig[editingCategory].singular}`
-                  : `Novo(a) ${categoryConfig[editingCategory].singular}`}
+                {editingItem ? `Editar ${categoryConfig[editingCategory].singular}` : `Novo(a) ${categoryConfig[editingCategory].singular}`}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-2 py-2">
               <Label>Nome *</Label>
               <Input
                 value={itemName}
-                onChange={(e) => setItemName(e.target.value)}
+                onChange={e => setItemName(e.target.value)}
                 placeholder={`Nome do(a) ${categoryConfig[editingCategory].singular.toLowerCase()}`}
-                onKeyDown={(e) => e.key === "Enter" && handleSave()}
+                onKeyDown={e => e.key === "Enter" && handleSave()}
               />
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancelar
-              </Button>
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
               <Button onClick={handleSave} disabled={saving}>
                 {saving && <Loader2 size={14} className="mr-2 animate-spin" />}
                 {editingItem ? "Salvar" : "Adicionar"}
@@ -336,6 +266,7 @@ export default function OrgStructure() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
       </div>
     </AppLayout>
   );

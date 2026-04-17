@@ -4,7 +4,9 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
 import { Building2, ChevronRight, Rocket, Clock, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,14 +36,16 @@ export default function ActiveCycles() {
 
       const [companies, { data: cycleStates }, { data: cycleActions }] = await Promise.all([
         fetchCompanies(),
-        sb
-          .from("cycle_states")
+        sb.from("cycle_states")
           .select("company_id, cycle_id, closure_status, start_date")
           .neq("closure_status", "closed"),
-        sb.from("cycle_actions").select("company_id, cycle_id, status, enabled"),
+        sb.from("cycle_actions")
+          .select("company_id, cycle_id, status, enabled"),
       ]);
 
-      const companyMap = Object.fromEntries((companies || []).map((c: any) => [c.id, c.name]));
+      const companyMap = Object.fromEntries(
+        (companies || []).map((c: any) => [c.id, c.name])
+      );
 
       // Agrupa ações por company+cycle
       const actionMap: Record<string, { total: number; completed: number }> = {};
@@ -114,11 +118,8 @@ export default function ActiveCycles() {
                 </TableRow>
               )}
               {entries.map((entry, i) => (
-                <TableRow
-                  key={i}
-                  className="cursor-pointer hover:bg-muted/30"
-                  onClick={() => navigate(`/empresas/${entry.companyId}?tab=ciclos&cycle=${entry.cycleId}`)}
-                >
+                <TableRow key={i} className="cursor-pointer hover:bg-muted/30"
+                  onClick={() => navigate(`/empresas/${entry.companyId}?tab=ciclos&cycle=${entry.cycleId}`)}>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Building2 size={14} className="text-primary" />
@@ -126,16 +127,11 @@ export default function ActiveCycles() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {entry.cycleId}
-                    </Badge>
+                    <Badge variant="outline" className="text-xs">{entry.cycleId}</Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Clock
-                        size={12}
-                        className={cn(entry.daysActive > 40 ? "text-destructive" : "text-muted-foreground")}
-                      />
+                      <Clock size={12} className={cn(entry.daysActive > 40 ? "text-destructive" : "text-muted-foreground")} />
                       <span className={cn("text-sm", entry.daysActive > 40 ? "text-destructive font-medium" : "")}>
                         {entry.daysActive} dias
                       </span>
@@ -144,10 +140,8 @@ export default function ActiveCycles() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 max-w-[60px] h-2 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all"
-                          style={{ width: `${entry.completionPercent}%` }}
-                        />
+                        <div className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${entry.completionPercent}%` }} />
                       </div>
                       <span className="text-xs font-medium">{entry.completionPercent}%</span>
                     </div>
@@ -156,21 +150,15 @@ export default function ActiveCycles() {
                     {entry.completedActions}/{entry.totalActions}
                   </TableCell>
                   <TableCell>
-                    {entry.daysActive > 40 ? (
-                      <Badge className="bg-destructive/10 text-destructive text-xs">Atrasado</Badge>
-                    ) : entry.completionPercent >= 80 ? (
-                      <Badge className="bg-emerald-500/10 text-emerald-700 text-xs">Pronto p/ fechar</Badge>
-                    ) : (
-                      <Badge className="bg-blue-500/10 text-blue-700 text-xs">
-                        <Rocket size={10} className="mr-1" />
-                        Em andamento
-                      </Badge>
-                    )}
+                    {entry.daysActive > 40
+                      ? <Badge className="bg-destructive/10 text-destructive text-xs">Atrasado</Badge>
+                      : entry.completionPercent >= 80
+                      ? <Badge className="bg-emerald-500/10 text-emerald-700 text-xs">Pronto p/ fechar</Badge>
+                      : <Badge className="bg-blue-500/10 text-blue-700 text-xs"><Rocket size={10} className="mr-1" />Em andamento</Badge>
+                    }
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm">
-                      <ChevronRight size={14} />
-                    </Button>
+                    <Button variant="ghost" size="sm"><ChevronRight size={14} /></Button>
                   </TableCell>
                 </TableRow>
               ))}
