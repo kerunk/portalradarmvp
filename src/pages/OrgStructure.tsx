@@ -51,7 +51,11 @@ export default function OrgStructure() {
   const [itemName, setItemName] = useState("");
 
   const loadData = async () => {
-    if (!companyId) return;
+    if (!companyId) {
+      console.warn("[OrgStructure] companyId vazio, abortando load");
+      return;
+    }
+    console.log("[OrgStructure] Carregando para companyId:", companyId);
     setLoading(true);
     const [org, pop] = await Promise.all([
       fetchOrgStructure(companyId),
