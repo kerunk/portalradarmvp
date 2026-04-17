@@ -115,7 +115,8 @@ export interface OrgStructureItemDB {
 // ============================================================
 
 export async function fetchPopulation(companyId: string): Promise<PopulationMemberDB[]> {
-  console.log("[DataSource] population loading from Supabase for company:", companyId);
+  if (!companyId) return [];
+  console.log("[DataSource] population loading for company:", companyId);
   const { data, error } = await supabase
     .from("population_members")
     .select("*")
@@ -222,7 +223,11 @@ export async function fetchPopulationStats(companyId: string) {
 // ============================================================
 
 export async function fetchTurmas(companyId: string): Promise<TurmaDB[]> {
-  console.log("[DataSource] turmas loading from Supabase for company:", companyId);
+  if (!companyId) {
+    console.warn("[DataSource] fetchTurmas called without companyId — returning []");
+    return [];
+  }
+  console.log("[DataSource] turmas loading for company:", companyId);
   const { data, error } = await supabase
     .from("turmas")
     .select("*")
@@ -233,7 +238,7 @@ export async function fetchTurmas(companyId: string): Promise<TurmaDB[]> {
     console.error("Error fetching turmas:", error);
     return [];
   }
-  console.log("[DataSource] turmas loaded from Supabase:", data?.length || 0);
+  console.log("[DataSource] turmas loaded:", data?.length || 0);
 
   // Load participants and attendance for each turma
   const turmas = (data || []) as TurmaDB[];
@@ -357,7 +362,8 @@ export async function setTurmaAttendance(turmaId: string, attendance: Record<str
 // ============================================================
 
 export async function fetchCycleStates(companyId: string): Promise<CycleStateDB[]> {
-  console.log("[DataSource] cycles loading from Supabase for company:", companyId);
+  if (!companyId) return [];
+  console.log("[DataSource] cycles loading for company:", companyId);
   const { data, error } = await supabase
     .from("cycle_states")
     .select("*")
@@ -388,6 +394,7 @@ export async function upsertCycleState(state: Omit<CycleStateDB, "id"> & { id?: 
 // ============================================================
 
 export async function fetchCycleActions(companyId: string): Promise<CycleActionDB[]> {
+  if (!companyId) return [];
   const { data, error } = await supabase
     .from("cycle_actions")
     .select("*")
@@ -401,6 +408,7 @@ export async function fetchCycleActions(companyId: string): Promise<CycleActionD
 }
 
 export async function fetchCycleActionsForCycle(companyId: string, cycleId: string): Promise<CycleActionDB[]> {
+  if (!companyId || !cycleId) return [];
   const { data, error } = await supabase
     .from("cycle_actions")
     .select("*")
@@ -460,6 +468,7 @@ export async function deleteCycleActionDB(id: string): Promise<boolean> {
 // ============================================================
 
 export async function fetchRecords(companyId: string): Promise<RecordDB[]> {
+  if (!companyId) return [];
   const { data, error } = await supabase
     .from("records")
     .select("*")
@@ -555,6 +564,7 @@ export async function upsertSuccessFactorOverride(cycleId: string, factorId: str
 // ============================================================
 
 export async function fetchOrgStructure(companyId: string) {
+  if (!companyId) return { units: [], sectors: [], shifts: [], positions: [] };
   const { data, error } = await supabase
     .from("org_structure")
     .select("*")
@@ -672,6 +682,15 @@ export function calculateCycleProgress(
  */
 export async function fetchCompanyOperationalData(companyId: string) {
   console.log("[Metric] dashboard recalculated for company:", companyId);
+
+  if (!companyId) {
+    console.warn("[DataSource] fetchCompanyOperationalData called without companyId");
+    return {
+      population: [], turmas: [], cycleStates: [], cycleActions: [], records: [],
+      activePop: [], facilitators: [], nucleoMembers: [], leaders: [],
+      trainedIds: new Set<string>(),
+    } as any;
+  }
 
   const [population, turmas, cycleStates, cycleActions, records] = await Promise.all([
     fetchPopulation(companyId),
