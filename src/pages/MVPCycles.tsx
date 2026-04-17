@@ -16,7 +16,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
@@ -618,6 +617,15 @@ export default function MVPCycles() {
               whatHappens={currentCycle.expectations.whatHappens}
               expectedResults={currentCycle.expectations.expectedResults}
               successCriteria={currentCycle.expectations.successCriteria}
+            />
+
+            {/* Decisões pendentes */}
+            <PendingDecisions
+              cycleId={selectedCycleId}
+              records={records}
+              onCreateAction={async (data, decisionId) => {
+                await handleCreateActionFromTemplate(data, data.factorId);
+              }}
             />
 
             {/* Fatores de Sucesso */}
