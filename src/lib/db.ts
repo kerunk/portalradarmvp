@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const sb = supabase as any;
 
-// ─── TIPOS LOCAIS (compatíveis com os já usados nas páginas) ────────────────
+// TIPOS LOCAIS
 
 export interface PopulationMember {
   id: string;
@@ -114,7 +114,7 @@ export interface DBRecord {
   updatedAt: string;
 }
 
-// ─── POPULATION ────────────────────────────────────────────────────────────
+// POPULATION
 
 function rowToMember(row: any): PopulationMember {
   return {
@@ -134,16 +134,18 @@ function rowToMember(row: any): PopulationMember {
 }
 
 export async function fetchPopulation(companyId: string): Promise<PopulationMember[]> {
-  const { data, error } = await sb
-    .from("population_members")
-    .select("*")
-    .eq("company_id", companyId)
-    .order("name");
-  if (error) { console.error("[db] fetchPopulation", error); return []; }
+  const { data, error } = await sb.from("population_members").select("*").eq("company_id", companyId).order("name");
+  if (error) {
+    console.error("[db] fetchPopulation", error);
+    return [];
+  }
   return (data ?? []).map(rowToMember);
 }
 
-export async function insertMember(companyId: string, m: Omit<PopulationMember, "id">): Promise<PopulationMember | null> {
+export async function insertMember(
+  companyId: string,
+  m: Omit<PopulationMember, "id">,
+): Promise<PopulationMember | null> {
   const { data, error } = await sb
     .from("population_members")
     .insert({
@@ -162,7 +164,10 @@ export async function insertMember(companyId: string, m: Omit<PopulationMember, 
     })
     .select()
     .single();
-  if (error) { console.error("[db] insertMember", error); return null; }
+  if (error) {
+    console.error("[db] insertMember", error);
+    return null;
+  }
   return rowToMember(data);
 }
 
@@ -181,19 +186,25 @@ export async function updateMember(id: string, updates: Partial<PopulationMember
   if (updates.active !== undefined) patch.active = updates.active;
 
   const { error } = await sb.from("population_members").update(patch).eq("id", id);
-  if (error) { console.error("[db] updateMember", error); return false; }
+  if (error) {
+    console.error("[db] updateMember", error);
+    return false;
+  }
   return true;
 }
 
 export async function deleteMember(id: string): Promise<boolean> {
   const { error } = await sb.from("population_members").delete().eq("id", id);
-  if (error) { console.error("[db] deleteMember", error); return false; }
+  if (error) {
+    console.error("[db] deleteMember", error);
+    return false;
+  }
   return true;
 }
 
 export async function bulkInsertMembers(companyId: string, members: Omit<PopulationMember, "id">[]): Promise<number> {
   if (!members.length) return 0;
-  const rows = members.map(m => ({
+  const rows = members.map((m) => ({
     company_id: companyId,
     name: m.name,
     email: m.email,
@@ -208,20 +219,23 @@ export async function bulkInsertMembers(companyId: string, members: Omit<Populat
     active: m.active,
   }));
   const { data, error } = await sb.from("population_members").insert(rows).select("id");
-  if (error) { console.error("[db] bulkInsertMembers", error); return 0; }
+  if (error) {
+    console.error("[db] bulkInsertMembers", error);
+    return 0;
+  }
   return data?.length ?? 0;
 }
 
 export async function fetchPopulationStats(companyId: string) {
   const pop = await fetchPopulation(companyId);
-  const active = pop.filter(m => m.active);
-  const sectors = new Set(active.map(m => m.sector).filter(Boolean));
-  const units = new Set(active.map(m => m.unit).filter(Boolean));
+  const active = pop.filter((m) => m.active);
+  const sectors = new Set(active.map((m) => m.sector).filter(Boolean));
+  const units = new Set(active.map((m) => m.unit).filter(Boolean));
   return {
     total: active.length,
-    facilitators: active.filter(m => m.facilitator).length,
-    nucleoCount: active.filter(m => m.nucleo).length,
-    leaders: active.filter(m => m.leadership).length,
+    facilitators: active.filter((m) => m.facilitator).length,
+    nucleoCount: active.filter((m) => m.nucleo).length,
+    leaders: active.filter((m) => m.leadership).length,
     sectors: sectors.size,
     units: units.size,
   };
@@ -229,22 +243,18 @@ export async function fetchPopulationStats(companyId: string) {
 
 export async function isEmailUsed(companyId: string, email: string, excludeId?: string): Promise<boolean> {
   if (!email) return false;
-  const { data } = await sb
-    .from("population_members")
-    .select("id")
-    .eq("company_id", companyId)
-    .eq("email", email);
+  const { data } = await sb.from("population_members").select("id").eq("company_id", companyId).eq("email", email);
   if (!data) return false;
   return data.some((r: any) => r.id !== excludeId);
 }
 
-// ─── ORG STRUCTURE ─────────────────────────────────────────────────────────
+// ORG STRUCTURE
 
 function rowsToOrgStructure(rows: any[]): OrgStructure {
   const map = (type: string) =>
     rows
-      .filter(r => r.type === type)
-      .map(r => ({ id: r.id, name: r.name, archived: r.archived, order: r.sort_order }))
+      .filter((r) => r.type === type)
+      .map((r) => ({ id: r.id, name: r.name, archived: r.archived, order: r.sort_order }))
       .sort((a, b) => a.order - b.order);
   return {
     units: map("unit"),
@@ -255,24 +265,26 @@ function rowsToOrgStructure(rows: any[]): OrgStructure {
 }
 
 export async function fetchOrgStructure(companyId: string): Promise<OrgStructure> {
-  const { data, error } = await sb
-    .from("org_structure")
-    .select("*")
-    .eq("company_id", companyId)
-    .order("sort_order");
-  if (error) { console.error("[db] fetchOrgStructure", error); return { units: [], sectors: [], shifts: [], positions: [] }; }
+  const { data, error } = await sb.from("org_structure").select("*").eq("company_id", companyId).order("sort_order");
+  if (error) {
+    console.error("[db] fetchOrgStructure", error);
+    return { units: [], sectors: [], shifts: [], positions: [] };
+  }
   return rowsToOrgStructure(data ?? []);
 }
 
 type OrgCategory = "units" | "sectors" | "shifts" | "positions";
 const categoryToType: Record<OrgCategory, string> = {
-  units: "unit", sectors: "sector", shifts: "shift", positions: "position",
+  units: "unit",
+  sectors: "sector",
+  shifts: "shift",
+  positions: "position",
 };
 
 export async function upsertOrgItem(
   companyId: string,
   category: OrgCategory,
-  item: Omit<OrgItem, "id"> & { id?: string }
+  item: Omit<OrgItem, "id"> & { id?: string },
 ): Promise<OrgItem | null> {
   const row: any = {
     company_id: companyId,
@@ -283,31 +295,29 @@ export async function upsertOrgItem(
   };
   if (item.id) row.id = item.id;
 
-  const { data, error } = await sb
-    .from("org_structure")
-    .upsert(row, { onConflict: "id" })
-    .select()
-    .single();
-  if (error) { console.error("[db] upsertOrgItem", error); return null; }
+  const { data, error } = await sb.from("org_structure").upsert(row, { onConflict: "id" }).select().single();
+  if (error) {
+    console.error("[db] upsertOrgItem", error);
+    return null;
+  }
   return { id: data.id, name: data.name, archived: data.archived, order: data.sort_order };
 }
 
 export async function deleteOrgItem(id: string): Promise<boolean> {
   const { error } = await sb.from("org_structure").delete().eq("id", id);
-  if (error) { console.error("[db] deleteOrgItem", error); return false; }
+  if (error) {
+    console.error("[db] deleteOrgItem", error);
+    return false;
+  }
   return true;
 }
 
 /** Garante que um valor existe na estrutura org; cria se não existir. */
-export async function ensureOrgValue(
-  companyId: string,
-  category: OrgCategory,
-  value: string
-): Promise<void> {
+export async function ensureOrgValue(companyId: string, category: OrgCategory, value: string): Promise<void> {
   if (!value.trim()) return;
   const structure = await fetchOrgStructure(companyId);
   const list = structure[category];
-  const exists = list.some(i => i.name.toLowerCase() === value.trim().toLowerCase());
+  const exists = list.some((i) => i.name.toLowerCase() === value.trim().toLowerCase());
   if (!exists) {
     await upsertOrgItem(companyId, category, {
       name: value.trim(),
@@ -317,13 +327,17 @@ export async function ensureOrgValue(
   }
 }
 
-// ─── TURMAS ────────────────────────────────────────────────────────────────
+//  TURMAS
 
 function rowToTurma(row: any): Turma {
   let participants: TurmaParticipant[] = [];
   let attendance: Record<string, "present" | "absent"> | undefined;
-  try { participants = JSON.parse(row.participants_json ?? "[]"); } catch {}
-  try { attendance = JSON.parse(row.attendance_json ?? "null") ?? undefined; } catch {}
+  try {
+    participants = JSON.parse(row.participants_json ?? "[]");
+  } catch {}
+  try {
+    attendance = JSON.parse(row.attendance_json ?? "null") ?? undefined;
+  } catch {}
   return {
     id: row.id,
     companyId: row.company_id,
@@ -341,16 +355,18 @@ function rowToTurma(row: any): Turma {
 }
 
 export async function fetchTurmas(companyId: string): Promise<Turma[]> {
-  const { data, error } = await sb
-    .from("turmas")
-    .select("*")
-    .eq("company_id", companyId)
-    .order("created_at");
-  if (error) { console.error("[db] fetchTurmas", error); return []; }
+  const { data, error } = await sb.from("turmas").select("*").eq("company_id", companyId).order("created_at");
+  if (error) {
+    console.error("[db] fetchTurmas", error);
+    return [];
+  }
   return (data ?? []).map(rowToTurma);
 }
 
-export async function upsertTurma(companyId: string, turma: Partial<Turma> & { cycleId: string; name: string; facilitator: string }): Promise<Turma | null> {
+export async function upsertTurma(
+  companyId: string,
+  turma: Partial<Turma> & { cycleId: string; name: string; facilitator: string },
+): Promise<Turma | null> {
   const row: any = {
     company_id: companyId,
     name: turma.name,
@@ -367,22 +383,24 @@ export async function upsertTurma(companyId: string, turma: Partial<Turma> & { c
   };
   if (turma.id) row.id = turma.id;
 
-  const { data, error } = await sb
-    .from("turmas")
-    .upsert(row, { onConflict: "id" })
-    .select()
-    .single();
-  if (error) { console.error("[db] upsertTurma", error); return null; }
+  const { data, error } = await sb.from("turmas").upsert(row, { onConflict: "id" }).select().single();
+  if (error) {
+    console.error("[db] upsertTurma", error);
+    return null;
+  }
   return rowToTurma(data);
 }
 
 export async function deleteTurmaDB(id: string): Promise<boolean> {
   const { error } = await sb.from("turmas").delete().eq("id", id);
-  if (error) { console.error("[db] deleteTurmaDB", error); return false; }
+  if (error) {
+    console.error("[db] deleteTurmaDB", error);
+    return false;
+  }
   return true;
 }
 
-// ─── CYCLE STATES ──────────────────────────────────────────────────────────
+//  CYCLE STATES
 
 function rowToCycleState(row: any): CycleState {
   return {
@@ -398,11 +416,11 @@ function rowToCycleState(row: any): CycleState {
 }
 
 export async function fetchCycleStates(companyId: string): Promise<Record<string, CycleState>> {
-  const { data, error } = await sb
-    .from("cycle_states")
-    .select("*")
-    .eq("company_id", companyId);
-  if (error) { console.error("[db] fetchCycleStates", error); return {}; }
+  const { data, error } = await sb.from("cycle_states").select("*").eq("company_id", companyId);
+  if (error) {
+    console.error("[db] fetchCycleStates", error);
+    return {};
+  }
   const result: Record<string, CycleState> = {};
   for (const row of data ?? []) {
     result[row.cycle_id] = rowToCycleState(row);
@@ -411,22 +429,28 @@ export async function fetchCycleStates(companyId: string): Promise<Record<string
 }
 
 export async function upsertCycleState(state: CycleState): Promise<boolean> {
-  const { error } = await sb.from("cycle_states").upsert({
-    company_id: state.companyId,
-    cycle_id: state.cycleId,
-    closure_status: state.closureStatus,
-    start_date: state.startDate ?? null,
-    planned_end_date: state.plannedEndDate ?? null,
-    closed_at: state.closedAt ?? null,
-    closure_notes: state.closureNotes,
-    locked_for_editing: state.lockedForEditing,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: "company_id,cycle_id" });
-  if (error) { console.error("[db] upsertCycleState", error); return false; }
+  const { error } = await sb.from("cycle_states").upsert(
+    {
+      company_id: state.companyId,
+      cycle_id: state.cycleId,
+      closure_status: state.closureStatus,
+      start_date: state.startDate ?? null,
+      planned_end_date: state.plannedEndDate ?? null,
+      closed_at: state.closedAt ?? null,
+      closure_notes: state.closureNotes,
+      locked_for_editing: state.lockedForEditing,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "company_id,cycle_id" },
+  );
+  if (error) {
+    console.error("[db] upsertCycleState", error);
+    return false;
+  }
   return true;
 }
 
-// ─── CYCLE ACTIONS ─────────────────────────────────────────────────────────
+//  CYCLE ACTIONS
 
 function rowToCycleAction(row: any): CycleAction {
   return {
@@ -450,11 +474,16 @@ export async function fetchCycleActions(companyId: string, cycleId?: string): Pr
   let query = sb.from("cycle_actions").select("*").eq("company_id", companyId);
   if (cycleId) query = query.eq("cycle_id", cycleId);
   const { data, error } = await query;
-  if (error) { console.error("[db] fetchCycleActions", error); return []; }
+  if (error) {
+    console.error("[db] fetchCycleActions", error);
+    return [];
+  }
   return (data ?? []).map(rowToCycleAction);
 }
 
-export async function upsertCycleAction(action: Omit<CycleAction, "id"> & { id?: string }): Promise<CycleAction | null> {
+export async function upsertCycleAction(
+  action: Omit<CycleAction, "id"> & { id?: string },
+): Promise<CycleAction | null> {
   const row: any = {
     company_id: action.companyId,
     cycle_id: action.cycleId,
@@ -477,17 +506,23 @@ export async function upsertCycleAction(action: Omit<CycleAction, "id"> & { id?:
     .upsert(row, { onConflict: "company_id,cycle_id,factor_id,action_id" })
     .select()
     .single();
-  if (error) { console.error("[db] upsertCycleAction", error); return null; }
+  if (error) {
+    console.error("[db] upsertCycleAction", error);
+    return null;
+  }
   return rowToCycleAction(data);
 }
 
 export async function deleteCycleAction(id: string): Promise<boolean> {
   const { error } = await sb.from("cycle_actions").delete().eq("id", id);
-  if (error) { console.error("[db] deleteCycleAction", error); return false; }
+  if (error) {
+    console.error("[db] deleteCycleAction", error);
+    return false;
+  }
   return true;
 }
 
-// ─── RECORDS ───────────────────────────────────────────────────────────────
+//  RECORDS
 
 function rowToRecord(row: any): DBRecord {
   return {
@@ -515,11 +550,17 @@ export async function fetchRecords(companyId: string): Promise<DBRecord[]> {
     .select("*")
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
-  if (error) { console.error("[db] fetchRecords", error); return []; }
+  if (error) {
+    console.error("[db] fetchRecords", error);
+    return [];
+  }
   return (data ?? []).map(rowToRecord);
 }
 
-export async function insertRecord(companyId: string, r: Omit<DBRecord, "id" | "createdAt" | "updatedAt">): Promise<DBRecord | null> {
+export async function insertRecord(
+  companyId: string,
+  r: Omit<DBRecord, "id" | "createdAt" | "updatedAt">,
+): Promise<DBRecord | null> {
   const { data, error } = await sb
     .from("records")
     .insert({
@@ -538,7 +579,10 @@ export async function insertRecord(companyId: string, r: Omit<DBRecord, "id" | "
     })
     .select()
     .single();
-  if (error) { console.error("[db] insertRecord", error); return null; }
+  if (error) {
+    console.error("[db] insertRecord", error);
+    return null;
+  }
   return rowToRecord(data);
 }
 
@@ -553,6 +597,9 @@ export async function updateRecord(id: string, updates: Partial<DBRecord>): Prom
   if (updates.linkedActionIds !== undefined) patch.linked_action_ids = updates.linkedActionIds;
 
   const { error } = await sb.from("records").update(patch).eq("id", id);
-  if (error) { console.error("[db] updateRecord", error); return false; }
+  if (error) {
+    console.error("[db] updateRecord", error);
+    return false;
+  }
   return true;
 }
