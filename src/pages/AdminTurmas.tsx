@@ -4,9 +4,16 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Building2, CheckCircle2, Clock, Target, Eye, GraduationCap, AlertCircle, Loader2 } from "lucide-react";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Users, Building2, CheckCircle2, Clock, Target, Eye,
+  GraduationCap, AlertCircle, Loader2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchCompanies } from "@/lib/companyService";
@@ -23,10 +30,10 @@ interface CompanyTurmaRow {
 }
 
 const statusConfig: Record<string, { label: string; icon: typeof Clock; color: string }> = {
-  planned: { label: "Planejada", icon: Clock, color: "bg-muted text-muted-foreground" },
-  in_progress: { label: "Em andamento", icon: Target, color: "bg-amber-500/10 text-amber-600" },
-  completed: { label: "Concluída", icon: CheckCircle2, color: "bg-emerald-500/10 text-emerald-600" },
-  delayed: { label: "Atrasada", icon: AlertCircle, color: "bg-destructive/10 text-destructive" },
+  planned:     { label: "Planejada",    icon: Clock,        color: "bg-muted text-muted-foreground" },
+  in_progress: { label: "Em andamento", icon: Target,       color: "bg-amber-500/10 text-amber-600" },
+  completed:   { label: "Concluída",    icon: CheckCircle2, color: "bg-emerald-500/10 text-emerald-600" },
+  delayed:     { label: "Atrasada",     icon: AlertCircle,  color: "bg-destructive/10 text-destructive" },
 };
 
 export default function AdminTurmas() {
@@ -38,8 +45,8 @@ export default function AdminTurmas() {
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
 
   const [filterCompany, setFilterCompany] = useState("all");
-  const [filterCycle, setFilterCycle] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterCycle, setFilterCycle]     = useState("all");
+  const [filterStatus, setFilterStatus]   = useState("all");
 
   useEffect(() => {
     (async () => {
@@ -58,12 +65,8 @@ export default function AdminTurmas() {
       const result: CompanyTurmaRow[] = (turmasRaw || []).map((t: any) => {
         let participants: any[] = [];
         let attendance: Record<string, "present" | "absent"> | undefined;
-        try {
-          participants = JSON.parse(t.participants_json ?? "[]");
-        } catch {}
-        try {
-          attendance = JSON.parse(t.attendance_json ?? "null") ?? undefined;
-        } catch {}
+        try { participants = JSON.parse(t.participants_json ?? "[]"); } catch {}
+        try { attendance = JSON.parse(t.attendance_json ?? "null") ?? undefined; } catch {}
         return {
           companyId: t.company_id,
           companyName: compMap[t.company_id] || "Empresa",
@@ -89,32 +92,22 @@ export default function AdminTurmas() {
     })();
   }, []);
 
-  const filteredRows = useMemo(
-    () =>
-      rows.filter((r) => {
-        if (filterCompany !== "all" && r.companyId !== filterCompany) return false;
-        if (filterCycle !== "all" && r.turma.cycleId !== filterCycle) return false;
-        if (filterStatus !== "all" && r.turma.status !== filterStatus) return false;
-        return true;
-      }),
-    [rows, filterCompany, filterCycle, filterStatus],
-  );
+  const filteredRows = useMemo(() => rows.filter(r => {
+    if (filterCompany !== "all" && r.companyId !== filterCompany) return false;
+    if (filterCycle   !== "all" && r.turma.cycleId !== filterCycle) return false;
+    if (filterStatus  !== "all" && r.turma.status  !== filterStatus) return false;
+    return true;
+  }), [rows, filterCompany, filterCycle, filterStatus]);
 
-  const totals = useMemo(
-    () => ({
-      total: filteredRows.length,
-      planned: filteredRows.filter((r) => r.turma.status === "planned").length,
-      inProgress: filteredRows.filter((r) => r.turma.status === "in_progress").length,
-      completed: filteredRows.filter((r) => r.turma.status === "completed").length,
-      totalParticipants: filteredRows.reduce((s, r) => s + (r.turma.participants?.length || 0), 0),
-      totalPresent: filteredRows.reduce(
-        (s, r) =>
-          s + (r.turma.attendance ? Object.values(r.turma.attendance).filter((v) => v === "present").length : 0),
-        0,
-      ),
-    }),
-    [filteredRows],
-  );
+  const totals = useMemo(() => ({
+    total:            filteredRows.length,
+    planned:          filteredRows.filter(r => r.turma.status === "planned").length,
+    inProgress:       filteredRows.filter(r => r.turma.status === "in_progress").length,
+    completed:        filteredRows.filter(r => r.turma.status === "completed").length,
+    totalParticipants: filteredRows.reduce((s, r) => s + (r.turma.participants?.length || 0), 0),
+    totalPresent:     filteredRows.reduce((s, r) => s + (r.turma.attendance
+      ? Object.values(r.turma.attendance).filter(v => v === "present").length : 0), 0),
+  }), [filteredRows]);
 
   if (loading) {
     return (
@@ -129,15 +122,16 @@ export default function AdminTurmas() {
   return (
     <AppLayout title="Turmas — Visão Administrativa" subtitle="Visão consolidada de todas as turmas da carteira">
       <div className="space-y-6 animate-fade-in">
+
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
-            { icon: GraduationCap, label: "Total Turmas", value: totals.total },
-            { icon: Clock, label: "Planejadas", value: totals.planned },
-            { icon: Target, label: "Em andamento", value: totals.inProgress },
-            { icon: CheckCircle2, label: "Concluídas", value: totals.completed },
-            { icon: Users, label: "Participantes", value: totals.totalParticipants },
-          ].map((s) => (
+            { icon: GraduationCap, label: "Total Turmas",     value: totals.total },
+            { icon: Clock,         label: "Planejadas",        value: totals.planned },
+            { icon: Target,        label: "Em andamento",      value: totals.inProgress },
+            { icon: CheckCircle2,  label: "Concluídas",        value: totals.completed },
+            { icon: Users,         label: "Participantes",     value: totals.totalParticipants },
+          ].map(s => (
             <Card key={s.label} className="p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -158,47 +152,31 @@ export default function AdminTurmas() {
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Empresa:</span>
               <Select value={filterCompany} onValueChange={setFilterCompany}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
+                <SelectTrigger className="w-48"><SelectValue placeholder="Todas" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas</SelectItem>
-                  {companies.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
+                  {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Ciclo:</span>
               <Select value={filterCycle} onValueChange={setFilterCycle}>
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
+                <SelectTrigger className="w-32"><SelectValue placeholder="Todos" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  {CYCLE_IDS.map((id) => (
-                    <SelectItem key={id} value={id}>
-                      {id}
-                    </SelectItem>
-                  ))}
+                  {CYCLE_IDS.map(id => <SelectItem key={id} value={id}>{id}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Status:</span>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
+                <SelectTrigger className="w-40"><SelectValue placeholder="Todos" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
                   {Object.entries(statusConfig).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>
-                      {v.label}
-                    </SelectItem>
+                    <SelectItem key={k} value={k}>{v.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -229,55 +207,47 @@ export default function AdminTurmas() {
                     <p>Nenhuma turma encontrada</p>
                   </TableCell>
                 </TableRow>
-              ) : (
-                filteredRows.map((row) => {
-                  const sc = statusConfig[row.turma.status] ?? statusConfig.planned;
-                  const StatusIcon = sc.icon;
-                  const presences = row.turma.attendance
-                    ? Object.values(row.turma.attendance).filter((v) => v === "present").length
-                    : 0;
-                  return (
-                    <TableRow key={`${row.companyId}-${row.turma.id}`}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Building2 size={14} className="text-muted-foreground" />
-                          <span className="font-medium text-sm">{row.companyName}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium text-sm">{row.turma.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {row.turma.cycleId}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{row.turma.facilitator || "—"}</TableCell>
-                      <TableCell className="text-center">{row.turma.participants?.length || 0}</TableCell>
-                      <TableCell className="text-center">
-                        {presences > 0 ? (
-                          <Badge className="bg-emerald-500/10 text-emerald-600 text-xs">{presences}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={cn("text-xs gap-1", sc.color)}>
-                          <StatusIcon size={10} />
-                          {sc.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigate(`/empresas/${row.companyId}?tab=turmas`)}
-                        >
-                          <Eye size={14} />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
+              ) : filteredRows.map(row => {
+                const sc = statusConfig[row.turma.status] ?? statusConfig.planned;
+                const StatusIcon = sc.icon;
+                const presences = row.turma.attendance
+                  ? Object.values(row.turma.attendance).filter(v => v === "present").length
+                  : 0;
+                return (
+                  <TableRow key={`${row.companyId}-${row.turma.id}`}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Building2 size={14} className="text-muted-foreground" />
+                        <span className="font-medium text-sm">{row.companyName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium text-sm">{row.turma.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">{row.turma.cycleId}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {row.turma.facilitator || "—"}
+                    </TableCell>
+                    <TableCell className="text-center">{row.turma.participants?.length || 0}</TableCell>
+                    <TableCell className="text-center">
+                      {presences > 0
+                        ? <Badge className="bg-emerald-500/10 text-emerald-600 text-xs">{presences}</Badge>
+                        : <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={cn("text-xs gap-1", sc.color)}>
+                        <StatusIcon size={10} />{sc.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm"
+                        onClick={() => navigate(`/empresas/${row.companyId}?tab=turmas`)}>
+                        <Eye size={14} />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </Card>

@@ -8,7 +8,9 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
 import { AlertTriangle, Building2, ChevronRight, Clock, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,14 +42,15 @@ export default function DelayedActions() {
       // Busca todas as ações com status delayed ou com due_date vencida
       const [companies, { data: actions }] = await Promise.all([
         fetchCompanies(),
-        sb
-          .from("cycle_actions")
+        sb.from("cycle_actions")
           .select("company_id, cycle_id, factor_id, title, responsible, due_date, status")
           .in("status", ["delayed", "pending", "in_progress"])
           .not("due_date", "is", null),
       ]);
 
-      const companyMap = Object.fromEntries((companies || []).map((c: any) => [c.id, c.name]));
+      const companyMap = Object.fromEntries(
+        (companies || []).map((c: any) => [c.id, c.name])
+      );
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -114,11 +117,8 @@ export default function DelayedActions() {
                 </TableRow>
               )}
               {rows.map((row, i) => (
-                <TableRow
-                  key={i}
-                  className="cursor-pointer hover:bg-muted/30"
-                  onClick={() => navigate(`/empresas/${row.companyId}?tab=ciclos&cycle=${row.cycleId}`)}
-                >
+                <TableRow key={i} className="cursor-pointer hover:bg-muted/30"
+                  onClick={() => navigate(`/empresas/${row.companyId}?tab=ciclos&cycle=${row.cycleId}`)}>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Building2 size={14} className="text-primary" />
@@ -126,9 +126,7 @@ export default function DelayedActions() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {row.cycleId}
-                    </Badge>
+                    <Badge variant="outline" className="text-xs">{row.cycleId}</Badge>
                   </TableCell>
                   <TableCell>
                     <p className="text-sm">{row.actionTitle}</p>
@@ -139,20 +137,14 @@ export default function DelayedActions() {
                     {row.dueDate ? new Date(row.dueDate).toLocaleDateString("pt-BR") : "—"}
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      className={cn(
-                        "text-xs",
-                        row.daysDelayed > 14 ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-700",
-                      )}
-                    >
-                      <Clock size={10} className="mr-1" />
-                      {row.daysDelayed} dias
+                    <Badge className={cn("text-xs",
+                      row.daysDelayed > 14 ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-700"
+                    )}>
+                      <Clock size={10} className="mr-1" />{row.daysDelayed} dias
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm">
-                      <ChevronRight size={14} />
-                    </Button>
+                    <Button variant="ghost" size="sm"><ChevronRight size={14} /></Button>
                   </TableCell>
                 </TableRow>
               ))}
