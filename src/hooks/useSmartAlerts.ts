@@ -49,7 +49,11 @@ export function useSmartAlerts(refreshTrigger = 0) {
   const [dismissed, setDismissed] = useState<string[]>(() => getDismissed(companyId));
 
   const generate = useCallback(async () => {
-    if (!companyId) return;
+    if (!companyId) {
+      setAlerts([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     const [actions, states, turmas, records] = await Promise.all([
