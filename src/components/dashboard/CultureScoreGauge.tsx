@@ -17,8 +17,9 @@ interface CultureScoreGaugeProps {
 }
 
 export function CultureScoreGauge({ score }: CultureScoreGaugeProps) {
-  const current = getLevel(score);
-  const clamped = Math.min(100, Math.max(0, score));
+  const safeScore = Number.isFinite(score) ? score : 0;
+  const current = getLevel(safeScore);
+  const clamped = Math.min(100, Math.max(0, safeScore));
   const angle = -90 + (clamped / 100) * 180;
 
   const arcColors = [
