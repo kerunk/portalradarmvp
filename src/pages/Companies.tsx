@@ -179,7 +179,7 @@ export default function Companies() {
     if (!updated) {
       toast({
         title: "Erro ao alterar gerente",
-        description: "Não foi possível salvar o novo responsável no Supabase.",
+        description: "Não foi possível salvar o novo responsável.",
         variant: "destructive",
       });
       return;
