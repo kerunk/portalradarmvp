@@ -1,4 +1,7 @@
-import { useState, useMemo } from "react";
+// ─── ExperiencesMVP.tsx ──────────────────────────────────────────────────────
+// Migrado de localStorage (companyStorage.ts) para Supabase (tabela experiences)
+
+import { useState, useEffect, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
@@ -8,26 +11,25 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  BookOpen,
-  Plus,
-  Pencil,
-  Trash2,
-  Search,
-  Calendar,
-} from "lucide-react";
-import {
-  type ExperienceMVP,
-  getExperiences,
-  setExperiences,
-} from "@/lib/companyStorage";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { BookOpen, Plus, Pencil, Trash2, Search, Calendar, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+const sb = supabase as any;
+
+// ── Tipos ─────────────────────────────────────────────────────────────────────
+interface Experience {
+  id: string;
+  companyId: string;
+  date: string;
+  context: string;
+  humanFactors: string;
+  deviations: string;
+  actionTaken: string;
+  learning: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface ExperienceForm {
   date: string;
@@ -47,27 +49,96 @@ const emptyForm: ExperienceForm = {
   learning: "",
 };
 
+// ── Funções Supabase ──────────────────────────────────────────────────────────
+async function fetchExperiences(companyId: string): Promise<Experience[]> {
+  const { data, error } = await sb
+    .from("experiences")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("date", { ascending: false });
+  if (error) {
+    console.error("[db] fetchExperiences", error);
+    return [];
+  }
+  return (data ?? []).map(
+    (r: any): Experience => ({
+      id: r.id,
+      companyId: r.company_id,
+      date: r.date,
+      context: r.context ?? "",
+      humanFactors: r.human_factors ?? "",
+      deviations: r.deviations ?? "",
+      actionTaken: r.action_taken ?? "",
+      learning: r.learning ?? "",
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    }),
+  );
+}
+
+async function upsertExperience(companyId: string, form: ExperienceForm, id?: string): Promise<boolean> {
+  const row: any = {
+    company_id: companyId,
+    date: form.date,
+    context: form.context,
+    human_factors: form.humanFactors,
+    deviations: form.deviations,
+    action_taken: form.actionTaken,
+    learning: form.learning,
+    updated_at: new Date().toISOString(),
+  };
+  if (id) row.id = id;
+
+  const { error } = await sb.from("experiences").upsert(row, { onConflict: "id" });
+  if (error) {
+    console.error("[db] upsertExperience", error);
+    return false;
+  }
+  return true;
+}
+
+async function deleteExperience(id: string): Promise<boolean> {
+  const { error } = await sb.from("experiences").delete().eq("id", id);
+  if (error) {
+    console.error("[db] deleteExperience", error);
+    return false;
+  }
+  return true;
+}
+
+// ── Componente ────────────────────────────────────────────────────────────────
 export default function ExperiencesMVPPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const companyId = user?.companyId || "";
 
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [experiences, setExperiences] = useState<Experience[]>([]);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ExperienceForm>(emptyForm);
 
-  const experiences = useMemo(() => getExperiences(companyId), [companyId, refreshKey]);
-  const refresh = () => setRefreshKey(k => k + 1);
+  const loadData = async () => {
+    if (!companyId) return;
+    setLoading(true);
+    setExperiences(await fetchExperiences(companyId));
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [companyId]);
 
   const filtered = useMemo(() => {
     if (!search) return experiences;
     const q = search.toLowerCase();
-    return experiences.filter(e =>
-      e.context.toLowerCase().includes(q) ||
-      e.humanFactors.toLowerCase().includes(q) ||
-      e.learning.toLowerCase().includes(q)
+    return experiences.filter(
+      (e) =>
+        e.context.toLowerCase().includes(q) ||
+        e.humanFactors.toLowerCase().includes(q) ||
+        e.learning.toLowerCase().includes(q),
     );
   }, [experiences, search]);
 
@@ -76,8 +147,7 @@ export default function ExperiencesMVPPage() {
     setEditingId(null);
     setDialogOpen(true);
   };
-
-  const openEdit = (exp: ExperienceMVP) => {
+  const openEdit = (exp: Experience) => {
     setForm({
       date: exp.date,
       context: exp.context,
@@ -90,179 +160,188 @@ export default function ExperiencesMVPPage() {
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.context.trim()) {
       toast({ title: "Contexto é obrigatório", variant: "destructive" });
       return;
     }
-
-    const list = getExperiences(companyId);
-    const now = new Date().toISOString();
-
-    if (editingId) {
-      const updated = list.map(e =>
-        e.id === editingId ? { ...e, ...form, updatedAt: now } : e
-      );
-      setExperiences(companyId, updated);
-      toast({ title: "Experiência atualizada!" });
+    setSaving(true);
+    const ok = await upsertExperience(companyId, form, editingId ?? undefined);
+    setSaving(false);
+    if (ok) {
+      toast({ title: editingId ? "Experiência atualizada!" : "Experiência registrada!" });
+      setDialogOpen(false);
+      await loadData();
     } else {
-      const newExp: ExperienceMVP = {
-        ...form,
-        id: `exp-${Date.now()}`,
-        createdAt: now,
-        updatedAt: now,
-      };
-      setExperiences(companyId, [...list, newExp]);
-      toast({ title: "Experiência registrada!" });
+      toast({ title: "Erro ao salvar", variant: "destructive" });
     }
-
-    setDialogOpen(false);
-    refresh();
   };
 
-  const handleDelete = (id: string) => {
-    const list = getExperiences(companyId);
-    setExperiences(companyId, list.filter(e => e.id !== id));
-    toast({ title: "Experiência removida" });
-    refresh();
+  const handleDelete = async (id: string) => {
+    if (!confirm("Deseja excluir esta experiência?")) return;
+    const ok = await deleteExperience(id);
+    if (ok) {
+      toast({ title: "Experiência excluída." });
+      await loadData();
+    } else toast({ title: "Erro ao excluir", variant: "destructive" });
   };
+
+  const f = (k: keyof ExperienceForm) => (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) =>
+    setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  if (loading) {
+    return (
+      <AppLayout title="Experiências MVP" subtitle="Carregando...">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="animate-spin text-primary" size={32} />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
-    <AppLayout title="Experiências MVP" subtitle={`Registro de experiências e aprendizados — ${user?.companyName || "Empresa"}`}>
+    <AppLayout
+      title="Experiências MVP"
+      subtitle={`${experiences.length} experiência(s) registrada(s) — ${user?.companyName || "Empresa"}`}
+    >
       <div className="space-y-6 animate-fade-in">
-        {/* Actions bar */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        {/* Toolbar */}
+        <div className="flex gap-3 items-center">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
             <Input
-              placeholder="Buscar experiências..."
+              className="pl-9"
+              placeholder="Buscar por contexto, fatores ou aprendizado..."
               value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-10"
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <Button onClick={openAdd}>
-            <Plus size={16} className="mr-2" /> Nova Experiência
+            <Plus size={14} className="mr-1" /> Nova Experiência
           </Button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <Card className="p-4">
-            <p className="text-xs text-muted-foreground">Total de Registros</p>
-            <p className="text-2xl font-bold text-foreground">{experiences.length}</p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-xs text-muted-foreground">Este Mês</p>
-            <p className="text-2xl font-bold text-foreground">
-              {experiences.filter(e => {
-                const d = new Date(e.date);
-                const now = new Date();
-                return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-              }).length}
-            </p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-xs text-muted-foreground">Resultados</p>
-            <p className="text-2xl font-bold text-foreground">{filtered.length}</p>
-          </Card>
-        </div>
-
-        {/* Experience Cards */}
+        {/* Lista */}
         {filtered.length === 0 ? (
-          <Card className="p-8 text-center">
-            <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">
-              {experiences.length === 0
-                ? "Nenhuma experiência registrada. Clique em 'Nova Experiência' para começar."
-                : "Nenhuma experiência encontrada com os filtros aplicados."}
-            </p>
+          <Card className="p-8 text-center text-muted-foreground">
+            <BookOpen size={40} className="mx-auto mb-2 opacity-30" />
+            {experiences.length === 0
+              ? "Nenhuma experiência registrada ainda."
+              : "Nenhuma experiência corresponde à busca."}
           </Card>
         ) : (
           <div className="space-y-4">
-            {filtered.sort((a, b) => b.date.localeCompare(a.date)).map(exp => (
+            {filtered.map((exp) => (
               <Card key={exp.id} className="p-5">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Calendar size={14} className="text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">{exp.date}</span>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0 space-y-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="text-xs flex items-center gap-1">
+                        <Calendar size={10} />
+                        {new Date(exp.date).toLocaleDateString("pt-BR")}
+                      </Badge>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                        Contexto
+                      </p>
+                      <p className="text-sm text-foreground">{exp.context}</p>
+                    </div>
+                    {exp.humanFactors && (
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                          Fatores Humanos
+                        </p>
+                        <p className="text-sm text-muted-foreground">{exp.humanFactors}</p>
+                      </div>
+                    )}
+                    {exp.learning && (
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                          Aprendizado
+                        </p>
+                        <p className="text-sm text-muted-foreground">{exp.learning}</p>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 flex-shrink-0">
                     <Button variant="ghost" size="sm" onClick={() => openEdit(exp)}>
                       <Pencil size={14} />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(exp.id)} className="text-destructive hover:text-destructive">
-                      <Trash2 size={14} />
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(exp.id)}>
+                      <Trash2 size={14} className="text-destructive" />
                     </Button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">CONTEXTO</p>
-                    <p className="text-sm text-foreground">{exp.context}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">FATORES HUMANOS</p>
-                    <p className="text-sm text-foreground">{exp.humanFactors || "—"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">DESVIOS OBSERVADOS</p>
-                    <p className="text-sm text-foreground">{exp.deviations || "—"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">AÇÃO TOMADA</p>
-                    <p className="text-sm text-foreground">{exp.actionTaken || "—"}</p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">APRENDIZADO</p>
-                    <p className="text-sm text-foreground">{exp.learning || "—"}</p>
                   </div>
                 </div>
               </Card>
             ))}
           </div>
         )}
-      </div>
 
-      {/* Add/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editingId ? "Editar" : "Registrar"} Experiência MVP</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-            <div className="space-y-1">
-              <Label>Data</Label>
-              <Input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+        {/* Dialog */}
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{editingId ? "Editar" : "Registrar"} Experiência MVP</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              <div className="space-y-1">
+                <Label>Data</Label>
+                <Input type="date" value={form.date} onChange={f("date")} />
+              </div>
+              <div className="space-y-1">
+                <Label>Contexto *</Label>
+                <Textarea placeholder="Descreva o contexto..." value={form.context} onChange={f("context")} rows={3} />
+              </div>
+              <div className="space-y-1">
+                <Label>Fatores Humanos Envolvidos</Label>
+                <Textarea
+                  placeholder="Quais fatores humanos estavam presentes..."
+                  value={form.humanFactors}
+                  onChange={f("humanFactors")}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Desvios Observados</Label>
+                <Textarea
+                  placeholder="Quais desvios foram identificados..."
+                  value={form.deviations}
+                  onChange={f("deviations")}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Ação Tomada</Label>
+                <Textarea
+                  placeholder="O que foi feito..."
+                  value={form.actionTaken}
+                  onChange={f("actionTaken")}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Aprendizado</Label>
+                <Textarea
+                  placeholder="O que foi aprendido..."
+                  value={form.learning}
+                  onChange={f("learning")}
+                  rows={2}
+                />
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label>Contexto *</Label>
-              <Textarea placeholder="Descreva o contexto da experiência..." value={form.context} onChange={e => setForm(f => ({ ...f, context: e.target.value }))} rows={3} />
-            </div>
-            <div className="space-y-1">
-              <Label>Fatores Humanos Envolvidos</Label>
-              <Textarea placeholder="Quais fatores humanos estavam presentes..." value={form.humanFactors} onChange={e => setForm(f => ({ ...f, humanFactors: e.target.value }))} rows={2} />
-            </div>
-            <div className="space-y-1">
-              <Label>Desvios Observados</Label>
-              <Textarea placeholder="Quais desvios foram identificados..." value={form.deviations} onChange={e => setForm(f => ({ ...f, deviations: e.target.value }))} rows={2} />
-            </div>
-            <div className="space-y-1">
-              <Label>Ação Tomada</Label>
-              <Textarea placeholder="O que foi feito..." value={form.actionTaken} onChange={e => setForm(f => ({ ...f, actionTaken: e.target.value }))} rows={2} />
-            </div>
-            <div className="space-y-1">
-              <Label>Aprendizado</Label>
-              <Textarea placeholder="O que foi aprendido com esta experiência..." value={form.learning} onChange={e => setForm(f => ({ ...f, learning: e.target.value }))} rows={2} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave}>{editingId ? "Salvar" : "Registrar"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSave} disabled={saving}>
+                {saving && <Loader2 size={14} className="mr-2 animate-spin" />}
+                {editingId ? "Salvar" : "Registrar"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </AppLayout>
   );
 }
