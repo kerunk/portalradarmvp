@@ -1,146 +1,158 @@
-import { useMemo, useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  Users, Building2, CheckCircle2, Clock, Target, Eye,
-  GraduationCap, AlertCircle, BarChart3,
-} from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Users, Building2, CheckCircle2, Clock, Target, Eye, GraduationCap, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getCompanies, setActiveCompany, getState, type TurmaState } from "@/lib/storage";
+import { supabase } from "@/integrations/supabase/client";
+import { fetchCompanies } from "@/lib/companyService";
 import { useAuth } from "@/contexts/AuthContext";
-import { getAdminRoleForUser } from "@/lib/permissions";
-import { CYCLE_IDS, TURMA_STATUS } from "@/lib/constants";
+import { CYCLE_IDS } from "@/lib/constants";
+import type { Turma } from "@/lib/db";
+
+const sb = supabase as any;
 
 interface CompanyTurmaRow {
   companyId: string;
   companyName: string;
-  turma: TurmaState;
+  turma: Turma;
 }
+
+const statusConfig: Record<string, { label: string; icon: typeof Clock; color: string }> = {
+  planned: { label: "Planejada", icon: Clock, color: "bg-muted text-muted-foreground" },
+  in_progress: { label: "Em andamento", icon: Target, color: "bg-amber-500/10 text-amber-600" },
+  completed: { label: "Concluída", icon: CheckCircle2, color: "bg-emerald-500/10 text-emerald-600" },
+  delayed: { label: "Atrasada", icon: AlertCircle, color: "bg-destructive/10 text-destructive" },
+};
 
 export default function AdminTurmas() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const adminRole = useMemo(() => getAdminRoleForUser(user?.email || ""), [user?.email]);
+
+  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState<CompanyTurmaRow[]>([]);
+  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
 
   const [filterCompany, setFilterCompany] = useState("all");
   const [filterCycle, setFilterCycle] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
 
-  const { rows, companies, totals } = useMemo(() => {
-    const allCompanies = getCompanies().filter(c => c.active !== false && !c.deleted);
-    const filtered = allCompanies;
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
 
-    const rows: CompanyTurmaRow[] = [];
-    filtered.forEach(company => {
-      setActiveCompany(company.id);
-      const state = getState();
-      const turmas = state.turmas || [];
-      turmas.forEach(t => {
-        rows.push({ companyId: company.id, companyName: company.name, turma: t });
+      const [comps, { data: turmasRaw }] = await Promise.all([
+        fetchCompanies(),
+        sb.from("turmas").select("*").order("created_at"),
+      ]);
+
+      const activeComps = (comps || []).filter((c: any) => c.active !== false && !c.deleted);
+      setCompanies(activeComps.map((c: any) => ({ id: c.id, name: c.name })));
+
+      const compMap = Object.fromEntries(activeComps.map((c: any) => [c.id, c.name]));
+
+      const result: CompanyTurmaRow[] = (turmasRaw || []).map((t: any) => {
+        let participants: any[] = [];
+        let attendance: Record<string, "present" | "absent"> | undefined;
+        try {
+          participants = JSON.parse(t.participants_json ?? "[]");
+        } catch {}
+        try {
+          attendance = JSON.parse(t.attendance_json ?? "null") ?? undefined;
+        } catch {}
+        return {
+          companyId: t.company_id,
+          companyName: compMap[t.company_id] || "Empresa",
+          turma: {
+            id: t.id,
+            companyId: t.company_id,
+            name: t.name,
+            cycleId: t.cycle_id,
+            facilitator: t.facilitator ?? "",
+            startDate: t.start_date ?? null,
+            endDate: t.end_date ?? null,
+            trainingDate: t.training_date ?? null,
+            status: t.status ?? "planned",
+            notes: t.notes ?? "",
+            participants,
+            attendance,
+          } as Turma,
+        };
       });
-    });
-    setActiveCompany(null);
 
-    const totals = {
-      total: rows.length,
-      planned: rows.filter(r => r.turma.status === "planned").length,
-      inProgress: rows.filter(r => r.turma.status === "in_progress").length,
-      completed: rows.filter(r => r.turma.status === "completed").length,
-      totalParticipants: rows.reduce((s, r) => s + (r.turma.participants?.length || 0), 0),
-      totalPresent: rows.reduce((s, r) => s + (r.turma.attendance ? Object.values(r.turma.attendance).filter(v => v === "present").length : 0), 0),
-    };
+      setRows(result);
+      setLoading(false);
+    })();
+  }, []);
 
-    return { rows, companies: filtered, totals };
-  }, [adminRole, user?.email]);
+  const filteredRows = useMemo(
+    () =>
+      rows.filter((r) => {
+        if (filterCompany !== "all" && r.companyId !== filterCompany) return false;
+        if (filterCycle !== "all" && r.turma.cycleId !== filterCycle) return false;
+        if (filterStatus !== "all" && r.turma.status !== filterStatus) return false;
+        return true;
+      }),
+    [rows, filterCompany, filterCycle, filterStatus],
+  );
 
-  const filteredRows = useMemo(() => {
-    return rows.filter(r => {
-      if (filterCompany !== "all" && r.companyId !== filterCompany) return false;
-      if (filterCycle !== "all" && r.turma.cycleId !== filterCycle) return false;
-      if (filterStatus !== "all" && r.turma.status !== filterStatus) return false;
-      return true;
-    });
-  }, [rows, filterCompany, filterCycle, filterStatus]);
+  const totals = useMemo(
+    () => ({
+      total: filteredRows.length,
+      planned: filteredRows.filter((r) => r.turma.status === "planned").length,
+      inProgress: filteredRows.filter((r) => r.turma.status === "in_progress").length,
+      completed: filteredRows.filter((r) => r.turma.status === "completed").length,
+      totalParticipants: filteredRows.reduce((s, r) => s + (r.turma.participants?.length || 0), 0),
+      totalPresent: filteredRows.reduce(
+        (s, r) =>
+          s + (r.turma.attendance ? Object.values(r.turma.attendance).filter((v) => v === "present").length : 0),
+        0,
+      ),
+    }),
+    [filteredRows],
+  );
 
-  const statusConfig: Record<string, { label: string; icon: typeof Clock; color: string }> = {
-    planned: { label: "Planejada", icon: Clock, color: "bg-muted text-muted-foreground" },
-    in_progress: { label: "Em andamento", icon: Target, color: "bg-amber-500/10 text-amber-600" },
-    completed: { label: "Concluída", icon: CheckCircle2, color: "bg-emerald-500/10 text-emerald-600" },
-    delayed: { label: "Atrasada", icon: AlertCircle, color: "bg-destructive/10 text-destructive" },
-  };
+  if (loading) {
+    return (
+      <AppLayout title="Turmas — Visão Administrativa" subtitle="Carregando...">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="animate-spin text-primary" size={32} />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout title="Turmas — Visão Administrativa" subtitle="Visão consolidada de todas as turmas da carteira">
       <div className="space-y-6 animate-fade-in">
-        {/* KPI Cards */}
+        {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <GraduationCap className="h-5 w-5 text-primary" />
+          {[
+            { icon: GraduationCap, label: "Total Turmas", value: totals.total },
+            { icon: Clock, label: "Planejadas", value: totals.planned },
+            { icon: Target, label: "Em andamento", value: totals.inProgress },
+            { icon: CheckCircle2, label: "Concluídas", value: totals.completed },
+            { icon: Users, label: "Participantes", value: totals.totalParticipants },
+          ].map((s) => (
+            <Card key={s.label} className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <s.icon className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{s.value}</p>
+                  <p className="text-xs text-muted-foreground">{s.label}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{totals.total}</p>
-                <p className="text-xs text-muted-foreground">Total de Turmas</p>
-              </div>
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
-                <Clock className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{totals.planned}</p>
-                <p className="text-xs text-muted-foreground">Planejadas</p>
-              </div>
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                <Target className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{totals.inProgress}</p>
-                <p className="text-xs text-muted-foreground">Em Andamento</p>
-              </div>
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{totals.completed}</p>
-                <p className="text-xs text-muted-foreground">Concluídas</p>
-              </div>
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Users className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{totals.totalParticipants}</p>
-                <p className="text-xs text-muted-foreground">Participantes</p>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          ))}
         </div>
 
-        {/* Filters */}
+        {/* Filtros */}
         <Card className="p-4">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
@@ -151,8 +163,10 @@ export default function AdminTurmas() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas</SelectItem>
-                  {companies.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  {companies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -165,8 +179,10 @@ export default function AdminTurmas() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  {CYCLE_IDS.map(id => (
-                    <SelectItem key={id} value={id}>{id}</SelectItem>
+                  {CYCLE_IDS.map((id) => (
+                    <SelectItem key={id} value={id}>
+                      {id}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -179,17 +195,19 @@ export default function AdminTurmas() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="planned">Planejada</SelectItem>
-                  <SelectItem value="in_progress">Em andamento</SelectItem>
-                  <SelectItem value="completed">Concluída</SelectItem>
+                  {Object.entries(statusConfig).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>
+                      {v.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
         </Card>
 
-        {/* Table */}
-        <Card className="p-4">
+        {/* Tabela */}
+        <Card>
           <Table>
             <TableHeader>
               <TableRow>
@@ -212,10 +230,12 @@ export default function AdminTurmas() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredRows.map(row => {
-                  const sc = statusConfig[row.turma.status] || statusConfig.planned;
+                filteredRows.map((row) => {
+                  const sc = statusConfig[row.turma.status] ?? statusConfig.planned;
                   const StatusIcon = sc.icon;
-                  const presences = row.turma.attendance ? Object.values(row.turma.attendance).filter(v => v === "present").length : 0;
+                  const presences = row.turma.attendance
+                    ? Object.values(row.turma.attendance).filter((v) => v === "present").length
+                    : 0;
                   return (
                     <TableRow key={`${row.companyId}-${row.turma.id}`}>
                       <TableCell>
@@ -226,11 +246,11 @@ export default function AdminTurmas() {
                       </TableCell>
                       <TableCell className="font-medium text-sm">{row.turma.name}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="text-xs">{row.turma.cycleId}</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {row.turma.cycleId}
+                        </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {row.turma.facilitator || "—"}
-                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{row.turma.facilitator || "—"}</TableCell>
                       <TableCell className="text-center">{row.turma.participants?.length || 0}</TableCell>
                       <TableCell className="text-center">
                         {presences > 0 ? (
@@ -250,7 +270,6 @@ export default function AdminTurmas() {
                           variant="ghost"
                           size="sm"
                           onClick={() => navigate(`/empresas/${row.companyId}?tab=turmas`)}
-                          title="Ver no portal da empresa"
                         >
                           <Eye size={14} />
                         </Button>
