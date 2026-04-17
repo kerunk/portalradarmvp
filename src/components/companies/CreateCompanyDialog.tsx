@@ -63,6 +63,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
   const [companyName, setCompanyName] = useState("");
   const [companyLogo, setCompanyLogo] = useState<string>("");
   const [sector, setSector] = useState("");
+  const [customSector, setCustomSector] = useState("");
   const [employees, setEmployees] = useState("");
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
