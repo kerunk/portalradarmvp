@@ -126,7 +126,10 @@ export function useCycleData() {
   const reload = useCallback(() => setRefreshKey(k => k + 1), []);
 
   useEffect(() => {
-    if (!companyId) return;
+    if (!companyId) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
 

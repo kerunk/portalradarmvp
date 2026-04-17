@@ -103,38 +103,23 @@ export function useIndicators(refreshTrigger = 0) {
   const [allActions, setAllActions] = useState<ActionData[]>([]);
 
   const calculate = useCallback(async () => {
-    setLoading(true);
     if (!companyId) {
-      // Admin MVP sem empresa ativa: retorna indicadores zerados em vez de travar em loading
+      // Admin MVP sem empresa vinculada — retorna zeros e encerra loading
       setGlobalIndicators({
         totalCycles: CYCLE_IDS.length,
         closedCycles: 0, cyclesInProgress: 0, cyclesReadyToClose: 0,
         totalActions: 0, completedActions: 0, delayedActions: 0,
-        pendingActions: 0, inProgressActions: 0,
-        overallCompletionPercent: 0,
+        pendingActions: 0, inProgressActions: 0, overallCompletionPercent: 0,
         totalTurmas: 0, completedTurmas: 0, totalParticipants: 0,
         totalRecords: 0, decisionsWithActions: 0,
-        averageCycleDurationDays: null,
-        actionBacklog: 0, decisionConversionRate: 0,
+        averageCycleDurationDays: null, actionBacklog: 0, decisionConversionRate: 0,
       });
-      setCycleIndicators(CYCLE_IDS.map(cycleId => {
-        const cycleDef = mvpCycles.find(c => c.id === cycleId);
-        return {
-          cycleId,
-          phaseName: cycleDef?.phaseName || "MVP",
-          status: "not_started" as CycleStatus,
-          totalActions: 0, completedActions: 0, delayedActions: 0,
-          completionPercent: 0,
-          turmasTotal: 0, turmasCompleted: 0,
-          recordsCount: 0, decisionsCount: 0,
-          daysActive: null,
-          isLocked: CYCLE_IDS.indexOf(cycleId) > 0,
-        };
-      }));
+      setCycleIndicators([]);
       setAllActions([]);
       setLoading(false);
       return;
     }
+    setLoading(true);
 
     const [actions, states, turmas, records] = await Promise.all([
       fetchCycleActions(companyId),
