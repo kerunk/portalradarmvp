@@ -1,107 +1,99 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
-import {
-  ShieldCheck,
-  Users,
-  Target,
-  TrendingUp,
-} from "lucide-react";
-import {
-  getPopulation,
-  getPopulationStats,
-} from "@/lib/companyStorage";
-import { getAllCycleActions } from "@/lib/storage";
+import { Loader2 } from "lucide-react";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { ShieldCheck, Users, Target, TrendingUp } from "lucide-react";
+import { fetchPopulation, fetchCycleActions, type PopulationMember, type CycleAction } from "@/lib/db";
 
 export default function NucleoGovernance() {
   const { user } = useAuth();
   const companyId = user?.companyId || "";
 
-  const [refreshKey] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [population, setPopulation] = useState<PopulationMember[]>([]);
+  const [allActions, setAllActions] = useState<CycleAction[]>([]);
 
-  const population = useMemo(() => getPopulation(companyId), [companyId, refreshKey]);
-  const nucleoMembers = useMemo(() => population.filter(m => m.nucleo && m.active), [population]);
-  const stats = useMemo(() => getPopulationStats(companyId), [companyId, refreshKey]);
+  useEffect(() => {
+    if (!companyId) return;
+    setLoading(true);
+    Promise.all([fetchPopulation(companyId), fetchCycleActions(companyId)]).then(([pop, actions]) => {
+      setPopulation(pop);
+      setAllActions(actions);
+      setLoading(false);
+    });
+  }, [companyId]);
 
-  // Get all actions to count assignments per nucleus member
-  const allActions = useMemo(() => getAllCycleActions(), [refreshKey]);
+  const nucleoMembers = useMemo(() => population.filter((m) => m.nucleo && m.active), [population]);
+
+  const stats = useMemo(() => {
+    const active = population.filter((m) => m.active);
+    return {
+      total: nucleoMembers.length,
+      facilitators: active.filter((m) => m.facilitator).length,
+      leaders: active.filter((m) => m.leadership).length,
+    };
+  }, [population, nucleoMembers]);
 
   const membersWithStats = useMemo(() => {
-    return nucleoMembers.map(member => {
-      const assignedActions = allActions.filter(
-        a => a.action.responsible?.toLowerCase() === member.name.toLowerCase()
-      );
-      const completedActions = assignedActions.filter(a => a.action.status === "completed");
+    return nucleoMembers.map((member) => {
+      const assigned = allActions.filter((a) => a.responsible?.toLowerCase() === member.name.toLowerCase());
+      const completed = assigned.filter((a) => a.status === "completed");
       return {
         ...member,
-        totalActions: assignedActions.length,
-        completedActions: completedActions.length,
-        participation: assignedActions.length > 0
-          ? Math.round((completedActions.length / assignedActions.length) * 100)
-          : 0,
+        totalActions: assigned.length,
+        completedActions: completed.length,
+        participation: assigned.length > 0 ? Math.round((completed.length / assigned.length) * 100) : 0,
       };
     });
   }, [nucleoMembers, allActions]);
 
-  const avgEngagement = membersWithStats.length > 0
-    ? Math.round(membersWithStats.reduce((sum, m) => sum + m.participation, 0) / membersWithStats.length)
-    : 0;
+  const avgEngagement =
+    membersWithStats.length > 0
+      ? Math.round(membersWithStats.reduce((s, m) => s + m.participation, 0) / membersWithStats.length)
+      : 0;
 
-  const totalNucleoActions = membersWithStats.reduce((sum, m) => sum + m.totalActions, 0);
-  const totalNucleoCompleted = membersWithStats.reduce((sum, m) => sum + m.completedActions, 0);
+  const totalAssigned = membersWithStats.reduce((s, m) => s + m.totalActions, 0);
+  const totalCompleted = membersWithStats.reduce((s, m) => s + m.completedActions, 0);
+
+  if (loading) {
+    return (
+      <AppLayout title="Governança do Núcleo" subtitle="Carregando...">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="animate-spin text-primary" size={32} />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
-    <AppLayout title="Governança do Núcleo" subtitle={`Acompanhamento do núcleo de sustentação — ${user?.companyName || "Empresa"}`}>
+    <AppLayout title="Governança do Núcleo" subtitle={`Núcleo de sustentação — ${user?.companyName || "Empresa"}`}>
       <div className="space-y-6 animate-fade-in">
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="p-4">
-            <div className="flex items-center gap-2">
-              <ShieldCheck size={16} className="text-primary" />
-              <p className="text-xs text-muted-foreground">Integrantes</p>
-            </div>
-            <p className="text-2xl font-bold text-foreground mt-1">{nucleoMembers.length}</p>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center gap-2">
-              <Target size={16} className="text-primary" />
-              <p className="text-xs text-muted-foreground">Ações Atribuídas</p>
-            </div>
-            <p className="text-2xl font-bold text-foreground mt-1">{totalNucleoActions}</p>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp size={16} className="text-primary" />
-              <p className="text-xs text-muted-foreground">Ações Realizadas</p>
-            </div>
-            <p className="text-2xl font-bold text-foreground mt-1">{totalNucleoCompleted}</p>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center gap-2">
-              <Users size={16} className="text-primary" />
-              <p className="text-xs text-muted-foreground">Engajamento Médio</p>
-            </div>
-            <p className="text-2xl font-bold text-foreground mt-1">{avgEngagement}%</p>
-          </Card>
+          {[
+            { icon: ShieldCheck, label: "Integrantes do Núcleo", value: stats.total },
+            { icon: Target, label: "Ações Atribuídas", value: totalAssigned },
+            { icon: TrendingUp, label: "Ações Realizadas", value: totalCompleted },
+            { icon: Users, label: "Engajamento Médio", value: `${avgEngagement}%` },
+          ].map((s) => (
+            <Card key={s.label} className="p-4">
+              <div className="flex items-center gap-2">
+                <s.icon size={16} className="text-primary" />
+                <p className="text-xs text-muted-foreground">{s.label}</p>
+              </div>
+              <p className="text-2xl font-bold text-foreground mt-1">{s.value}</p>
+            </Card>
+          ))}
         </div>
 
-        {/* Members Table */}
+        {/* Tabela de membros */}
         <Card>
           <div className="p-4 border-b border-border">
             <h3 className="font-semibold text-foreground">Membros do Núcleo de Sustentação</h3>
-            <p className="text-xs text-muted-foreground">
-              Pessoas da base populacional marcadas como integrantes do núcleo
-            </p>
+            <p className="text-xs text-muted-foreground">Colaboradores marcados como "Núcleo" na Base Populacional</p>
           </div>
           <Table>
             <TableHeader>
@@ -109,54 +101,105 @@ export default function NucleoGovernance() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Cargo</TableHead>
                 <TableHead>Setor</TableHead>
+                <TableHead className="text-center">Facilitador</TableHead>
+                <TableHead className="text-center">Liderança</TableHead>
                 <TableHead className="text-center">Ações Atribuídas</TableHead>
                 <TableHead className="text-center">Ações Realizadas</TableHead>
                 <TableHead className="text-center">Participação</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {membersWithStats.length === 0 && (
+              {membersWithStats.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    Nenhum integrante do núcleo cadastrado. Marque colaboradores como "Núcleo" na Base Populacional.
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    Nenhum integrante do núcleo cadastrado.
+                    <br />
+                    <span className="text-xs">Marque colaboradores como "Núcleo" na Base Populacional.</span>
                   </TableCell>
                 </TableRow>
-              )}
-              {membersWithStats.map(member => (
-                <TableRow key={member.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck size={14} className="text-primary" />
-                      {member.name}
-                    </div>
-                  </TableCell>
-                  <TableCell>{member.role || "—"}</TableCell>
-                  <TableCell>{member.sector || "—"}</TableCell>
-                  <TableCell className="text-center">{member.totalActions}</TableCell>
-                  <TableCell className="text-center">{member.completedActions}</TableCell>
-                  <TableCell className="text-center">
-                    {member.totalActions > 0 ? (
+              ) : (
+                membersWithStats.map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell className="font-medium">{m.name}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{m.role || "—"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{m.sector || "—"}</TableCell>
+                    <TableCell className="text-center">
+                      {m.facilitator ? (
+                        <Badge variant="secondary" className="text-xs">
+                          Sim
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground/40 text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {m.leadership ? (
+                        <Badge variant="secondary" className="text-xs">
+                          Sim
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground/40 text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center font-medium">{m.totalActions}</TableCell>
+                    <TableCell className="text-center font-medium">{m.completedActions}</TableCell>
+                    <TableCell className="text-center">
                       <Badge
-                        variant="outline"
                         className={
-                          member.participation >= 75
-                            ? "bg-green-500/10 text-green-600 border-green-500/30"
-                            : member.participation >= 50
-                            ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/30"
-                            : "bg-red-500/10 text-red-600 border-red-500/30"
+                          m.participation >= 80
+                            ? "bg-emerald-500/10 text-emerald-700"
+                            : m.participation >= 50
+                              ? "bg-amber-500/10 text-amber-700"
+                              : "bg-muted text-muted-foreground"
                         }
                       >
-                        {member.participation}%
+                        {m.participation}%
                       </Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">—</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </Card>
+
+        {/* Info sobre facilitadores e líderes */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="p-4">
+            <h4 className="font-semibold text-sm mb-3">Facilitadores Habilitados</h4>
+            {population.filter((m) => m.facilitator && m.active).length === 0 ? (
+              <p className="text-xs text-muted-foreground">Nenhum facilitador cadastrado.</p>
+            ) : (
+              <div className="space-y-1">
+                {population
+                  .filter((m) => m.facilitator && m.active)
+                  .map((m) => (
+                    <div key={m.id} className="flex justify-between text-sm">
+                      <span>{m.name}</span>
+                      <span className="text-muted-foreground">{m.sector || "—"}</span>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </Card>
+          <Card className="p-4">
+            <h4 className="font-semibold text-sm mb-3">Lideranças</h4>
+            {population.filter((m) => m.leadership && m.active).length === 0 ? (
+              <p className="text-xs text-muted-foreground">Nenhuma liderança cadastrada.</p>
+            ) : (
+              <div className="space-y-1">
+                {population
+                  .filter((m) => m.leadership && m.active)
+                  .map((m) => (
+                    <div key={m.id} className="flex justify-between text-sm">
+                      <span>{m.name}</span>
+                      <span className="text-muted-foreground">{m.role || "—"}</span>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </Card>
+        </div>
       </div>
     </AppLayout>
   );
