@@ -17,15 +17,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -45,31 +38,23 @@ import {
   ClipboardCheck,
   X,
   RotateCcw,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  getTurmas,
-  setTurmas,
-  type TurmaState,
-} from "@/lib/storage";
-import {
-  getPopulation,
-  getFacilitators as getCompanyFacilitators,
-  type PopulationMember,
-} from "@/lib/companyStorage";
+import { fetchTurmas, upsertTurma, deleteTurmaDB, fetchPopulation, type Turma, type PopulationMember } from "@/lib/db";
 import { useAuth } from "@/contexts/AuthContext";
 import { CYCLE_IDS, TURMA_STATUS } from "@/lib/constants";
 import { generateTurmaPDF } from "@/lib/pdfGenerator";
 import { useToast } from "@/hooks/use-toast";
 
-const statusIcons = {
-  planned: Clock,
-  in_progress: Target,
-  completed: CheckCircle2,
-  delayed: AlertCircle,
+const statusConfig = {
+  planned: { label: "Planejada", icon: Clock, color: "bg-blue-100 text-blue-800" },
+  in_progress: { label: "Em andamento", icon: Target, color: "bg-yellow-100 text-yellow-800" },
+  completed: { label: "Concluída", icon: CheckCircle2, color: "bg-green-100 text-green-800" },
+  delayed: { label: "Atrasada", icon: AlertCircle, color: "bg-red-100 text-red-800" },
 };
 
-const emptyTurma: Partial<TurmaState> = {
+const emptyTurma: Partial<Turma> = {
   name: "",
   cycleId: "M1",
   facilitator: "",
@@ -87,7 +72,9 @@ export default function Turmas() {
   const { user } = useAuth();
   const companyId = user?.companyId || "";
 
-  const [turmas, setTurmasState] = useState<TurmaState[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [turmas, setTurmas] = useState<Turma[]>([]);
   const [population, setPopulationState] = useState<PopulationMember[]>([]);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -96,102 +83,107 @@ export default function Turmas() {
   const [facilitatorFilter, setFacilitatorFilter] = useState("all");
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingTurma, setEditingTurma] = useState<Partial<TurmaState>>(emptyTurma);
+  const [editingTurma, setEditingTurma] = useState<Partial<Turma>>(emptyTurma);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
 
-  // Participant filters inside dialog
-  const [partSectorFilter, setPartSectorFilter] = useState("all");
-  const [partShiftFilter, setPartShiftFilter] = useState("all");
-  const [partRoleFilter, setPartRoleFilter] = useState("all");
   const [partSearch, setPartSearch] = useState("");
+  const [partSectorFilter, setPartSectorFilter] = useState("all");
 
-  // Attendance dialog
-  const [attendanceTurma, setAttendanceTurma] = useState<TurmaState | null>(null);
-  const [attendanceData, setAttendanceData] = useState<Record<string, "present" | "absent" | "reschedule">>({});
+  const [attendanceTurma, setAttendanceTurma] = useState<Turma | null>(null);
+  const [attendanceData, setAttendanceData] = useState<Record<string, "present" | "absent">>({});
 
-  // Load data
+  // ── Carrega dados ──────────────────────────────────────────────────────────
+  const loadData = async () => {
+    if (!companyId) return;
+    setLoading(true);
+    const [t, p] = await Promise.all([fetchTurmas(companyId), fetchPopulation(companyId)]);
+    setTurmas(t);
+    setPopulationState(p);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    setTurmasState(getTurmas());
-    setPopulationState(getPopulation(companyId));
+    loadData();
   }, [companyId]);
 
-  // Derived: facilitators from population
-  const facilitators = useMemo(() => population.filter(m => m.facilitator && m.active), [population]);
-  const activePopulation = useMemo(() => population.filter(m => m.active), [population]);
+  const activePopulation = useMemo(() => population.filter((m) => m.active), [population]);
 
-  // Unique values for participant filters
-  const sectors = useMemo(() => [...new Set(activePopulation.map(m => m.sector).filter(Boolean))].sort(), [activePopulation]);
-  const shifts = useMemo(() => [...new Set(activePopulation.map(m => m.shift).filter(Boolean))].sort(), [activePopulation]);
-  const roles = useMemo(() => [...new Set(activePopulation.map(m => m.role).filter(Boolean))].sort(), [activePopulation]);
+  const allFacilitators = useMemo(() => {
+    const s = new Set(turmas.map((t) => t.facilitator).filter(Boolean));
+    activePopulation.filter((m) => m.facilitator).forEach((m) => s.add(m.name));
+    return Array.from(s).sort();
+  }, [turmas, activePopulation]);
 
-  // Filtered participants in dialog
-  const filteredParticipants = useMemo(() => {
-    return activePopulation.filter(m => {
-      if (partSectorFilter !== "all" && m.sector !== partSectorFilter) return false;
-      if (partShiftFilter !== "all" && m.shift !== partShiftFilter) return false;
-      if (partRoleFilter !== "all" && m.role !== partRoleFilter) return false;
-      if (partSearch && !m.name.toLowerCase().includes(partSearch.toLowerCase())) return false;
-      return true;
-    });
-  }, [activePopulation, partSectorFilter, partShiftFilter, partRoleFilter, partSearch]);
+  const allSectors = useMemo(() => {
+    const s = new Set(activePopulation.map((m) => m.sector).filter(Boolean));
+    return Array.from(s).sort();
+  }, [activePopulation]);
 
-  // Filtered turmas list
-  const filteredTurmas = useMemo(() => {
-    return turmas.filter(turma => {
-      const matchesSearch =
-        turma.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        turma.facilitator.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === "all" || turma.status === statusFilter;
-      const matchesCycle = cycleFilter === "all" || turma.cycleId === cycleFilter;
-      const matchesFacilitator = facilitatorFilter === "all" || turma.facilitator === facilitatorFilter;
-      return matchesSearch && matchesStatus && matchesCycle && matchesFacilitator;
-    }).sort((a, b) => {
-      const cycleOrder = CYCLE_IDS.indexOf(a.cycleId as any) - CYCLE_IDS.indexOf(b.cycleId as any);
-      if (cycleOrder !== 0) return cycleOrder;
-      if (!a.startDate) return 1;
-      if (!b.startDate) return -1;
-      return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
-    });
-  }, [turmas, searchTerm, statusFilter, cycleFilter, facilitatorFilter]);
+  // ── Filtros ────────────────────────────────────────────────────────────────
+  const filtered = useMemo(
+    () =>
+      turmas
+        .filter((t) => {
+          const matchesSearch =
+            !searchTerm ||
+            t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            t.facilitator.toLowerCase().includes(searchTerm.toLowerCase());
+          const matchesStatus = statusFilter === "all" || t.status === statusFilter;
+          const matchesCycle = cycleFilter === "all" || t.cycleId === cycleFilter;
+          const matchesFacilitator = facilitatorFilter === "all" || t.facilitator === facilitatorFilter;
+          return matchesSearch && matchesStatus && matchesCycle && matchesFacilitator;
+        })
+        .sort((a, b) => {
+          const cycleOrder = CYCLE_IDS.indexOf(a.cycleId as any) - CYCLE_IDS.indexOf(b.cycleId as any);
+          if (cycleOrder !== 0) return cycleOrder;
+          if (!a.startDate) return 1;
+          if (!b.startDate) return -1;
+          return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+        }),
+    [turmas, searchTerm, statusFilter, cycleFilter, facilitatorFilter],
+  );
 
-  // Stats
-  const stats = useMemo(() => {
-    const total = turmas.length;
-    const completed = turmas.filter(t => t.status === "completed").length;
-    const inProgress = turmas.filter(t => t.status === "in_progress").length;
-    const totalParticipants = turmas.reduce((sum, t) => sum + t.participants.length, 0);
-    const totalPresent = turmas.reduce((sum, t) => {
-      if (!t.attendance) return sum;
-      return sum + Object.values(t.attendance).filter(v => v === "present").length;
-    }, 0);
-    return { total, completed, inProgress, totalParticipants, totalPresent };
-  }, [turmas]);
+  const stats = useMemo(
+    () => ({
+      total: turmas.length,
+      completed: turmas.filter((t) => t.status === "completed").length,
+      inProgress: turmas.filter((t) => t.status === "in_progress").length,
+      totalParticipants: turmas.reduce((s, t) => s + t.participants.length, 0),
+    }),
+    [turmas],
+  );
 
-  const resetPartFilters = () => {
-    setPartSectorFilter("all");
-    setPartShiftFilter("all");
-    setPartRoleFilter("all");
-    setPartSearch("");
-  };
+  // ── Participantes dialog ────────────────────────────────────────────────────
+  const filteredParticipants = useMemo(
+    () =>
+      activePopulation.filter((m) => {
+        if (partSearch && !m.name.toLowerCase().includes(partSearch.toLowerCase())) return false;
+        if (partSectorFilter !== "all" && m.sector !== partSectorFilter) return false;
+        return true;
+      }),
+    [activePopulation, partSearch, partSectorFilter],
+  );
 
   const handleOpenNew = () => {
     setEditingTurma({ ...emptyTurma, cycleId: cycleFilter !== "all" ? cycleFilter : "M1" });
     setSelectedParticipants([]);
-    resetPartFilters();
+    setPartSearch("");
+    setPartSectorFilter("all");
     setIsEditing(false);
     setIsDialogOpen(true);
   };
 
-  const handleOpenEdit = (turma: TurmaState) => {
+  const handleOpenEdit = (turma: Turma) => {
     setEditingTurma(turma);
-    setSelectedParticipants(turma.participants.map(p => p.id));
-    resetPartFilters();
+    setSelectedParticipants(turma.participants.map((p) => p.id));
+    setPartSearch("");
+    setPartSectorFilter("all");
     setIsEditing(true);
     setIsDialogOpen(true);
   };
 
-  const handleDuplicate = (turma: TurmaState) => {
+  const handleDuplicate = (turma: Turma) => {
     setEditingTurma({
       ...turma,
       id: undefined,
@@ -199,697 +191,427 @@ export default function Turmas() {
       status: "planned",
       attendance: undefined,
     });
-    setSelectedParticipants(turma.participants.map(p => p.id));
-    resetPartFilters();
+    setSelectedParticipants(turma.participants.map((p) => p.id));
+    setPartSearch("");
+    setPartSectorFilter("all");
     setIsEditing(false);
     setIsDialogOpen(true);
   };
 
-  const toggleParticipant = (empId: string) => {
-    setSelectedParticipants(prev =>
-      prev.includes(empId) ? prev.filter(id => id !== empId) : [...prev, empId]
-    );
+  const toggleParticipant = (id: string) => {
+    setSelectedParticipants((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
-  const handleSave = () => {
+  // ── Salvar turma ───────────────────────────────────────────────────────────
+  const handleSave = async () => {
     if (!editingTurma.name?.trim()) {
-      toast({ title: "Erro", description: "Nome da turma é obrigatório", variant: "destructive" });
+      toast({ title: "Nome da turma é obrigatório", variant: "destructive" });
       return;
     }
     if (!editingTurma.facilitator?.trim()) {
-      toast({ title: "Erro", description: "Facilitador é obrigatório", variant: "destructive" });
+      toast({ title: "Facilitador é obrigatório", variant: "destructive" });
       return;
     }
 
-    const participantData = selectedParticipants.map(id => {
-      const emp = activePopulation.find(e => e.id === id);
-      return emp ? { id: emp.id, name: emp.name, sector: emp.sector, role: emp.role } : null;
-    }).filter(Boolean) as TurmaState["participants"];
+    const participants = selectedParticipants
+      .map((id) => activePopulation.find((e) => e.id === id))
+      .filter(Boolean)
+      .map((m) => ({ id: m!.id, name: m!.name, sector: m!.sector, role: m!.role }));
 
-    if (isEditing && editingTurma.id) {
-      const updated = turmas.map(t =>
-        t.id === editingTurma.id
-          ? {
-              ...t,
-              name: editingTurma.name!,
-              cycleId: editingTurma.cycleId!,
-              facilitator: editingTurma.facilitator!,
-              startDate: editingTurma.startDate || null,
-              endDate: editingTurma.endDate || null,
-              trainingDate: editingTurma.trainingDate || null,
-              status: editingTurma.status as TurmaState["status"],
-              participants: participantData,
-              notes: editingTurma.notes || "",
-            }
-          : t
-      );
-      setTurmasState(updated);
-      setTurmas(updated);
-      toast({ title: "Turma atualizada!" });
-    } else {
-      const newTurma: TurmaState = {
-        id: `turma-${Date.now()}`,
-        name: editingTurma.name!,
-        cycleId: editingTurma.cycleId!,
-        facilitator: editingTurma.facilitator!,
-        startDate: editingTurma.startDate || null,
-        endDate: editingTurma.endDate || null,
-        trainingDate: editingTurma.trainingDate || null,
-        status: editingTurma.status as TurmaState["status"] || "planned",
-        participants: participantData,
-        notes: editingTurma.notes || "",
-      };
-      const updated = [...turmas, newTurma];
-      setTurmasState(updated);
-      setTurmas(updated);
-      toast({ title: "Turma criada!" });
+    setSaving(true);
+    const result = await upsertTurma(companyId, {
+      id: isEditing ? editingTurma.id : undefined,
+      name: editingTurma.name!,
+      cycleId: editingTurma.cycleId!,
+      facilitator: editingTurma.facilitator!,
+      startDate: editingTurma.startDate ?? null,
+      endDate: editingTurma.endDate ?? null,
+      trainingDate: editingTurma.trainingDate ?? null,
+      status: (editingTurma.status as Turma["status"]) ?? "planned",
+      notes: editingTurma.notes ?? "",
+      participants,
+      attendance: editingTurma.attendance,
+    });
+    setSaving(false);
+
+    if (!result) {
+      toast({ title: "Erro ao salvar turma", variant: "destructive" });
+      return;
     }
-
+    toast({ title: isEditing ? "Turma atualizada!" : "Turma criada!" });
     setIsDialogOpen(false);
-    setEditingTurma(emptyTurma);
-    setSelectedParticipants([]);
+    await loadData();
   };
 
-  const handleDelete = (turmaId: string) => {
-    if (confirm("Tem certeza que deseja excluir esta turma?")) {
-      const updated = turmas.filter(t => t.id !== turmaId);
-      setTurmasState(updated);
-      setTurmas(updated);
-      toast({ title: "Turma excluída!" });
-    }
+  // ── Excluir ────────────────────────────────────────────────────────────────
+  const handleDelete = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir esta turma?")) return;
+    await deleteTurmaDB(id);
+    toast({ title: "Turma excluída!" });
+    await loadData();
   };
 
-  const handleExportPDF = (turma: TurmaState) => {
-    generateTurmaPDF(turma);
-    toast({ title: "PDF gerado!", description: "O PDF da turma foi baixado." });
-  };
-
-  // Attendance
-  const openAttendance = (turma: TurmaState) => {
+  // ── Presença ───────────────────────────────────────────────────────────────
+  const openAttendance = (turma: Turma) => {
     setAttendanceTurma(turma);
-    setAttendanceData(turma.attendance || {});
+    setAttendanceData(turma.attendance ?? {});
   };
 
-  const setParticipantAttendance = (participantId: string, status: "present" | "absent" | "reschedule") => {
-    setAttendanceData(prev => ({ ...prev, [participantId]: status }));
-  };
-
-  const saveAttendance = () => {
+  const saveAttendance = async () => {
     if (!attendanceTurma) return;
-    const updated = turmas.map(t =>
-      t.id === attendanceTurma.id ? { ...t, attendance: attendanceData } : t
-    );
-    setTurmasState(updated);
-    setTurmas(updated);
+    setSaving(true);
+    await upsertTurma(companyId, { ...attendanceTurma, attendance: attendanceData });
+    setSaving(false);
+    toast({ title: "Presença salva!" });
     setAttendanceTurma(null);
-    toast({ title: "Presença registrada!", description: "Os dados de presença foram salvos." });
+    await loadData();
   };
 
-  // Finalize turma
-  const [finalizingTurmaId, setFinalizingTurmaId] = useState<string | null>(null);
-
-  const handleFinalizeTurma = (turmaId: string) => {
-    const turma = turmas.find(t => t.id === turmaId);
-    if (!turma) return;
-
-    const hasAttendance = turma.attendance && Object.values(turma.attendance).some(v => v === "present");
-    if (!hasAttendance) {
-      toast({ title: "Erro", description: "Registre pelo menos 1 presença antes de finalizar.", variant: "destructive" });
-      return;
-    }
-
-    // Check future training date
-    if (turma.trainingDate) {
-      const trainingDate = new Date(turma.trainingDate);
-      trainingDate.setHours(0, 0, 0, 0);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (trainingDate > today) {
-        if (!confirm("A data do treinamento é futura. Deseja finalizar mesmo assim?")) return;
-      }
-    }
-
-    setFinalizingTurmaId(turmaId);
-  };
-
-  const confirmFinalizeTurma = () => {
-    if (!finalizingTurmaId) return;
-    const updated = turmas.map(t =>
-      t.id === finalizingTurmaId
-        ? { ...t, status: "completed" as const, completedAt: new Date().toISOString() }
-        : t
+  if (loading) {
+    return (
+      <AppLayout title="Turmas" subtitle="Carregando...">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="animate-spin text-primary" size={32} />
+        </div>
+      </AppLayout>
     );
-    setTurmasState(updated);
-    setTurmas(updated);
-    setFinalizingTurmaId(null);
-    toast({ title: "Turma finalizada!", description: "A turma foi marcada como concluída e os indicadores foram atualizados." });
-  };
-
-  // Unique facilitators for list filter
-  const uniqueFacilitators = useMemo(() => {
-    const names = [...new Set(turmas.map(t => t.facilitator).filter(Boolean))];
-    return names.sort();
-  }, [turmas]);
+  }
 
   return (
-    <AppLayout
-      title="Turmas Móveis"
-      subtitle="Gerencie turmas de treinamento por ciclo da metodologia MVP"
-    >
+    <AppLayout title="Turmas de Treinamento" subtitle={`${stats.total} turmas — ${user?.companyName || "Empresa"}`}>
       <div className="space-y-6 animate-fade-in">
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card className="p-4">
-            <p className="text-sm text-muted-foreground">Total de Turmas</p>
-            <p className="text-2xl font-bold">{stats.total}</p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-sm text-muted-foreground">Concluídas</p>
-            <p className="text-2xl font-bold text-success">{stats.completed}</p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-sm text-muted-foreground">Em Andamento</p>
-            <p className="text-2xl font-bold text-warning">{stats.inProgress}</p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-sm text-muted-foreground">Total Participantes</p>
-            <p className="text-2xl font-bold text-primary">{stats.totalParticipants}</p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-sm text-muted-foreground">Presenças Registradas</p>
-            <p className="text-2xl font-bold text-emerald-600">{stats.totalPresent}</p>
-          </Card>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: "Total de Turmas", value: stats.total },
+            { label: "Concluídas", value: stats.completed },
+            { label: "Em andamento", value: stats.inProgress },
+            { label: "Total Participantes", value: stats.totalParticipants },
+          ].map((s) => (
+            <Card key={s.label} className="p-4">
+              <p className="text-xs text-muted-foreground">{s.label}</p>
+              <p className="text-2xl font-bold text-foreground mt-1">{s.value}</p>
+            </Card>
+          ))}
         </div>
 
-        {/* Header Actions */}
-        <div className="flex flex-col lg:flex-row gap-4 justify-between">
-          <div className="flex flex-1 gap-3 flex-wrap">
-            <div className="relative flex-1 min-w-[200px] max-w-md">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        {/* Toolbar */}
+        <div className="flex flex-wrap gap-2 items-center justify-between">
+          <div className="flex flex-wrap gap-2 flex-1">
+            <div className="relative flex-1 min-w-[180px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
               <Input
-                type="search"
+                className="pl-9"
                 placeholder="Buscar turmas..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
               />
             </div>
-            <Select value={cycleFilter} onValueChange={setCycleFilter}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Ciclo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos Ciclos</SelectItem>
-                {CYCLE_IDS.map(id => (
-                  <SelectItem key={id} value={id}>{id}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-36">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos Status</SelectItem>
-                {Object.entries(TURMA_STATUS).map(([key, config]) => (
-                  <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                <SelectItem value="all">Todos os status</SelectItem>
+                {Object.entries(statusConfig).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>
+                    {v.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Select value={facilitatorFilter} onValueChange={setFacilitatorFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Facilitador" />
+            <Select value={cycleFilter} onValueChange={setCycleFilter}>
+              <SelectTrigger className="w-28">
+                <SelectValue placeholder="Ciclo" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos Facilitadores</SelectItem>
-                {uniqueFacilitators.map(f => (
-                  <SelectItem key={f} value={f}>{f}</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
+                {CYCLE_IDS.map((id) => (
+                  <SelectItem key={id} value={id}>
+                    {id}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+          <Button size="sm" onClick={handleOpenNew}>
+            <Plus size={14} className="mr-1" /> Nova Turma
+          </Button>
+        </div>
 
-          {/* Create Dialog */}
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={handleOpenNew} className="gap-2">
-                <Plus size={16} />
-                Nova Turma
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>{isEditing ? "Editar Turma" : "Nova Turma"}</DialogTitle>
-                <DialogDescription>
-                  {isEditing ? "Atualize as informações da turma" : "Configure uma nova turma de treinamento"}
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
-                    <label className="text-sm font-medium mb-1.5 block">Nome da Turma *</label>
-                    <Input
-                      value={editingTurma.name || ""}
-                      onChange={e => setEditingTurma(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="Ex: Turma Manhã - Operações"
-                    />
+        {/* Lista */}
+        <div className="space-y-4">
+          {filtered.length === 0 && (
+            <Card className="p-8 text-center text-muted-foreground">
+              {turmas.length === 0 ? "Nenhuma turma criada ainda." : "Nenhuma turma corresponde ao filtro."}
+            </Card>
+          )}
+          {filtered.map((turma) => {
+            const cfg = statusConfig[turma.status] ?? statusConfig.planned;
+            const StatusIcon = cfg.icon;
+            const attendedCount = turma.attendance
+              ? Object.values(turma.attendance).filter((v) => v === "present").length
+              : 0;
+            return (
+              <Card key={turma.id} className="p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-foreground">{turma.name}</span>
+                      <Badge className={cn("text-xs", cfg.color)}>
+                        <StatusIcon size={10} className="mr-1" />
+                        {cfg.label}
+                      </Badge>
+                      <Badge variant="outline">{turma.cycleId}</Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-4 mt-2 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <User size={12} />
+                        {turma.facilitator}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Users size={12} />
+                        {turma.participants.length} participantes
+                      </span>
+                      {turma.trainingDate && (
+                        <span className="flex items-center gap-1">
+                          <CalendarIcon size={12} />
+                          {format(new Date(turma.trainingDate), "dd/MM/yyyy", { locale: ptBR })}
+                        </span>
+                      )}
+                      {turma.attendance && (
+                        <span className="flex items-center gap-1">
+                          <ClipboardCheck size={12} />
+                          {attendedCount}/{turma.participants.length} presentes
+                        </span>
+                      )}
+                    </div>
+                    {turma.notes && <p className="text-xs text-muted-foreground mt-1 truncate">{turma.notes}</p>}
                   </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">Programa (Ciclo) *</label>
-                    <Select
-                      value={editingTurma.cycleId || "M1"}
-                      onValueChange={value => setEditingTurma(prev => ({ ...prev, cycleId: value }))}
+                  <div className="flex gap-1 flex-shrink-0">
+                    <Button variant="ghost" size="sm" title="Registrar presença" onClick={() => openAttendance(turma)}>
+                      <ClipboardCheck size={14} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="PDF"
+                      onClick={() => {
+                        generateTurmaPDF(turma as any);
+                        toast({ title: "PDF gerado!" });
+                      }}
                     >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CYCLE_IDS.map(id => (
-                          <SelectItem key={id} value={id}>{id}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">Facilitador *</label>
-                    <Select
-                      value={editingTurma.facilitator || ""}
-                      onValueChange={value => setEditingTurma(prev => ({ ...prev, facilitator: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecionar facilitador" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {facilitators.length === 0 && (
-                          <SelectItem value="_empty" disabled>
-                            Nenhum facilitador habilitado na Base Populacional
-                          </SelectItem>
-                        )}
-                        {facilitators.map(f => (
-                          <SelectItem key={f.id} value={f.name}>
-                            {f.name} {f.sector ? `— ${f.sector}` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">Data do Treinamento</label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn("w-full justify-start", !editingTurma.trainingDate && "text-muted-foreground")}>
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {editingTurma.trainingDate ? format(new Date(editingTurma.trainingDate), "dd/MM/yyyy", { locale: ptBR }) : "Selecionar"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={editingTurma.trainingDate ? new Date(editingTurma.trainingDate) : undefined}
-                          onSelect={date => setEditingTurma(prev => ({ ...prev, trainingDate: date?.toISOString() || null }))}
-                          className="pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">Status</label>
-                    <Select
-                      value={editingTurma.status || "planned"}
-                      onValueChange={value => setEditingTurma(prev => ({ ...prev, status: value as TurmaState["status"] }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(TURMA_STATUS).map(([key, config]) => (
-                          <SelectItem key={key} value={key}>{config.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <FileDown size={14} />
+                    </Button>
+                    <Button variant="ghost" size="sm" title="Duplicar" onClick={() => handleDuplicate(turma)}>
+                      <Copy size={14} />
+                    </Button>
+                    <Button variant="ghost" size="sm" title="Editar" onClick={() => handleOpenEdit(turma)}>
+                      <Edit2 size={14} />
+                    </Button>
+                    <Button variant="ghost" size="sm" title="Excluir" onClick={() => handleDelete(turma.id)}>
+                      <Trash2 size={14} className="text-destructive" />
+                    </Button>
                   </div>
                 </div>
+              </Card>
+            );
+          })}
+        </div>
 
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">Observações</label>
+        {/* Dialog criar/editar */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>{isEditing ? "Editar Turma" : "Nova Turma"}</DialogTitle>
+              <DialogDescription>Preencha os dados da turma de treinamento.</DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto space-y-4 py-2 pr-1">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1 col-span-2">
+                  <Label>Nome da Turma *</Label>
+                  <Input
+                    value={editingTurma.name ?? ""}
+                    onChange={(e) => setEditingTurma((p) => ({ ...p, name: e.target.value }))}
+                    placeholder="Ex: Turma M1 - Produção"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Ciclo *</Label>
+                  <Select
+                    value={editingTurma.cycleId ?? "M1"}
+                    onValueChange={(v) => setEditingTurma((p) => ({ ...p, cycleId: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CYCLE_IDS.map((id) => (
+                        <SelectItem key={id} value={id}>
+                          {id}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Facilitador *</Label>
+                  <Input
+                    list="facilitator-list"
+                    value={editingTurma.facilitator ?? ""}
+                    onChange={(e) => setEditingTurma((p) => ({ ...p, facilitator: e.target.value }))}
+                    placeholder="Nome do facilitador"
+                  />
+                  <datalist id="facilitator-list">
+                    {allFacilitators.map((f) => (
+                      <option key={f} value={f} />
+                    ))}
+                  </datalist>
+                </div>
+                <div className="space-y-1">
+                  <Label>Data do Treinamento</Label>
+                  <Input
+                    type="date"
+                    value={editingTurma.trainingDate ?? ""}
+                    onChange={(e) => setEditingTurma((p) => ({ ...p, trainingDate: e.target.value || null }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Status</Label>
+                  <Select
+                    value={editingTurma.status ?? "planned"}
+                    onValueChange={(v) => setEditingTurma((p) => ({ ...p, status: v as Turma["status"] }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(statusConfig).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>
+                          {v.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label>Observações</Label>
                   <Textarea
-                    value={editingTurma.notes || ""}
-                    onChange={e => setEditingTurma(prev => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Anotações opcionais sobre a turma..."
+                    value={editingTurma.notes ?? ""}
+                    onChange={(e) => setEditingTurma((p) => ({ ...p, notes: e.target.value }))}
                     rows={2}
                   />
                 </div>
-
-                {/* Participants Section with Filters */}
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">
-                    Participantes ({selectedParticipants.length} selecionados)
-                  </label>
-
-                  {/* Participant Filters */}
-                  <div className="flex gap-2 flex-wrap mb-2">
-                    <div className="relative flex-1 min-w-[140px]">
-                      <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder="Buscar nome..."
-                        value={partSearch}
-                        onChange={e => setPartSearch(e.target.value)}
-                        className="pl-7 h-8 text-xs"
-                      />
-                    </div>
-                    <Select value={partSectorFilter} onValueChange={setPartSectorFilter}>
-                      <SelectTrigger className="w-28 h-8 text-xs">
-                        <SelectValue placeholder="Setor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos Setores</SelectItem>
-                        {sectors.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Select value={partShiftFilter} onValueChange={setPartShiftFilter}>
-                      <SelectTrigger className="w-28 h-8 text-xs">
-                        <SelectValue placeholder="Turno" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos Turnos</SelectItem>
-                        {shifts.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Select value={partRoleFilter} onValueChange={setPartRoleFilter}>
-                      <SelectTrigger className="w-28 h-8 text-xs">
-                        <SelectValue placeholder="Cargo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos Cargos</SelectItem>
-                        {roles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <ScrollArea className="h-48 border rounded-md p-3">
-                    <div className="space-y-1">
-                      {filteredParticipants.length === 0 && (
-                        <p className="text-xs text-muted-foreground text-center py-4">
-                          Nenhum colaborador encontrado. Cadastre na Base Populacional.
-                        </p>
-                      )}
-                      {filteredParticipants.map(emp => (
-                        <div
-                          key={emp.id}
-                          className={cn(
-                            "flex items-center gap-3 p-2 rounded-md cursor-pointer hover:bg-secondary/50",
-                            selectedParticipants.includes(emp.id) && "bg-primary/10"
-                          )}
-                          onClick={() => toggleParticipant(emp.id)}
-                        >
-                          <Checkbox
-                            checked={selectedParticipants.includes(emp.id)}
-                            onCheckedChange={() => toggleParticipant(emp.id)}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{emp.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {[emp.role, emp.sector, emp.shift].filter(Boolean).join(" • ")}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
               </div>
 
+              {/* Participantes */}
+              <div className="space-y-2">
+                <Label>Participantes ({selectedParticipants.length} selecionados)</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={12} />
+                    <Input
+                      className="pl-8 h-8 text-sm"
+                      placeholder="Buscar..."
+                      value={partSearch}
+                      onChange={(e) => setPartSearch(e.target.value)}
+                    />
+                  </div>
+                  <Select value={partSectorFilter} onValueChange={setPartSectorFilter}>
+                    <SelectTrigger className="w-36 h-8 text-sm">
+                      <SelectValue placeholder="Setor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos setores</SelectItem>
+                      {allSectors.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedParticipants.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedParticipants([])}>
+                      <X size={12} className="mr-1" /> Limpar
+                    </Button>
+                  )}
+                </div>
+                <ScrollArea className="h-48 border rounded-md p-2">
+                  {filteredParticipants.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum colaborador encontrado.</p>
+                  )}
+                  {filteredParticipants.map((m) => (
+                    <div
+                      key={m.id}
+                      className="flex items-center gap-2 py-1.5 hover:bg-muted/30 px-1 rounded cursor-pointer"
+                      onClick={() => toggleParticipant(m.id)}
+                    >
+                      <Checkbox
+                        checked={selectedParticipants.includes(m.id)}
+                        onCheckedChange={() => toggleParticipant(m.id)}
+                      />
+                      <span className="text-sm flex-1">{m.name}</span>
+                      <span className="text-xs text-muted-foreground">{m.sector}</span>
+                    </div>
+                  ))}
+                </ScrollArea>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSave} disabled={saving}>
+                {saving && <Loader2 size={14} className="mr-2 animate-spin" />}
+                {isEditing ? "Salvar" : "Criar Turma"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog presença */}
+        {attendanceTurma && (
+          <Dialog open={!!attendanceTurma} onOpenChange={() => setAttendanceTurma(null)}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Registrar Presença — {attendanceTurma.name}</DialogTitle>
+              </DialogHeader>
+              <ScrollArea className="h-72 border rounded-md p-3">
+                {attendanceTurma.participants.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                    <span className="text-sm">{p.name}</span>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={attendanceData[p.id] === "present" ? "default" : "outline"}
+                        onClick={() => setAttendanceData((d) => ({ ...d, [p.id]: "present" }))}
+                      >
+                        Presente
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={attendanceData[p.id] === "absent" ? "destructive" : "outline"}
+                        onClick={() => setAttendanceData((d) => ({ ...d, [p.id]: "absent" }))}
+                      >
+                        Ausente
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </ScrollArea>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                <Button onClick={handleSave}>{isEditing ? "Salvar" : "Criar"}</Button>
+                <Button variant="outline" onClick={() => setAttendanceTurma(null)}>
+                  Cancelar
+                </Button>
+                <Button onClick={saveAttendance} disabled={saving}>
+                  {saving && <Loader2 size={14} className="mr-2 animate-spin" />}
+                  Salvar Presença
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </div>
-
-        {/* Turmas List */}
-        <div className="space-y-3">
-          {filteredTurmas.length > 0 ? (
-            filteredTurmas.map(turma => {
-              const statusConfig = TURMA_STATUS[turma.status];
-              const StatusIcon = statusIcons[turma.status];
-              const attendanceCount = turma.attendance ? Object.values(turma.attendance).filter(v => v === "present").length : 0;
-              const hasAttendance = turma.attendance && Object.keys(turma.attendance).length > 0;
-
-              return (
-                <Card key={turma.id} className="p-5 hover:border-primary/30 transition-colors">
-                  <div className="flex items-start gap-4">
-                    <div className={cn("w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0", statusConfig.color)}>
-                      <StatusIcon size={24} />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="outline" className="font-semibold">{turma.cycleId}</Badge>
-                            <h3 className="font-medium text-foreground">{turma.name}</h3>
-                          </div>
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
-                            <span className="text-sm text-muted-foreground flex items-center gap-1">
-                              <User size={14} />
-                              {turma.facilitator}
-                            </span>
-                            <span className="text-sm text-muted-foreground flex items-center gap-1">
-                              <Users size={14} />
-                              {turma.participants.length} participantes
-                            </span>
-                            {hasAttendance && (
-                              <span className="text-sm text-emerald-600 flex items-center gap-1">
-                                <CheckCircle2 size={14} />
-                                {attendanceCount} presentes
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => openAttendance(turma)}
-                            title="Registrar Presença"
-                          >
-                            <ClipboardCheck size={14} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleExportPDF(turma)}
-                            title="Exportar PDF"
-                          >
-                            <FileDown size={14} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleDuplicate(turma)}
-                            title="Duplicar"
-                          >
-                            <Copy size={14} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleOpenEdit(turma)}
-                            title="Editar"
-                          >
-                            <Edit2 size={14} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(turma.id)}
-                            title="Excluir"
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                          {/* Finalize Button */}
-                          {turma.status !== "completed" && turma.attendance && Object.values(turma.attendance).some(v => v === "present") && (
-                            <Button
-                              size="sm"
-                              className="h-8 gap-1 bg-success hover:bg-success/90 text-success-foreground ml-1"
-                              onClick={() => handleFinalizeTurma(turma.id)}
-                            >
-                              <CheckCircle2 size={14} />
-                              Finalizar
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-
-                      {turma.trainingDate && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                          <CalendarIcon size={14} />
-                          Treinamento: {format(new Date(turma.trainingDate), "dd/MM/yyyy", { locale: ptBR })}
-                        </div>
-                      )}
-
-                      {turma.notes && (
-                        <p className="text-xs text-muted-foreground mt-1 italic">{turma.notes}</p>
-                      )}
-
-                      {turma.participants.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-1">
-                          {turma.participants.slice(0, 5).map(p => (
-                            <Badge key={p.id} variant="secondary" className="text-xs">
-                              {p.name}
-                            </Badge>
-                          ))}
-                          {turma.participants.length > 5 && (
-                            <Badge variant="secondary" className="text-xs">
-                              +{turma.participants.length - 5}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              );
-            })
-          ) : (
-            <Card className="p-12">
-              <div className="text-center text-muted-foreground">
-                <Users size={48} className="mx-auto mb-4 opacity-30" />
-                <p className="font-medium">Nenhuma turma encontrada</p>
-                <p className="text-sm">Crie uma nova turma para começar</p>
-              </div>
-            </Card>
-          )}
-        </div>
+        )}
       </div>
-
-      {/* Attendance Dialog */}
-      <Dialog open={!!attendanceTurma} onOpenChange={(open) => !open && setAttendanceTurma(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ClipboardCheck size={20} className="text-primary" />
-              Registro de Presença
-            </DialogTitle>
-            <DialogDescription>
-              {attendanceTurma?.name} — {attendanceTurma?.cycleId}
-            </DialogDescription>
-          </DialogHeader>
-
-          {attendanceTurma && (
-            <div className="space-y-2">
-              {attendanceTurma.participants.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Nenhum participante nesta turma.
-                </p>
-              ) : (
-                attendanceTurma.participants.map(p => {
-                  const status = attendanceData[p.id];
-                  return (
-                    <div key={p.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                      <div>
-                        <p className="text-sm font-medium">{p.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {[p.role, p.sector].filter(Boolean).join(" • ")}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          size="sm"
-                          variant={status === "present" ? "default" : "outline"}
-                          className={cn("h-8 px-2 text-xs gap-1", status === "present" && "bg-emerald-600 hover:bg-emerald-700")}
-                          onClick={() => setParticipantAttendance(p.id, "present")}
-                        >
-                          <CheckCircle2 size={14} />
-                          Presente
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={status === "absent" ? "default" : "outline"}
-                          className={cn("h-8 px-2 text-xs gap-1", status === "absent" && "bg-destructive hover:bg-destructive/90")}
-                          onClick={() => setParticipantAttendance(p.id, "absent")}
-                        >
-                          <X size={14} />
-                          Faltou
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={status === "reschedule" ? "default" : "outline"}
-                          className={cn("h-8 px-2 text-xs gap-1", status === "reschedule" && "bg-warning hover:bg-warning/90")}
-                          onClick={() => setParticipantAttendance(p.id, "reschedule")}
-                        >
-                          <RotateCcw size={14} />
-                          Remarcar
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAttendanceTurma(null)}>Cancelar</Button>
-            <Button onClick={saveAttendance} className="gap-2">
-              <CheckCircle2 size={16} />
-              Salvar Presença
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Finalize Turma Confirmation Dialog */}
-      <Dialog open={!!finalizingTurmaId} onOpenChange={(open) => !open && setFinalizingTurmaId(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckCircle2 size={20} className="text-success" />
-              Finalizar Turma
-            </DialogTitle>
-            <DialogDescription>
-              Ao finalizar, a turma será marcada como concluída e impactará nos critérios de encerramento do ciclo.
-            </DialogDescription>
-          </DialogHeader>
-          {finalizingTurmaId && (() => {
-            const turma = turmas.find(t => t.id === finalizingTurmaId);
-            if (!turma) return null;
-            const presentCount = turma.attendance ? Object.values(turma.attendance).filter(v => v === "present").length : 0;
-            return (
-              <div className="space-y-3">
-                <div className="p-3 bg-secondary/30 rounded-lg">
-                  <p className="text-sm font-medium">{turma.name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Ciclo {turma.cycleId} · {turma.participants.length} participantes · {presentCount} presenças
-                  </p>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Esta ação não pode ser desfeita. A turma ficará registrada como concluída nos indicadores do programa.
-                </p>
-              </div>
-            );
-          })()}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setFinalizingTurmaId(null)}>Cancelar</Button>
-            <Button onClick={confirmFinalizeTurma} className="gap-2 bg-success hover:bg-success/90 text-success-foreground">
-              <CheckCircle2 size={16} />
-              Confirmar Finalização
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </AppLayout>
   );
 }
