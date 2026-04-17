@@ -39,6 +39,7 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSaved }: Edit
 
   const [name, setName] = useState("");
   const [sector, setSector] = useState("");
+  const [customSector, setCustomSector] = useState("");
   const [employees, setEmployees] = useState("");
   const [city, setCity] = useState("");
   const [uf, setUf] = useState("");
@@ -48,7 +49,14 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSaved }: Edit
   useEffect(() => {
     if (company) {
       setName(company.name);
-      setSector(company.sector || "");
+      const existingSector = company.sector || "";
+      if (existingSector && !sectors.includes(existingSector)) {
+        setSector("Outro");
+        setCustomSector(existingSector);
+      } else {
+        setSector(existingSector);
+        setCustomSector("");
+      }
       setEmployees(String(company.employees || ""));
       setCity((company as any).city || "");
       setUf((company as any).uf || "");
@@ -63,11 +71,17 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSaved }: Edit
       return;
     }
 
+    if (sector === "Outro" && !customSector.trim()) {
+      toast({ title: "Especifique o setor", description: "Informe o setor quando selecionar 'Outro'.", variant: "destructive" });
+      return;
+    }
+
     const before = { ...company };
+    const finalSector = sector === "Outro" ? customSector.trim() : sector;
 
     const saved = await updateCompanyInSupabase(company.id, {
       name: name.trim(),
-      sector: sector || company.sector,
+      sector: finalSector || company.sector,
       employee_count: parseInt(employees) || company.employees,
       admin_email: contactEmail.trim() || company.adminEmail,
     });
@@ -81,10 +95,10 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSaved }: Edit
       return;
     }
 
-    console.log("[EditCompanyDialog] Company updated in Supabase", {
+    console.log("[EditCompanyDialog] Company updated", {
       companyId: company.id,
       name: name.trim(),
-      sector: sector || company.sector,
+      sector: finalSector || company.sector,
       employeeCount: parseInt(employees) || company.employees,
       adminEmail: contactEmail.trim() || company.adminEmail,
     });
@@ -94,7 +108,7 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSaved }: Edit
       "company_updated", company.id, name.trim(),
       `Dados cadastrais atualizados`,
       { name: before.name, sector: before.sector },
-      { name: name.trim(), sector }
+      { name: name.trim(), sector: finalSector }
     );
 
     toast({ title: "Empresa atualizada", description: `${name.trim()} foi atualizada com sucesso.` });
@@ -125,12 +139,29 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSaved }: Edit
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Segmento / Indústria</Label>
-              <Select value={sector} onValueChange={setSector}>
+              <Select
+                value={sector}
+                onValueChange={(value) => {
+                  setSector(value);
+                  if (value !== "Outro") setCustomSector("");
+                }}
+              >
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
                   {sectors.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {sector === "Outro" && (
+                <div className="space-y-2 mt-2">
+                  <Label htmlFor="customSectorEdit">Especifique o setor *</Label>
+                  <Input
+                    id="customSectorEdit"
+                    placeholder="Digite o setor da empresa"
+                    value={customSector}
+                    onChange={(e) => setCustomSector(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Nº de Colaboradores</Label>

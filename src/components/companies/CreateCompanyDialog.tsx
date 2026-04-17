@@ -63,6 +63,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
   const [companyName, setCompanyName] = useState("");
   const [companyLogo, setCompanyLogo] = useState<string>("");
   const [sector, setSector] = useState("");
+  const [customSector, setCustomSector] = useState("");
   const [employees, setEmployees] = useState("");
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
@@ -75,6 +76,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
     setCompanyName("");
     setCompanyLogo("");
     setSector("");
+    setCustomSector("");
     setEmployees("");
     setAdminName("");
     setAdminEmail("");
@@ -113,11 +115,21 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
 
     setIsSubmitting(true);
     
+    if (sector === "Outro" && !customSector.trim()) {
+      toast({
+        title: "Especifique o setor",
+        description: "Informe o setor da empresa quando selecionar 'Outro'.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const tempPassword = generateTempPassword();
+    const finalSector = sector === "Outro" ? customSector.trim() : sector;
     const company: CompanyState = {
       id: `company-${Date.now()}`, // Temporary ID, will be replaced by Supabase
       name: companyName.trim(),
-      sector: sector || "Não informado",
+      sector: finalSector || "Não informado",
       employees: parseInt(employees) || 0,
       adminName: adminName.trim(),
       adminEmail: adminEmail.trim().toLowerCase(),
@@ -272,7 +284,13 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="sector">Setor</Label>
-                    <Select value={sector} onValueChange={setSector}>
+                    <Select
+                      value={sector}
+                      onValueChange={(value) => {
+                        setSector(value);
+                        if (value !== "Outro") setCustomSector("");
+                      }}
+                    >
                       <SelectTrigger id="sector">
                         <SelectValue placeholder="Selecione..." />
                       </SelectTrigger>
@@ -284,6 +302,17 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
                         ))}
                       </SelectContent>
                     </Select>
+                    {sector === "Outro" && (
+                      <div className="space-y-2 mt-2">
+                        <Label htmlFor="customSector">Especifique o setor *</Label>
+                        <Input
+                          id="customSector"
+                          placeholder="Digite o setor da empresa"
+                          value={customSector}
+                          onChange={(e) => setCustomSector(e.target.value)}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
