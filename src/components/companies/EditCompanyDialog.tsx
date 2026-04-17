@@ -75,7 +75,7 @@ export function EditCompanyDialog({ company, open, onOpenChange, onSaved }: Edit
     if (!saved) {
       toast({
         title: "Erro ao atualizar empresa",
-        description: "Não foi possível persistir as alterações no Supabase.",
+        description: "Não foi possível persistir as alterações.",
         variant: "destructive",
       });
       return;
