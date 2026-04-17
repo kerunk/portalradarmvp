@@ -251,7 +251,7 @@ export default function Companies() {
         console.error("[Companies] Supabase delete returned false", { companyId: companyToDelete.id });
         toast({ 
           title: "Erro ao excluir", 
-          description: "Não foi possível excluir a empresa. Verifique as permissões (RLS) no Supabase.", 
+          description: "Não foi possível excluir a empresa. Verifique as permissões (RLS).", 
           variant: "destructive" 
         });
         return;
