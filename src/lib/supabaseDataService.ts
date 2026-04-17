@@ -408,6 +408,7 @@ export async function fetchCycleActions(companyId: string): Promise<CycleActionD
 }
 
 export async function fetchCycleActionsForCycle(companyId: string, cycleId: string): Promise<CycleActionDB[]> {
+  if (!companyId || !cycleId) return [];
   const { data, error } = await supabase
     .from("cycle_actions")
     .select("*")
