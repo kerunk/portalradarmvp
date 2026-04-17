@@ -353,7 +353,7 @@ export default function MVPCycles() {
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <AppLayout title="Ciclos MVP" subtitle="Carregando dados do Supabase...">
+      <AppLayout title="Ciclos MVP" subtitle="Carregando...">
         <div className="flex items-center justify-center py-20">
           <Loader2 className="animate-spin text-primary" size={32} />
         </div>

@@ -179,7 +179,7 @@ export default function Companies() {
     if (!updated) {
       toast({
         title: "Erro ao alterar gerente",
-        description: "Não foi possível salvar o novo responsável no Supabase.",
+        description: "Não foi possível salvar o novo responsável.",
         variant: "destructive",
       });
       return;
@@ -251,7 +251,7 @@ export default function Companies() {
         console.error("[Companies] Supabase delete returned false", { companyId: companyToDelete.id });
         toast({ 
           title: "Erro ao excluir", 
-          description: "Não foi possível excluir a empresa. Verifique as permissões (RLS) no Supabase.", 
+          description: "Não foi possível excluir a empresa. Verifique as permissões (RLS).", 
           variant: "destructive" 
         });
         return;
@@ -683,7 +683,7 @@ export default function Companies() {
               {sorted.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                    {isLoadingCompanies ? "Carregando empresas do Supabase..." : "Nenhuma empresa encontrada"}
+                    {isLoadingCompanies ? "Carregando..." : "Nenhuma empresa encontrada"}
                   </TableCell>
                 </TableRow>
               )}
