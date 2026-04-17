@@ -683,7 +683,7 @@ export default function Companies() {
               {sorted.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                    {isLoadingCompanies ? "Carregando empresas do Supabase..." : "Nenhuma empresa encontrada"}
+                    {isLoadingCompanies ? "Carregando..." : "Nenhuma empresa encontrada"}
                   </TableCell>
                 </TableRow>
               )}
