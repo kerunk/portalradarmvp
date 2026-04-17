@@ -1,61 +1,40 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  AlertCircle, 
-  ArrowRight, 
-  CheckCircle2,
-  Zap,
-  FileText,
-} from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle2, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getRecords, type RecordState } from "@/lib/storage";
 import { RECORD_TYPES } from "@/lib/constants";
-import { 
-  CreateActionFromTemplateDialog,
-  type NewActionData,
-} from "./CreateActionFromTemplateDialog";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { CreateActionFromTemplateDialog, type NewActionData } from "./CreateActionFromTemplateDialog";
+import type { DBRecord } from "@/lib/db";
 
 interface PendingDecisionsProps {
   cycleId: string;
+  records: DBRecord[];
   onCreateAction: (action: NewActionData, decisionId: string) => void;
 }
 
-export function PendingDecisions({ cycleId, onCreateAction }: PendingDecisionsProps) {
+export function PendingDecisions({ cycleId, records, onCreateAction }: PendingDecisionsProps) {
   const navigate = useNavigate();
-  const [decisions, setDecisions] = useState<RecordState[]>([]);
-  const [selectedDecision, setSelectedDecision] = useState<RecordState | null>(null);
+  const [selectedDecision, setSelectedDecision] = useState<DBRecord | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  useEffect(() => {
-    const allRecords = getRecords();
-    const pendingDecisions = allRecords.filter(r => 
-      r.type === "decision" && 
-      r.status !== "closed" &&
-      (r.cycleId === cycleId || !r.cycleId)
-    );
-    setDecisions(pendingDecisions);
-  }, [cycleId]);
-
-  const handleCreateAction = (decision: RecordState) => {
-    setSelectedDecision(decision);
-    setIsDialogOpen(true);
-  };
+  const decisions = useMemo(
+    () =>
+      records.filter((r) => r.type === "decision" && r.status !== "closed" && (r.cycleId === cycleId || !r.cycleId)),
+    [records, cycleId],
+  );
 
   const handleConfirmAction = (actionData: NewActionData) => {
     if (selectedDecision) {
       onCreateAction(actionData, selectedDecision.id);
     }
     setSelectedDecision(null);
+    setIsDialogOpen(false);
   };
 
-  if (decisions.length === 0) {
-    return null;
-  }
+  if (decisions.length === 0) return null;
 
   return (
     <Card className="p-6 border-warning/30 bg-warning/5">
@@ -65,116 +44,86 @@ export function PendingDecisions({ cycleId, onCreateAction }: PendingDecisionsPr
             <AlertCircle className="h-5 w-5 text-warning" />
           </div>
           <div>
-            <h3 className="text-lg font-display font-semibold text-foreground">
-              Decisões Pendentes
-            </h3>
+            <h3 className="text-lg font-display font-semibold text-foreground">Decisões Pendentes</h3>
             <p className="text-sm text-muted-foreground">
               Decisões do comitê aguardando ações. Transforme em ações executáveis.
             </p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate("/registros?type=decision")}
-          className="gap-1"
-        >
-          Ver todas
-          <ArrowRight size={14} />
+        <Button variant="ghost" size="sm" onClick={() => navigate("/registros?type=decision")} className="gap-1">
+          Ver todas <ArrowRight size={14} />
         </Button>
       </div>
 
       <div className="space-y-3">
-        {decisions.slice(0, 5).map(decision => (
-          <div 
+        {decisions.slice(0, 5).map((decision) => (
+          <div
             key={decision.id}
             className="flex items-start gap-4 p-4 rounded-lg bg-card border hover:border-primary/30 transition-colors"
           >
-            <div className={cn(
-              "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
-              RECORD_TYPES.decision.color
-            )}>
+            <div
+              className={cn(
+                "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                RECORD_TYPES.decision.color,
+              )}
+            >
               <CheckCircle2 size={16} />
             </div>
 
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2 mb-1">
-                <h4 className="font-medium text-foreground line-clamp-1">
-                  {decision.title}
-                </h4>
+                <h4 className="font-medium text-foreground line-clamp-1">{decision.title}</h4>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {decision.cycleId && (
                     <Badge variant="outline" className="text-xs">
                       {decision.cycleId}
                     </Badge>
                   )}
-                  {decision.linkedActionIds && decision.linkedActionIds.length > 0 ? (
-                    <Badge className="bg-success/10 text-success text-xs">
+                  {decision.linkedActionIds?.length > 0 ? (
+                    <Badge className="bg-success/10 text-success text-xs gap-1">
+                      <CheckCircle2 size={10} />
                       {decision.linkedActionIds.length} ação(ões)
                     </Badge>
                   ) : (
-                    <Badge variant="secondary" className="text-xs">
-                      Sem ações
+                    <Badge variant="outline" className="text-warning border-warning/30 text-xs">
+                      Sem ação
                     </Badge>
                   )}
                 </div>
               </div>
-
               {decision.description && (
-                <p className="text-sm text-muted-foreground mb-2 line-clamp-1">
-                  {decision.description}
-                </p>
+                <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{decision.description}</p>
               )}
-
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
-                  {format(new Date(decision.createdAt), "dd/MM/yyyy", { locale: ptBR })}
-                  {decision.owner && ` • ${decision.owner}`}
-                </span>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 h-7"
-                  onClick={() => handleCreateAction(decision)}
-                >
-                  <Zap size={12} />
-                  Criar Ação
-                </Button>
-              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1 text-xs h-7"
+                onClick={() => {
+                  setSelectedDecision(decision);
+                  setIsDialogOpen(true);
+                }}
+              >
+                <Zap size={12} />
+                Criar Ação
+              </Button>
             </div>
           </div>
         ))}
       </div>
 
-      {decisions.length > 5 && (
-        <div className="mt-4 text-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/registros?type=decision")}
-          >
-            Ver mais {decisions.length - 5} decisões
-            <ArrowRight size={14} className="ml-1" />
-          </Button>
-        </div>
+      {selectedDecision && (
+        <CreateActionFromTemplateDialog
+          isOpen={isDialogOpen}
+          onClose={() => {
+            setIsDialogOpen(false);
+            setSelectedDecision(null);
+          }}
+          onConfirm={handleConfirmAction}
+          sourceDecisionId={selectedDecision.id}
+          defaultCycleId={cycleId}
+          dialogTitle={`Criar ação a partir de: "${selectedDecision.title}"`}
+        />
       )}
-
-      {/* Dialog for creating action */}
-      <CreateActionFromTemplateDialog
-        isOpen={isDialogOpen}
-        onClose={() => {
-          setIsDialogOpen(false);
-          setSelectedDecision(null);
-        }}
-        onConfirm={handleConfirmAction}
-        defaultTitle={selectedDecision?.title || ""}
-        defaultDescription={selectedDecision?.description || ""}
-        defaultCycleId={selectedDecision?.cycleId || cycleId}
-        sourceDecisionId={selectedDecision?.id}
-        dialogTitle="Criar Ação a partir da Decisão"
-        dialogDescription={`Transforme a decisão "${selectedDecision?.title || ""}" em ação executável`}
-      />
     </Card>
   );
 }
