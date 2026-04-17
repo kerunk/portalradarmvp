@@ -267,7 +267,7 @@ export function useCycleData() {
 
   // ── Escrita: registros ────────────────────────────────────────────────────
 
-  const addRecord = useCallback(async (r: Omit<DBRecord, "id" | "createdAt" | "updatedAt">) => {
+  const addRecord = useCallback(async (r: Omit<DBRecord, "id" | "companyId" | "createdAt" | "updatedAt">) => {
     await insertRecord(companyId, r);
     reload();
   }, [companyId, reload]);
