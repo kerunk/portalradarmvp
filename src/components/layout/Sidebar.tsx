@@ -46,17 +46,11 @@ const adminSections: NavSection[] = [
     ],
   },
   {
-    label: "INTELIGÊNCIA",
-    items: [
-      { name: "Indicadores", href: "/indicadores", icon: BarChart3 },
-      { name: "Relatórios", href: "/relatorios", icon: FileText },
-    ],
-  },
-  {
     label: "ADMINISTRAÇÃO",
     items: [
       { name: "Fatores de Sucesso", href: "/fatores-globais", icon: Layers },
       { name: "Prateleira de Práticas", href: "/praticas", icon: BookOpen },
+      { name: "Relatórios", href: "/relatorios", icon: FileText },
       { name: "Configurações", href: "/configuracoes", icon: Settings },
       { name: "Ajuda da Plataforma", href: "/admin-ajuda", icon: HelpCircle },
     ],
