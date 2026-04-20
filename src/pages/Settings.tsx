@@ -61,10 +61,6 @@ export default function Settings() {
                 <p className="text-xs text-muted-foreground">Empresa</p>
                 <p className="text-sm font-medium">{user.companyName}</p>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">ID</p>
-                <p className="text-sm font-medium font-mono">{user.companyId}</p>
-              </div>
             </div>
           </Card>
         )}
