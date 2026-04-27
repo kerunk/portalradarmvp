@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
+import { useActiveCompanyId } from "@/hooks/useActiveCompanyId";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,7 +47,7 @@ const emptyRecord: Partial<DBRecord> = {
 export default function Records() {
   const { toast } = useToast();
   const { user } = useAuth();
-  const companyId = user?.companyId || "";
+  const companyId = useActiveCompanyId();
   const [searchParams] = useSearchParams();
 
   const [loading, setLoading] = useState(true);
