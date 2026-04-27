@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
+import { useActiveCompanyId } from "@/hooks/useActiveCompanyId";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
@@ -12,7 +13,7 @@ import { fetchPopulation, fetchCycleActions, type PopulationMember, type CycleAc
 
 export default function NucleoGovernance() {
   const { user } = useAuth();
-  const companyId = user?.companyId || "";
+  const companyId = useActiveCompanyId();
 
   const [loading, setLoading] = useState(true);
   const [population, setPopulation] = useState<PopulationMember[]>([]);
