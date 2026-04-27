@@ -30,6 +30,7 @@ import {
   type Turma, type PopulationMember,
 } from "@/lib/db";
 import { useAuth } from "@/contexts/AuthContext";
+import { useActiveCompanyId } from "@/hooks/useActiveCompanyId";
 import { CYCLE_IDS, TURMA_STATUS } from "@/lib/constants";
 import { generateTurmaPDF } from "@/lib/pdfGenerator";
 import { useToast } from "@/hooks/use-toast";
@@ -50,7 +51,7 @@ export default function Turmas() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { user } = useAuth();
-  const companyId = user?.companyId || "";
+  const companyId = useActiveCompanyId();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
