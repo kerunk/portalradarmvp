@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useActiveCompanyId } from "@/hooks/useActiveCompanyId";
 import {
   fetchCycleStates, upsertCycleState,
   fetchCycleActions, upsertCycleAction, deleteCycleAction,
@@ -115,7 +116,7 @@ function buildFactors(
 
 export function useCycleData() {
   const { user } = useAuth();
-  const companyId = user?.companyId ?? "";
+  const companyId = useActiveCompanyId();
 
   const [loading, setLoading] = useState(true);
   const [cycleStates, setCycleStates] = useState<Record<string, LocalCycleState>>({});
