@@ -46,7 +46,7 @@ const emptyForm: MemberForm = {
 export default function BasePopulacional() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const companyId = user?.companyId || "";
+  const companyId = useActiveCompanyId();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(true);
