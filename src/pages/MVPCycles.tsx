@@ -15,6 +15,7 @@ import {
   type NewActionData,
 } from "@/components/cycles/CreateActionFromTemplateDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useActiveCompanyId } from "@/hooks/useActiveCompanyId";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -139,7 +140,7 @@ export default function MVPCycles() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const companyId = user?.companyId || "";
+  const companyId = useActiveCompanyId();
 
   const highlightActionId = searchParams.get("highlight");
   const fromAlert = searchParams.get("fromAlert") === "true";
